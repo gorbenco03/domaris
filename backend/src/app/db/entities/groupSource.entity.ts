@@ -1,4 +1,3 @@
-// src/db/entities/group-source.entity.ts
 import {
   Table,
   Column,
@@ -13,7 +12,7 @@ import { GisNode } from './gisNode.entity';
   tableName: 'group_sources',
   timestamps: true,
   underscored: true,
-  paranoid: true
+  paranoid: true,
 })
 export class GroupSource extends Model<GroupSource> {
   @Column({
