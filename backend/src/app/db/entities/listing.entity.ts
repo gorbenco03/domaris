@@ -15,7 +15,8 @@ import { User } from './user.entity';
   tableName: 'listings',
   underscored: true,
   timestamps: true,
-  paranoid: true
+  paranoid: true,
+  indexes: [{ fields: ['publicFrom'] }],
 })
 export class Listing extends ExtModel {
   @ForeignKey(() => User)
@@ -173,7 +174,7 @@ export class Listing extends ExtModel {
       'public',
       'rented',
       'hidden',
-      'expired',
+      'expired'
     ),
     defaultValue: 'new',
   })
@@ -192,5 +193,4 @@ export class Listing extends ExtModel {
 
   @HasMany(() => ListingImage)
   images: ListingImage[];
-
 }
