@@ -1,44 +1,86 @@
-import { Column, DataType, HasMany, Model, Table } from "sequelize-typescript";
-import { FbPostImage } from "./fb-post-image.model";
+import { Table, Column, DataType, Model, HasMany } from 'sequelize-typescript';
+import { Optional } from 'sequelize';
+import { FbPostImage } from './fb-post-image.model';
 
-@Table({ tableName: 'fb_posts', paranoid: true, underscored: true, timestamps: true })
-export class FbPost extends Model<FbPost> {
-  @Column({ type: DataType.TEXT })
+export interface FbPostAttributes {
+  id: number;
   fbPostUrl: string;
-
-  @Column({ type: DataType.STRING })
   fbUserId: string;
-
-  @Column({ type: DataType.STRING })
   fbUserName: string;
-
-  @Column({ type: DataType.TEXT })
   fbUserProfileUrl: string;
-
-  @Column({ type: DataType.STRING })
   groupId: string;
-
-  @Column({ type: DataType.DATE })
   postedAt: Date;
-
-  @Column({ type: DataType.TEXT })
   text: string;
-
-  @Column(DataType.INTEGER)
   reactionCount: number;
-
-  @Column(DataType.INTEGER)
   shareCount: number;
-
-  @Column(DataType.INTEGER)
   commentCount: number;
-
-  @Column(DataType.JSONB)
   rawJson: any;
-
-  @Column({ type: DataType.BOOLEAN, defaultValue: false })
   processed: boolean;
+}
+
+export type FbPostCreationAttributes = Optional<
+  FbPostAttributes,
+  | 'id'
+  | 'reactionCount'
+  | 'shareCount'
+  | 'commentCount'
+  | 'rawJson'
+  | 'processed'
+>;
+
+@Table({
+  tableName: 'fb_posts',
+  paranoid: true,
+  underscored: true,
+  timestamps: true,
+})
+export class FbPost
+  extends Model<FbPostAttributes, FbPostCreationAttributes>
+  implements FbPostAttributes
+{
+  @Column({
+    type: DataType.BIGINT,
+    autoIncrement: true,
+    primaryKey: true,
+  })
+  declare id: number;
+
+  @Column({ type: DataType.TEXT, allowNull: false })
+  declare fbPostUrl: string;
+
+  @Column({ type: DataType.STRING, allowNull: false })
+  declare fbUserId: string;
+
+  @Column({ type: DataType.STRING, allowNull: false })
+  declare fbUserName: string;
+
+  @Column({ type: DataType.TEXT, allowNull: false })
+  declare fbUserProfileUrl: string;
+
+  @Column({ type: DataType.STRING, allowNull: false })
+  declare groupId: string;
+
+  @Column({ type: DataType.DATE, allowNull: false })
+  declare postedAt: Date;
+
+  @Column({ type: DataType.TEXT, allowNull: false })
+  declare text: string;
+
+  @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
+  declare reactionCount: number;
+
+  @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
+  declare shareCount: number;
+
+  @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
+  declare commentCount: number;
+
+  @Column({ type: DataType.JSONB, allowNull: true })
+  declare rawJson: any;
+
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  declare processed: boolean;
 
   @HasMany(() => FbPostImage)
-  images: FbPostImage[];
+  declare images: FbPostImage[];
 }

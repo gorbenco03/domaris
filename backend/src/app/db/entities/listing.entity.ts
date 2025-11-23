@@ -7,7 +7,7 @@ import {
   BelongsTo,
   HasMany,
 } from 'sequelize-typescript';
-import { ListingImage } from './listing-image.model';
+import { ListingImage } from './listingImage.entity';
 import { ExtModel } from './extend.model';
 import { User } from './user.entity';
 

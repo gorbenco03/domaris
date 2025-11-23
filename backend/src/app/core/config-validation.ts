@@ -33,7 +33,7 @@ const schema = Joi.object({
   OPENAI_MODEL: Joi.string().required(),
 
   //APIFY CONFIG
-  // APIFY_TOKEN: Joi.string().required(),
+  APIFY_TOKEN: Joi.string().required(),
 
   //APPLE CONFIG
   APPLE_CLIENT_ID: Joi.string().required(),

@@ -6,7 +6,7 @@ import { GroupSource } from './groupSource.entity';
   tableName: 'gis_nodes',
   timestamps: true,
   underscored: true,
-  paranoid: true
+  paranoid: true,
 })
 export class GisNode extends Model<GisNode> {
   @Column({
@@ -14,26 +14,26 @@ export class GisNode extends Model<GisNode> {
     autoIncrement: true,
     primaryKey: true,
   })
-  id: number;
+  declare id: number;
 
   @Column({ type: DataType.STRING(100), allowNull: false })
-  citySlug: string; // "timisoara", "cluj-napoca" etc.
+  declare citySlug: string; // "timisoara", "cluj-napoca" etc.
 
   @Column({ type: DataType.STRING(150), allowNull: false })
-  name: string; // "Timisoara - Centru", "Timisoara - Girocului" etc.
+  declare name: string; // "Timisoara - Centru", "Timisoara - Girocului" etc.
 
   @Column({ type: DataType.STRING(50), allowNull: false })
-  type: string; // "city", "district", "area"
+  declare type: string; // "city", "district", "area"
 
   @Column({ type: DataType.DOUBLE, allowNull: false })
-  lat: number;
+  declare lat: number;
 
   @Column({ type: DataType.DOUBLE, allowNull: false })
-  lng: number;
+  declare lng: number;
 
   @Column({ type: DataType.DOUBLE, allowNull: false, defaultValue: 0 })
-  radiusKm: number;
+  declare radiusKm: number;
 
   @HasMany(() => GroupSource)
-  groupSources: GroupSource[];
+  declare groupSources: GroupSource[];
 }
