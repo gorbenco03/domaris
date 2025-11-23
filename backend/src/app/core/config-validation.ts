@@ -3,7 +3,9 @@ import Joi from 'joi';
 
 const schema = Joi.object({
   //APP CONFIG
-  NODE_ENV: Joi.string().valid('development', 'production').default('development'),
+  NODE_ENV: Joi.string()
+    .valid('development', 'production')
+    .default('development'),
   HOST: Joi.string().default('localhost'),
   PORT: Joi.number().default(3000),
   APP_NAME: Joi.string().required(),
@@ -21,10 +23,10 @@ const schema = Joi.object({
   REDIS_PORT: Joi.number().required(),
 
   //AWS CONFIG
-  // AWS_ACCESS_KEY_ID: Joi.string().required(),
-  // AWS_SECRET_ACCESS_KEY: Joi.string().required(),
-  // AWS_REGION: Joi.string().required(),
-  // AWS_S3_BUCKET: Joi.string().required(),
+  AWS_ACCESS_KEY_ID: Joi.string().required(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().required(),
+  AWS_REGION: Joi.string().required(),
+  AWS_S3_BUCKET: Joi.string().required(),
 
   //OPENAI CONFIG
   OPENAI_API_KEY: Joi.string().required(),
@@ -33,10 +35,10 @@ const schema = Joi.object({
   // APIFY_TOKEN: Joi.string().required(),
 
   //APPLE CONFIG
-  // APPLE_CLIENT_ID: Joi.string().required(),
+  APPLE_CLIENT_ID: Joi.string().required(),
 
   //GOOGLE CONFIG
-  // GOOGLE_CLIENT_ID: Joi.string().required(),
+  GOOGLE_CLIENT_ID: Joi.string().required(),
 
   //REVENUE CAT CONFIG
   // REVENUECAT_WEBHOOK_SECRET: Joi.string().required(),
