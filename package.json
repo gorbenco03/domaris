@@ -67,11 +67,21 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/sequelize": "^11.0.1",
+    "apple-signin-auth": "^2.0.0",
     "axios": "^1.6.0",
+    "dotenv": "^17.2.3",
+    "google-auth-library": "^10.5.0",
+    "ioredis": "^5.8.2",
+    "joi": "^18.0.2",
+    "jose": "^6.1.2",
     "next": "~16.0.1",
+    "pg": "^8.16.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "sequelize": "^6.37.7",
+    "sequelize-typescript": "^2.1.6"
   }
 }
