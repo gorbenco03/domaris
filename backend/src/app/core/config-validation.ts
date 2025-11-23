@@ -30,6 +30,7 @@ const schema = Joi.object({
 
   //OPENAI CONFIG
   OPENAI_API_KEY: Joi.string().required(),
+  OPENAI_MODEL: Joi.string().required(),
 
   //APIFY CONFIG
   // APIFY_TOKEN: Joi.string().required(),

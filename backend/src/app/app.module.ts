@@ -6,6 +6,7 @@ import { AppExceptionFilter } from './core/exception.filter';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './core/redis.module';
 import { UserService } from './modules/user/user.service';
+import { S3Module } from './s3/s3.module';
 
 @Module({
   imports: [
