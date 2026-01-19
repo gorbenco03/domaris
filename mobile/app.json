@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "IMOBI",
+    "slug": "imobi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "imobi",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e3a5f"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ro.imobi.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "IMOBI folosește camera pentru a fotografia proprietăți",
+        "NSPhotoLibraryUsageDescription": "IMOBI accesează galeria pentru a selecta fotografii ale proprietăților",
+        "NSLocationWhenInUseUsageDescription": "IMOBI folosește locația pentru a găsi proprietăți în apropiere"
+      }
+    },
+    "android": {
+      "package": "ro.imobi.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e3a5f"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": true,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "IMOBI accesează galeria pentru a selecta fotografii ale proprietăților",
+          "cameraPermission": "IMOBI folosește camera pentru a fotografia proprietăți"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1e3a5f"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    },
+    "owner": "imobi"
+  }
+}
