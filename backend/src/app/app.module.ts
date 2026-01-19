@@ -20,8 +20,9 @@ import { S3Module } from './s3/s3.module';
     //   type: 'user',
     // }),
     // RedisModule,
-    ListingModule,
     DatabaseModule,
+    ListingModule,
+    KycModule,
   ],
   controllers: [AppController],
   providers: [
@@ -31,4 +32,4 @@ import { S3Module } from './s3/s3.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

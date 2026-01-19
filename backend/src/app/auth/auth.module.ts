@@ -12,6 +12,8 @@ export interface AuthModuleOptions {
     type: string;
 }
 
+import { AuthController } from './auth.controller';
+
 @Module({})
 export class AuthModule {
     static forRoot(options: AuthModuleOptions): DynamicModule {
@@ -29,6 +31,7 @@ export class AuthModule {
 
         return {
             module: AuthModule,
+            controllers: [AuthController],
             providers,
             exports: [AuthService],
             global: !!options.isGlobal,

@@ -1,25 +1,20 @@
-import { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+"use client";
 
-// Fix for default marker icon
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { useState, useMemo } from "react";
+import Map, { Marker, Popup, NavigationControl, FullscreenControl, ScaleControl } from "react-map-gl/mapbox";
+import Link from "next/link";
 
-const defaultIcon = L.icon({
-  iconUrl: (markerIcon as any).src || markerIcon,
-  shadowUrl: (markerShadow as any).src || markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
+// Use environment variable for token
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbRxc...placeholder..."; // User needs to provide this
 
 interface PropertyLocation {
   id: number;
   title: string;
-  price: string;
+  price: string | number;
   lat: number;
   lng: number;
+  image?: string;
+  type?: string;
 }
 
 interface PropertyMapProps {
@@ -29,48 +24,95 @@ interface PropertyMapProps {
   height?: string;
 }
 
-const PropertyMap = ({
+export default function PropertyMap({
   properties,
-  center = [40.7128, -74.0060],
-  zoom = 13,
+  center = [44.4268, 26.1025], // Default to Bucharest
+  zoom = 12,
   height = "400px"
-}: PropertyMapProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
+}: PropertyMapProps) {
+  const [popupInfo, setPopupInfo] = useState<PropertyLocation | null>(null);
 
-  useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
+  // Filter valid coordinates
+  const validProperties = useMemo(() =>
+    properties.filter(p => p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)),
+    [properties]);
 
-    // Initialize map
-    const map = L.map(mapRef.current).setView(center, zoom);
-    mapInstanceRef.current = map;
-
-    // Add tile layer
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
-
-    // Add markers
-    properties.forEach((property) => {
-      const marker = L.marker([property.lat, property.lng], { icon: defaultIcon }).addTo(map);
-      marker.bindPopup(`
-        <div style="text-align: left;">
-          <h3 style="font-weight: 600; margin-bottom: 4px;">${property.title}</h3>
-          <p style="color: #8b5cf6; font-weight: 500;">${property.price}</p>
+  const markers = useMemo(() => validProperties.map((property) => (
+    <Marker
+      key={property.id}
+      longitude={property.lng}
+      latitude={property.lat}
+      anchor="bottom"
+      onClick={(e: any) => {
+        // If we let the click propagate, we might close the popup
+        e.originalEvent.stopPropagation();
+        setPopupInfo(property);
+      }}
+    >
+      <div className="cursor-pointer transition-transform hover:scale-110">
+        <div className="flex items-center justify-center p-1 bg-white rounded-full shadow-md border border-gray-200">
+          {/* Custom marker pin or price badge */}
+          <div className="px-2 py-1 text-xs font-bold text-white bg-primary rounded-md whitespace-nowrap">
+            {typeof property.price === 'number'
+              ? `€${property.price.toLocaleString()}`
+              : property.price}
+          </div>
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary rotate-45"></div>
         </div>
-      `);
-    });
+      </div>
+    </Marker>
+  )), [validProperties]);
 
-    // Cleanup
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [properties, center, zoom]);
+  return (
+    <div className="relative w-full rounded-xl overflow-hidden border border-border shadow-sm" style={{ height }}>
+      {(!MAPBOX_TOKEN || MAPBOX_TOKEN.includes("placeholder")) && (
+        <div className="absolute top-0 left-0 right-0 z-50 bg-destructive/10 border-b border-destructive p-2 text-xs text-destructive text-center font-medium">
+          Mapbox Token missing. Please add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local
+        </div>
+      )}
 
-  return <div ref={mapRef} style={{ height, width: "100%", borderRadius: "8px", overflow: "hidden" }} />;
-};
+      <Map
+        initialViewState={{
+          longitude: center[1],
+          latitude: center[0],
+          zoom: zoom
+        }}
+        style={{ width: "100%", height: "100%" }}
+        mapStyle="mapbox://styles/mapbox/streets-v12"
+        mapboxAccessToken={MAPBOX_TOKEN}
+      >
+        <NavigationControl position="bottom-right" />
+        <FullscreenControl position="top-right" />
+        <ScaleControl />
 
-export default PropertyMap;
+        {markers}
+
+        {popupInfo && (
+          <Popup
+            anchor="top"
+            longitude={popupInfo.lng}
+            latitude={popupInfo.lat}
+            onClose={() => setPopupInfo(null)}
+            closeOnClick={false}
+            className="min-w-[240px]"
+          >
+            <div className="p-0">
+              <div className="font-semibold text-sm mb-1">{popupInfo.title}</div>
+              <div className="text-primary font-bold mb-2">
+                {typeof popupInfo.price === 'number'
+                  ? `€${popupInfo.price.toLocaleString()}`
+                  : popupInfo.price}
+              </div>
+              <Link
+                href={`/property/${popupInfo.id}`}
+                className="block w-full text-center bg-primary text-primary-foreground text-xs py-1.5 rounded-md hover:bg-primary/90 transition-colors"
+              >
+                View Details
+              </Link>
+            </div>
+          </Popup>
+        )}
+      </Map>
+    </div>
+  );
+}

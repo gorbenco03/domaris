@@ -7,6 +7,7 @@ import {
   BelongsTo,
   HasMany,
 } from 'sequelize-typescript';
+import { ApiProperty } from '@nestjs/swagger';
 import { ListingImage } from './listingImage.entity';
 import { ExtModel } from './extend.model';
 import { User } from './user.entity';
@@ -16,7 +17,6 @@ import { User } from './user.entity';
   underscored: true,
   timestamps: true,
   paranoid: true,
-  indexes: [{ fields: ['publicFrom'] }],
 })
 export class Listing extends ExtModel {
   @ForeignKey(() => User)
@@ -64,54 +64,67 @@ export class Listing extends ExtModel {
 
   // ----------------- LISTING BASIC DATA -----------------
 
+  @ApiProperty({ example: 'Apartament 2 camere', description: 'Listing title' })
   @Column(DataType.STRING)
   title: string;
 
+  @ApiProperty({ example: 'Beautiful apartment...', description: 'Full description' })
   @Column(DataType.TEXT)
   description: string;
 
+  @ApiProperty({ example: 'Bucuresti' })
   @Index
   @Column(DataType.STRING)
   city: string;
 
+  @ApiProperty({ example: 'Tineretului' })
   @Index
   @Column(DataType.STRING)
   neighborhood: string;
 
   // 👇 NOU
+  @ApiProperty({ required: false })
   @Column(DataType.STRING)
   rentType?: string; // camera / garsoniera / ap2 / ap3 / casa
 
+  @ApiProperty({ example: 2 })
   @Column(DataType.INTEGER)
   rooms: number;
 
   // 👇 NOU
+  @ApiProperty({ required: false })
   @Column(DataType.INTEGER)
   bathrooms?: number;
 
   // 👇 NOU
+  @ApiProperty({ required: false })
   @Column(DataType.INTEGER)
   floor?: number;
 
   // 👇 NOU
+  @ApiProperty({ required: false })
   @Column(DataType.STRING)
   buildingType?: string; // bloc vechi / bloc nou / casa
 
+  @ApiProperty({ example: 500 })
   @Column({
     type: DataType.INTEGER,
     field: 'price_eur',
   })
   priceEur: number;
 
+  @ApiProperty({ default: 'EUR' })
   @Column({
     type: DataType.STRING,
     defaultValue: 'EUR',
   })
   currency: string;
 
+  @ApiProperty({ example: 55 })
   @Column(DataType.INTEGER)
   surfaceSqm: number;
 
+  @ApiProperty()
   @Column(DataType.BOOLEAN)
   isFurnished: boolean;
 
@@ -131,6 +144,7 @@ export class Listing extends ExtModel {
 
   // ----------------- AI FIELDS -----------------
 
+  @ApiProperty({ required: false })
   @Column({
     type: DataType.BOOLEAN,
     allowNull: true,
@@ -138,35 +152,44 @@ export class Listing extends ExtModel {
   isAgency: boolean;
 
   // 👇 NOU
+  @ApiProperty({ required: false })
   @Column(DataType.FLOAT)
   ownerTypeConfidence?: number;
 
+  @ApiProperty({ required: false })
   @Column(DataType.JSONB)
   aiMetadata: any;
 
   // ----------------- LOCATION -----------------
 
+  @ApiProperty({ example: 'Strada Fericirii 10' })
   @Column(DataType.STRING)
   addressText: string;
 
+  @ApiProperty({ example: 44.4 })
   @Column(DataType.DECIMAL(9, 6))
   lat: number;
 
+  @ApiProperty({ example: 26.1 })
   @Column(DataType.DECIMAL(9, 6))
   lng: number;
 
   // ----------------- TIMING -----------------
 
+  @ApiProperty()
   @Column(DataType.DATE)
   postedAt: Date;
 
+  @ApiProperty({ required: false })
   @Column(DataType.DATE)
   scrapedAt: Date;
 
   // 👇 NOU — apare des în postările FB
+  @ApiProperty({ required: false })
   @Column(DataType.DATE)
   availableFrom?: Date;
 
+  @ApiProperty({ enum: ['new', 'early_access', 'public', 'rented', 'hidden', 'expired'] })
   @Column({
     type: DataType.ENUM(
       'new',
@@ -180,8 +203,11 @@ export class Listing extends ExtModel {
   })
   status: 'new' | 'early_access' | 'public' | 'rented' | 'hidden' | 'expired';
 
-  @Index
-  @Column(DataType.DATE)
+  @ApiProperty()
+  @Column({
+    type: DataType.DATE,
+    field: 'public_from',
+  })
   publicFrom: Date;
 
   // ----------------- RAW SOURCE (FB JSON) -----------------
@@ -191,6 +217,7 @@ export class Listing extends ExtModel {
 
   // ----------------- RELATIONS -----------------
 
+  @ApiProperty({ type: () => [ListingImage] })
   @HasMany(() => ListingImage)
   images: ListingImage[];
 }

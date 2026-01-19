@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { listingsService } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,7 @@ export default function AddPropertyPage() {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         // Basic validation
@@ -55,13 +56,36 @@ export default function AddPropertyPage() {
             return;
         }
 
-        // Mock save - in production, this would send to backend
-        toast({
-            title: "Success",
-            description: "Property listing created successfully",
-        });
+        try {
+            await listingsService.create({
+                title: formData.title,
+                description: formData.description,
+                price: Number(formData.price),
+                addressText: formData.location,
+                formattedAddress: formData.location, // Assuming frontend field
+                city: "Unknown", // Default or extract from location
+                rooms: Number(formData.bedrooms) || 0,
+                surface: 0, // Default
+                isFurnished: false, // Default
+                currency: "EUR",
+                isAgency: false,
+                photos: [], // TODO: Implement image upload
+            } as any); // Casting to any to avoid strict partial checks if types mismatch slightly
 
-        router.push("/landlord/dashboard");
+            toast({
+                title: "Success",
+                description: "Property listing created successfully",
+            });
+
+            router.push("/landlord/dashboard");
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "Error",
+                description: "Failed to create listing. Please try again.",
+                variant: "destructive",
+            });
+        }
     };
 
     useEffect(() => {

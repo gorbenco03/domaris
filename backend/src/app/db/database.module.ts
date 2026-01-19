@@ -27,14 +27,14 @@ pg.defaults.parseInt8 = true;
           database: process.env.DB_NAME,
           autoLoadModels: true,
           models: [
-            // Listing,
-            // FbPost,
-            // FbPostImage,
+            Listing,
+            FbPost,
+            FbPostImage,
             GisNode,
             GroupSource,
-            // ListingImage,
-            // User,
-            // UserOnboarding,
+            ListingImage,
+            User,
+            UserOnboarding,
           ],
           synchronize: true,
           // synchronize: process.env.NODE_ENV !== 'development',
@@ -61,4 +61,4 @@ pg.defaults.parseInt8 = true;
   ],
   exports: [DatabaseModule],
 })
-export class DatabaseModule {}
+export class DatabaseModule { }

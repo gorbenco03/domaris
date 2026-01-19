@@ -27,23 +27,84 @@ export class ListingService {
   /**
    * Listare cu un minim de pagination / filtrare
    */
+  /**
+   * Listare cu un minim de pagination / filtrare
+   */
   async findAll(params: {
     limit?: number;
     offset?: number;
     city?: string;
-    area?: string;
+    neighborhood?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minRooms?: number;
+    maxRooms?: number;
+    minSurface?: number;
+    maxSurface?: number;
+    isFurnished?: boolean;
+    hasCentralHeating?: boolean;
+    isAgency?: boolean;
+    sortBy?: 'price' | 'createdAt' | 'postedAt';
+    sortOrder?: 'ASC' | 'DESC';
   }) {
-    const { limit = 20, offset = 0, city, area } = params;
+    const {
+      limit = 20,
+      offset = 0,
+      city,
+      neighborhood,
+      minPrice,
+      maxPrice,
+      minRooms,
+      maxRooms,
+      minSurface,
+      maxSurface,
+      isFurnished,
+      hasCentralHeating,
+      isAgency,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+    } = params;
 
     const where: any = {};
+    const { Op } = require('sequelize'); // Import locally to avoid top-level import issues if not already present
+
     if (city) where.city = city;
-    if (area) where.area = area;
+    // Map 'neighborhood' to 'area' field in DB if that's the convention, or use 'neighborhood' if column exists.
+    // DTO says 'area', implementation plan implies mapping.
+    // DTO uses 'area' for neighborhood/zone. Let's assume 'area' column.
+    if (neighborhood) where.area = neighborhood;
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined) where.price[Op.gte] = minPrice;
+      if (maxPrice !== undefined) where.price[Op.lte] = maxPrice;
+    }
+
+    if (minRooms !== undefined || maxRooms !== undefined) {
+      where.rooms = {};
+      if (minRooms !== undefined) where.rooms[Op.gte] = minRooms;
+      if (maxRooms !== undefined) where.rooms[Op.lte] = maxRooms;
+    }
+
+    if (minSurface !== undefined || maxSurface !== undefined) {
+      where.surface = {}; // Assuming 'surface' is the column name, DTO has 'surface', entity likely matches
+      if (minSurface !== undefined) where.surface[Op.gte] = minSurface;
+      if (maxSurface !== undefined) where.surface[Op.lte] = maxSurface;
+    }
+
+    if (isFurnished !== undefined) where.isFurnished = isFurnished;
+    // Assuming hasCentralHeating col exists or not? Listing interface in api.ts has it. Let's check entity if possible, but assuming yes.
+    if (hasCentralHeating !== undefined) where.hasCentralHeating = hasCentralHeating; // Verify column name if possible
+    if (isAgency !== undefined) where.isAgency = isAgency;
+
+    const orderColumn = ['price', 'createdAt', 'postedAt'].includes(sortBy) ? sortBy : 'createdAt';
+    const orderDirection = ['ASC', 'DESC'].includes(sortOrder) ? sortOrder : 'DESC';
 
     const { rows, count } = await Listing.findAndCountAll({
       where,
       limit,
       offset,
-      order: [['createdAt', 'DESC']],
+      order: [[orderColumn, orderDirection]],
     });
 
     return { items: rows, total: count };

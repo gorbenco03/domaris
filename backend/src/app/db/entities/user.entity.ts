@@ -16,10 +16,23 @@ export class User extends ExtModel {
   email: string;
 
   @Column(DataType.STRING)
-  fullName?: string;
+  firstName?: string;
 
   @Column(DataType.STRING)
-  phone?: string;
+  lastName?: string;
+
+  @Column(DataType.STRING)
+  password?: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+    unique: true,
+  })
+  googleId: string | null;
+
+  @Column(DataType.STRING)
+  appleId: string | null;
 
   @Column({
     type: DataType.ENUM('tenant', 'landlord', 'admin'),
@@ -37,10 +50,35 @@ export class User extends ExtModel {
   @Column(DataType.DATE)
   subscriptionExpiresAt: Date | null;
 
+  // --- Profile Fields ---
+  @Column(DataType.TEXT)
+  bio?: string;
+
+  @Column(DataType.STRING)
+  location?: string;
+
+  @Column(DataType.STRING)
+  avatar?: string;
+
   @Column({
-    type: DataType.STRING,
-    allowNull: true,
-    unique: true,
+    type: DataType.INTEGER,
+    defaultValue: 0,
   })
-  appleId: string | null;
+  verificationLevel: number; // 0=none, 1=id, 2=property, etc.
+
+  @Column({
+    type: DataType.FLOAT,
+    defaultValue: 0,
+  })
+  rating: number;
+
+  // Virtual field or relation count can be handled via repository, keeping simpler for now
+  @Column({
+    type: DataType.VIRTUAL,
+    get() {
+      // detailed logic would go here or in a getter
+      return 0;
+    },
+  })
+  activeListings: number;
 }

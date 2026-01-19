@@ -155,7 +155,7 @@ export class ListingsService {
 
   async getAll(filters?: ListingsFilters): Promise<ListingsResponse> {
     const queryString = buildQueryString(filters);
-    const url = `${this.baseURL}/listings${queryString ? `?${queryString}` : ''}`;
+    const url = `${this.baseURL}/listing${queryString ? `?${queryString}` : ''}`; // Endpoint is /listing (singular) in backend controller
 
     const response = await fetch(url, {
       headers: {
@@ -204,6 +204,22 @@ export class ListingsService {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+  async create(data: Partial<Listing>): Promise<Listing> {
+    const response = await fetch(`${this.baseURL}/listing`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
     });
 
     if (!response.ok) {
