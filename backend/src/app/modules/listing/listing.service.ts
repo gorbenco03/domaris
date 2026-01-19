@@ -137,6 +137,37 @@ export class ListingService {
     return listing;
   }
 
+  async findMyListings(ownerId: number | string) {
+    return Listing.findAll({
+      where: { ownerId },
+      order: [['createdAt', 'DESC']],
+    });
+  }
+
+  async uploadPhotos(id: string, ownerId: number | string, files: any[]) {
+    const listing = await Listing.findByPk(id);
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (String(listing.ownerId) !== String(ownerId)) throw new ForbiddenException('Not owner');
+
+    // 1. Upload to S3 (mock)
+    const uploadedUrls = files.map((f, i) => `https://mock-s3.com/images/${id}_${Date.now()}_${i}.jpg`);
+
+    // 2. Save to DB (Assuming ListingImage entity or photos array)
+    // For now, let's treat it as if we are adding to a related table or JSON
+    // Mock return
+    return { uploaded: uploadedUrls };
+  }
+
+  async updateStatus(id: string, ownerId: number | string, status: string) {
+    const listing = await Listing.findByPk(id);
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (String(listing.ownerId) !== String(ownerId)) throw new ForbiddenException('Not owner');
+
+    // listing.status = status; // Assuming status enum match
+    // await listing.save();
+    return { success: true, status };
+  }
+
   /**
    * Delete doar dacă listing-ul aparține user-ului
    */

@@ -1,4 +1,3 @@
-// src/listing/listing.controller.ts
 import {
   Body,
   Controller,
@@ -9,23 +8,30 @@ import {
   Param,
   Query,
   Req,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ListingService } from './listing.service.js';
+import { ListingService } from './listing.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { CreateListingDto, UpdateListingDto } from './listing.dto.js';
-import { AuthOnly, Public } from '../../core/decorators.js';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { AuthOnly, Public, CurrentUser } from '../../core/decorators.js';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
-@ApiTags('listings')
-@Controller('listing')
+@ApiTags('properties')
+@Controller('properties')
 export class ListingController {
-  constructor(private readonly listingService: ListingService) { }
+  constructor(
+    private readonly listingService: ListingService,
+    private readonly analyticsService: AnalyticsService
+  ) { }
 
   /**
    * Public: listare anunțuri cu pagination simplă și filtre
    */
   @Public()
   @Get()
-  @ApiOperation({ summary: 'Public: listare anunțuri cu pagination simplă și filtre' })
+  @ApiOperation({ summary: 'Search properties with filters' })
   @ApiResponse({ status: 200, description: 'Return all listings.' })
   async findAll(
     @Query('limit') limit?: string,
@@ -66,48 +72,85 @@ export class ListingController {
     });
   }
 
-  /**
-   * Public: un singur anunț
-   */
   @Public()
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.listingService.findOne(id);
+  @ApiOperation({ summary: 'Get property details' })
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user?: any
+  ) {
+    // Track view asynchronously
+    this.analyticsService.trackView(Number(id), user?.id).catch(err => console.error('View tracking failed', err));
+
+    return this.listingService.findOne(+id);
   }
 
-  /**
-   * Creat anunț nou (Public temporar pentru testare frontend)
-   */
-  @Public()
+  @AuthOnly()
   @Post()
-  async create(@Req() req: any, @Body() dto: CreateListingDto) {
-    // Hardcode user ID for testing since auth is disabled
-    const userId = req.user?.sub || 1;
-    return this.listingService.create(userId, dto);
+  @ApiOperation({ summary: 'Create new property' })
+  async create(@CurrentUser() user: any, @Body() dto: CreateListingDto) {
+    return this.listingService.create(user.id, dto);
   }
 
-  /**
-   * Update anunț (doar owner)
-   */
   @AuthOnly()
   @Patch(':id')
+  @ApiOperation({ summary: 'Update property details' })
   async update(
     @Param('id') id: string,
-    @Req() req: any,
+    @CurrentUser() user: any,
     @Body() dto: UpdateListingDto
   ) {
-    const userId = req.user?.sub;
-    return this.listingService.update(id, userId, dto);
+    return this.listingService.update(id, user.id, dto);
   }
 
-  /**
-   * Delete anunț (doar owner)
-   */
   @AuthOnly()
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req: any) {
-    const userId = req.user?.sub;
-    await this.listingService.remove(id, userId);
+  @ApiOperation({ summary: 'Delete property' })
+  async remove(@Param('id') id: string, @CurrentUser() user: any) {
+    await this.listingService.remove(id, user.id);
     return { success: true };
+  }
+
+  // --- New Endpoints for Module 03 ---
+
+  @AuthOnly()
+  @Get('me/all') // 'me/all' to avoid conflict with ':id' if not careful, but 'me' is not an int ID so it's safer generally, but explicit is better or move above :id
+  @ApiOperation({ summary: 'Get my properties' })
+  async findMyProperties(@CurrentUser() user: any) {
+    return this.listingService.findMyListings(user.id);
+  }
+
+  @AuthOnly()
+  @Post(':id/photos')
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'photos', maxCount: 10 },
+  ]))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload property photos' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        photos: { type: 'array', items: { type: 'string', format: 'binary' } },
+      }
+    }
+  })
+  async uploadPhotos(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @UploadedFiles() files: { photos?: Express.Multer.File[] }
+  ) {
+    return this.listingService.uploadPhotos(id, user.id, files.photos || []);
+  }
+
+  @AuthOnly()
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Update property status' })
+  async updateStatus(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body('status') status: string
+  ) {
+    return this.listingService.updateStatus(id, user.id, status);
   }
 }

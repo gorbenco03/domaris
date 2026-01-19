@@ -9,6 +9,14 @@ import { GroupSource } from './entities/groupSource.entity';
 import { ListingImage } from './entities/listingImage.entity';
 import { User } from './entities/user.entity';
 import { UserOnboarding } from './entities/userOnboarding.entity';
+import { Conversation } from './entities/conversation.entity';
+import { Message } from './entities/message.entity';
+import { Viewing } from './entities/viewing.entity';
+import { Favorite } from './entities/favorite.entity.js';
+import { Notification } from './entities/notification.entity.js';
+import { Device } from './entities/device.entity.js';
+import { ListingView } from './entities/listing-view.entity.js';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
 pg.defaults.parseInt8 = true;
@@ -17,14 +25,15 @@ pg.defaults.parseInt8 = true;
 @Module({
   imports: [
     SequelizeModule.forRootAsync({
-      useFactory: async () => {
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
         return {
           dialect: 'postgres',
-          host: process.env.DB_HOST,
-          port: Number(process.env.DB_PORT ?? 5432),
-          username: process.env.DB_USER,
-          password: process.env.DB_PASS,
-          database: process.env.DB_NAME,
+          host: configService.get<string>('DB_HOST'),
+          port: Number(configService.get<number>('DB_PORT') ?? 5432),
+          username: configService.get<string>('DB_USER'),
+          password: configService.get<string>('DB_PASS'),
+          database: configService.get<string>('DB_NAME'),
           autoLoadModels: true,
           models: [
             Listing,
@@ -35,6 +44,13 @@ pg.defaults.parseInt8 = true;
             ListingImage,
             User,
             UserOnboarding,
+            Conversation,
+            Message,
+            Viewing,
+            Favorite,
+            Notification,
+            Device,
+            ListingView,
           ],
           synchronize: true,
           // synchronize: process.env.NODE_ENV !== 'development',
@@ -57,6 +73,7 @@ pg.defaults.parseInt8 = true;
           },
         };
       },
+      inject: [ConfigService],
     }),
   ],
   exports: [DatabaseModule],

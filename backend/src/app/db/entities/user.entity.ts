@@ -72,6 +72,12 @@ export class User extends ExtModel {
   })
   rating: number;
 
+  @Column({
+    type: DataType.JSONB,
+    defaultValue: { email: true, push: true, marketing: false },
+  })
+  notificationPreferences: any;
+
   // Virtual field or relation count can be handled via repository, keeping simpler for now
   @Column({
     type: DataType.VIRTUAL,
