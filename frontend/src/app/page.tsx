@@ -1,12 +1,17 @@
-export default function Index() {
-  /*
-   * Replace the elements below with your own.
-   *
-   * Note: The corresponding styles are in the ./index.tailwind file.
-   */
-  return (
-    <div>
+import { Header } from "@/components/Header";
+import { Hero } from "@/components/Hero";
+import { PropertyGrid } from "@/components/PropertyGrid";
+import { HowItWorks } from "@/components/HowItWorks";
+import { Footer } from "@/components/Footer";
 
-    </div>
-  );
+export default function Page() {
+    return (
+        <div className="min-h-screen bg-background">
+            <Header />
+            <Hero />
+            <PropertyGrid />
+            <HowItWorks />
+            <Footer />
+        </div>
+    );
 }
