@@ -18,10 +18,10 @@ import { Listing } from './listing.entity.js';
 export class ListingView extends ExtModel {
     @ForeignKey(() => Listing)
     @Column(DataType.BIGINT)
-    listingId: number;
+    listingId!: number;
 
     @BelongsTo(() => Listing)
-    listing: Listing;
+    listing!: Listing;
 
     @ForeignKey(() => User)
     @Column({

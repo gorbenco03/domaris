@@ -17,26 +17,26 @@ import { User } from './user.entity.js';
 export class Notification extends ExtModel {
     @ForeignKey(() => User)
     @Column(DataType.BIGINT)
-    userId: number;
+    userId!: number;
 
     @BelongsTo(() => User)
-    user: User;
+    user!: User;
 
     @Column(DataType.STRING)
-    title: string;
+    title!: string;
 
     @Column(DataType.TEXT)
-    body: string;
+    body!: string;
 
     @Column(DataType.STRING)
-    type: string; // e.g. 'message', 'viewing_request', 'system'
+    type!: string; // e.g. 'message', 'viewing_request', 'system'
 
     @Column({
         type: DataType.BOOLEAN,
         defaultValue: false,
     })
-    isRead: boolean;
+    isRead!: boolean;
 
     @Column(DataType.JSONB)
-    metadata: any;
+    metadata!: any;
 }

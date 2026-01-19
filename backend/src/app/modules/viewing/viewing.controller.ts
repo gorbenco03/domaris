@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { ViewingService } from './viewing.service';
 import { AuthOnly, CurrentUser } from '../../core/decorators.js';
+import { ViewingService } from './viewing.service.js';
 
 @ApiTags('viewings')
 @Controller('viewings')

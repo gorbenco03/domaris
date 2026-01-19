@@ -18,17 +18,17 @@ import { Listing } from './listing.entity.js';
 export class Favorite extends ExtModel {
     @ForeignKey(() => User)
     @Column(DataType.BIGINT)
-    userId: number;
+    userId!: number;
 
     @BelongsTo(() => User)
-    user: User;
+    user!: User;
 
     @ForeignKey(() => Listing)
     @Column(DataType.BIGINT)
-    propertyId: number;
+    propertyId!: number;
 
     @BelongsTo(() => Listing)
-    property: Listing;
+    property!: Listing;
 
     @Column({
         type: DataType.STRING,

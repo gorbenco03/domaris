@@ -2,8 +2,6 @@ import { Global, Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize'
 import pg from 'pg'
 import { Listing } from './entities/listing.entity';
-import { FbPost } from './entities/fbPost.model';
-import { FbPostImage } from './entities/fb-post-image.model';
 import { GisNode } from './entities/gisNode.entity';
 import { GroupSource } from './entities/groupSource.entity';
 import { ListingImage } from './entities/listingImage.entity';
@@ -37,8 +35,6 @@ pg.defaults.parseInt8 = true;
           autoLoadModels: true,
           models: [
             Listing,
-            FbPost,
-            FbPostImage,
             GisNode,
             GroupSource,
             ListingImage,

@@ -13,7 +13,7 @@ export class User extends ExtModel {
     unique: true,
     allowNull: false,
   })
-  email: string;
+  email!: string;
 
   @Column(DataType.STRING)
   firstName?: string;
@@ -29,26 +29,26 @@ export class User extends ExtModel {
     allowNull: true,
     unique: true,
   })
-  googleId: string | null;
+  googleId!: string | null;
 
   @Column(DataType.STRING)
-  appleId: string | null;
+  appleId!: string | null;
 
   @Column({
     type: DataType.ENUM('tenant', 'landlord', 'admin'),
     defaultValue: 'tenant',
   })
-  role: 'tenant' | 'landlord' | 'admin';
+  role!: 'tenant' | 'landlord' | 'admin';
 
   /** Subscription pentru alerte / matching AI */
   @Column({
     type: DataType.BOOLEAN,
     defaultValue: false,
   })
-  hasActiveSubscription: boolean;
+  hasActiveSubscription!: boolean;
 
   @Column(DataType.DATE)
-  subscriptionExpiresAt: Date | null;
+  subscriptionExpiresAt!: Date | null;
 
   // --- Profile Fields ---
   @Column(DataType.TEXT)
@@ -64,19 +64,19 @@ export class User extends ExtModel {
     type: DataType.INTEGER,
     defaultValue: 0,
   })
-  verificationLevel: number; // 0=none, 1=id, 2=property, etc.
+  verificationLevel!: number; // 0=none, 1=id, 2=property, etc.
 
   @Column({
     type: DataType.FLOAT,
     defaultValue: 0,
   })
-  rating: number;
+  rating!: number;
 
   @Column({
     type: DataType.JSONB,
     defaultValue: { email: true, push: true, marketing: false },
   })
-  notificationPreferences: any;
+  notificationPreferences!: any;
 
   // Virtual field or relation count can be handled via repository, keeping simpler for now
   @Column({
@@ -86,5 +86,5 @@ export class User extends ExtModel {
       return 0;
     },
   })
-  activeListings: number;
+  activeListings!: number;
 }

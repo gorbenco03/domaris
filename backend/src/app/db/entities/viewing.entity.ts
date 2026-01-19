@@ -18,26 +18,26 @@ import { Listing } from './listing.entity';
 export class Viewing extends ExtModel {
     @ForeignKey(() => Listing)
     @Column(DataType.BIGINT)
-    propertyId: number;
+    propertyId!: number;
 
     @BelongsTo(() => Listing)
-    property: Listing;
+    property!: Listing;
 
     @ForeignKey(() => User)
     @Column(DataType.BIGINT)
-    seekerId: number;
+    seekerId!: number;
 
     @BelongsTo(() => User)
-    seeker: User;
+    seeker!: User;
 
     @Column(DataType.DATE)
-    slot: Date;
+    slot!: Date;
 
     @Column({
         type: DataType.ENUM('pending', 'accepted', 'rejected', 'cancelled'),
         defaultValue: 'pending',
     })
-    status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+    status!: 'pending' | 'accepted' | 'rejected' | 'cancelled';
 
     @Column(DataType.TEXT)
     notes?: string;

@@ -18,21 +18,21 @@ import { Conversation } from './conversation.entity';
 export class Message extends ExtModel {
     @ForeignKey(() => Conversation)
     @Column(DataType.BIGINT)
-    conversationId: number;
+    conversationId!: number;
 
     @BelongsTo(() => Conversation)
-    conversation: Conversation;
+    conversation!: Conversation;
 
     @ForeignKey(() => User)
     @Column(DataType.BIGINT)
-    senderId: number;
+    senderId!: number;
 
     @BelongsTo(() => User)
-    sender: User;
+    sender!: User;
 
     @Column(DataType.TEXT)
-    content: string;
+    content!: string;
 
     @Column(DataType.DATE)
-    readAt: Date | null;
+    readAt!: Date | null;
 }

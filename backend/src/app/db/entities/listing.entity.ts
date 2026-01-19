@@ -21,7 +21,7 @@ import { User } from './user.entity';
 export class Listing extends ExtModel {
   @ForeignKey(() => User)
   @Column(DataType.BIGINT)
-  ownerId: number | null;
+  ownerId!: number | null;
 
   @BelongsTo(() => User)
   owner?: User;
@@ -33,7 +33,7 @@ export class Listing extends ExtModel {
     allowNull: false,
     defaultValue: 'facebook',
   })
-  sourceType: 'facebook' | 'manual' | 'other';
+  sourceType!: 'facebook' | 'manual' | 'other';
 
   @Column(DataType.STRING)
   externalPostId?: string;
@@ -66,21 +66,21 @@ export class Listing extends ExtModel {
 
   @ApiProperty({ example: 'Apartament 2 camere', description: 'Listing title' })
   @Column(DataType.STRING)
-  title: string;
+  title!: string;
 
   @ApiProperty({ example: 'Beautiful apartment...', description: 'Full description' })
   @Column(DataType.TEXT)
-  description: string;
+  description!: string;
 
   @ApiProperty({ example: 'Bucuresti' })
   @Index
   @Column(DataType.STRING)
-  city: string;
+  city!: string;
 
   @ApiProperty({ example: 'Tineretului' })
   @Index
   @Column(DataType.STRING)
-  neighborhood: string;
+  neighborhood!: string;
 
   // 👇 NOU
   @ApiProperty({ required: false })
@@ -89,7 +89,7 @@ export class Listing extends ExtModel {
 
   @ApiProperty({ example: 2 })
   @Column(DataType.INTEGER)
-  rooms: number;
+  rooms!: number;
 
   // 👇 NOU
   @ApiProperty({ required: false })
@@ -111,25 +111,25 @@ export class Listing extends ExtModel {
     type: DataType.INTEGER,
     field: 'price_eur',
   })
-  priceEur: number;
+  priceEur!: number;
 
   @ApiProperty({ default: 'EUR' })
   @Column({
     type: DataType.STRING,
     defaultValue: 'EUR',
   })
-  currency: string;
+  currency!: string;
 
   @ApiProperty({ example: 55 })
   @Column(DataType.INTEGER)
-  surfaceSqm: number;
+  surfaceSqm!: number;
 
   @ApiProperty()
   @Column(DataType.BOOLEAN)
-  isFurnished: boolean;
+  isFurnished!: boolean;
 
   @Column(DataType.BOOLEAN)
-  hasCentralHeating: boolean;
+  hasCentralHeating!: boolean;
 
   // ----------------- RENT RULES (useful from FB posts) -----------------
 
@@ -149,7 +149,7 @@ export class Listing extends ExtModel {
     type: DataType.BOOLEAN,
     allowNull: true,
   })
-  isAgency: boolean;
+  isAgency!: boolean;
 
   // 👇 NOU
   @ApiProperty({ required: false })
@@ -158,31 +158,31 @@ export class Listing extends ExtModel {
 
   @ApiProperty({ required: false })
   @Column(DataType.JSONB)
-  aiMetadata: any;
+  aiMetadata!: any;
 
   // ----------------- LOCATION -----------------
 
   @ApiProperty({ example: 'Strada Fericirii 10' })
   @Column(DataType.STRING)
-  addressText: string;
+  addressText!: string;
 
   @ApiProperty({ example: 44.4 })
   @Column(DataType.DECIMAL(9, 6))
-  lat: number;
+  lat!: number;
 
   @ApiProperty({ example: 26.1 })
   @Column(DataType.DECIMAL(9, 6))
-  lng: number;
+  lng!: number;
 
   // ----------------- TIMING -----------------
 
   @ApiProperty()
   @Column(DataType.DATE)
-  postedAt: Date;
+  postedAt!: Date;
 
   @ApiProperty({ required: false })
   @Column(DataType.DATE)
-  scrapedAt: Date;
+  scrapedAt!: Date;
 
   // 👇 NOU — apare des în postările FB
   @ApiProperty({ required: false })
@@ -201,23 +201,23 @@ export class Listing extends ExtModel {
     ),
     defaultValue: 'new',
   })
-  status: 'new' | 'early_access' | 'public' | 'rented' | 'hidden' | 'expired';
+  status!: 'new' | 'early_access' | 'public' | 'rented' | 'hidden' | 'expired';
 
   @ApiProperty()
   @Column({
     type: DataType.DATE,
     field: 'public_from',
   })
-  publicFrom: Date;
+  publicFrom!: Date;
 
   // ----------------- RAW SOURCE (FB JSON) -----------------
 
   @Column(DataType.JSONB)
-  rawSource: any;
+  rawSource!: any;
 
   // ----------------- RELATIONS -----------------
 
   @ApiProperty({ type: () => [ListingImage] })
   @HasMany(() => ListingImage)
-  images: ListingImage[];
+  images!: ListingImage[];
 }

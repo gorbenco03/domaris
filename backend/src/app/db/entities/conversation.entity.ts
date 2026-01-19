@@ -21,10 +21,10 @@ import { Message } from './message.entity';
 export class Conversation extends ExtModel {
     @ForeignKey(() => Listing)
     @Column(DataType.BIGINT)
-    propertyId: number | null;
+    propertyId!: number | null;
 
     @BelongsTo(() => Listing)
-    property: Listing;
+    property!: Listing;
 
     // Simple implementation: participant1 and participant2 instead of ManyToMany join table for simplicity?
     // Or stick to ManyToMany if more users allowed. Guide implies 1 on 1 mostly (seeker + owner).
@@ -34,18 +34,18 @@ export class Conversation extends ExtModel {
 
     @ForeignKey(() => User)
     @Column(DataType.BIGINT)
-    tenantId: number;
+    tenantId!: number;
 
     @BelongsTo(() => User, 'tenantId')
-    tenant: User;
+    tenant!: User;
 
     @ForeignKey(() => User)
     @Column(DataType.BIGINT)
-    landlordId: number;
+    landlordId!: number;
 
     @BelongsTo(() => User, 'landlordId')
-    landlord: User;
+    landlord!: User;
 
     @HasMany(() => Message)
-    messages: Message[];
+    messages!: Message[];
 }
