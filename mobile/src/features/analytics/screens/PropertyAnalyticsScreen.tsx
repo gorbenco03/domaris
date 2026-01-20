@@ -21,7 +21,9 @@ import {
   Share2,
   Trophy,
   Sparkles,
-  Info
+  Info,
+  Zap,
+  TrendingUp
 } from 'lucide-react-native';
 import { MetricCard } from '../components/MetricCard';
 import { AnalyticsChart } from '../components/AnalyticsChart';
@@ -169,6 +171,25 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
           </View>
         )}
 
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.colors.primary.main }]}
+            onPress={() => navigation.navigate('BoostPurchase', { propertyId })}
+          >
+            <Zap size={20} color="#ffffff" />
+            <Text style={styles.actionButtonText}>Promovează anunțul</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.colors.secondary.main }]}
+            onPress={() => navigation.navigate('ListingAnalysis', { propertyId })}
+          >
+            <TrendingUp size={20} color="#ffffff" />
+            <Text style={styles.actionButtonText}>Analiză AI</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* AI Suggestions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -177,7 +198,7 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
               Sugestii IA pentru optimizare
             </Text>
           </View>
-          
+
           {suggestionsLoading ? (
             <ActivityIndicator size="small" color={theme.colors.primary.main} />
           ) : (
@@ -355,5 +376,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'right',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  actionButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

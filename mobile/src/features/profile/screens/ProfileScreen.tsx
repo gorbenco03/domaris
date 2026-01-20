@@ -31,6 +31,8 @@ import {
   MapPin,
   BadgeCheck,
   Sparkles,
+  CreditCard,
+  Zap,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -284,6 +286,26 @@ const ProfileScreen: React.FC = () => {
             </View>
           </View>
         )}
+
+        {/* Premium Section */}
+        <ProfileSection title="Premium">
+          <ProfileMenuItem
+            icon={<Sparkles />}
+            label="Planuri de abonament"
+            description="Vezi toate beneficiile Premium"
+            onPress={() => navigation.navigate('Pricing')}
+          />
+        </ProfileSection>
+
+        {/* Premium Section */}
+        <ProfileSection title="Premium">
+          <ProfileMenuItem
+            icon={<Sparkles />}
+            label="Planuri de abonament"
+            description="Vezi toate beneficiile Premium"
+            onPress={() => navigation.navigate('Pricing')}
+          />
+        </ProfileSection>
 
         {/* Core Features Section */}
         <ProfileSection title="Activitate">

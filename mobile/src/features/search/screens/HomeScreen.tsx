@@ -228,7 +228,10 @@ const HomeScreen: React.FC = () => {
 
         {/* AI Chat Banner */}
         <View style={styles.aiSection}>
-          <TouchableOpacity activeOpacity={0.9}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('AIChat' as never)}
+          >
             <LinearGradient
               colors={theme.gradients.ai}
               start={{ x: 0, y: 0 }}
