@@ -25,8 +25,7 @@ import {
   RefreshCw,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Card } from '@/shared/components/Card';
-import { Button } from '@/shared/components/Button';
+import { Card, Button } from '@/shared/components';
 
 // ============================================
 // TYPES

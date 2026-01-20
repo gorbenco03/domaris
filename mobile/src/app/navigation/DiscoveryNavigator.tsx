@@ -6,13 +6,14 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SearchStackParamList } from './types';
-import { 
-  HomeScreen, 
-  SearchResultsScreen, 
-  FiltersScreen, 
+import {
+  HomeScreen,
+  SearchResultsScreen,
+  FiltersScreen,
   MapSearchScreen,
   PropertyDetailScreen
 } from '@/features/search/screens';
+import { AIChatScreen } from '@/features/ai';
 
 const Stack = createNativeStackNavigator<SearchStackParamList>();
 
@@ -36,6 +37,7 @@ const DiscoveryNavigator: React.FC = () => {
         }} 
       />
       <Stack.Screen name="MapSearch" component={MapSearchScreen} />
+      <Stack.Screen name="AIChat" component={AIChatScreen} />
     </Stack.Navigator>
   );
 };

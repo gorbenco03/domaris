@@ -1,9 +1,9 @@
 /**
- * IMOBI - Create Property Wizard Screen
- * Multi-step property creation wizard
+ * IMOBI - Edit Property Screen
+ * Reuses the CreatePropertyWizard for editing existing properties
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft, X } from 'lucide-react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { ArrowLeft, X, Save } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import ProgressBar from '@/shared/components/ProgressBar';
+import { ProgressBar } from '@/shared/components/ProgressBar';
 import Button from '@/shared/components/Button';
+import { ProfileStackParamList } from '@/app/navigation/types';
 
 // Import Steps
 import PropertyTypeStep from './steps/PropertyTypeStep';
@@ -29,86 +31,14 @@ import PhotosStep from './steps/PhotosStep';
 import PricingStep from './steps/PricingStep';
 import PreviewStep from './steps/PreviewStep';
 
+// Types from CreatePropertyWizard
+import { PropertyFormData } from './CreatePropertyWizard';
+
 // ============================================
 // TYPES
 // ============================================
 
-export interface PropertyFormData {
-  // Step 1: Type
-  transactionType: 'SALE' | 'RENT' | null;
-  propertyType: string | null;
-  
-  // Step 2: Location
-  location: {
-    country: string;
-    county: string;
-    city: string;
-    neighborhood?: string;
-    street?: string;
-    streetNumber?: string;
-    building?: string;
-    floor?: number;
-    apartment?: string;
-    coordinates?: {
-      latitude: number;
-      longitude: number;
-    };
-  } | null;
-  
-  // Step 3: Characteristics
-  characteristics: {
-    totalArea: number;
-    usableArea?: number;
-    rooms?: number;
-    bedrooms?: number;
-    bathrooms?: number;
-    balconies?: number;
-    yearBuilt?: number;
-    floor?: number;
-    totalFloors?: number;
-    orientation?: string[];
-    amenities: string[];
-    utilities: string[];
-    comfort?: string;
-    parking?: {
-      type: string;
-      spots?: number;
-    };
-  } | null;
-  
-  // Step 4: Photos
-  photos: {
-    id: string;
-    uri: string;
-    isPrimary: boolean;
-    caption?: string;
-  }[];
-  
-  // Step 5: Pricing & Description
-  pricing: {
-    price: number;
-    currency: 'EUR' | 'RON';
-    negotiable: boolean;
-    rentDetails?: {
-      depositMonths: number;
-      utilitiesIncluded: boolean;
-      minimumPeriodMonths?: number;
-    };
-  } | null;
-  title: string;
-  description: string;
-}
-
-const INITIAL_FORM_DATA: PropertyFormData = {
-  transactionType: null,
-  propertyType: null,
-  location: null,
-  characteristics: null,
-  photos: [],
-  pricing: null,
-  title: '',
-  description: '',
-};
+type EditPropertyRouteProp = RouteProp<ProfileStackParamList, 'EditProperty'>;
 
 const STEP_TITLES = [
   'Tip proprietate',
@@ -119,20 +49,100 @@ const STEP_TITLES = [
   'Previzualizare',
 ];
 
+// Mock function to fetch property data
+const fetchPropertyData = async (propertyId: string): Promise<PropertyFormData> => {
+  // Simulate API call
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  // Return mock data
+  return {
+    transactionType: 'SALE',
+    propertyType: 'APARTMENT',
+    location: {
+      country: 'România',
+      county: 'București',
+      city: 'București',
+      neighborhood: 'Drumul Taberei',
+      street: 'Strada Brasov',
+      streetNumber: '15',
+      building: 'A',
+      floor: 3,
+      apartment: '12',
+      coordinates: {
+        latitude: 44.4268,
+        longitude: 26.1025,
+      },
+    },
+    characteristics: {
+      totalArea: 75,
+      usableArea: 68,
+      rooms: 3,
+      bedrooms: 2,
+      bathrooms: 1,
+      balconies: 1,
+      yearBuilt: 2015,
+      floor: 3,
+      totalFloors: 10,
+      orientation: ['SUD', 'EST'],
+      amenities: ['aer_conditionat', 'centrala_termica', 'parcare'],
+      utilities: ['curent', 'apa', 'gaz', 'canalizare'],
+      comfort: 'clasa_1',
+      parking: {
+        type: 'subteran',
+        spots: 1,
+      },
+    },
+    photos: [
+      { id: '1', uri: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400', isPrimary: true, caption: 'Living' },
+      { id: '2', uri: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400', isPrimary: false, caption: 'Dormitor' },
+      { id: '3', uri: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400', isPrimary: false, caption: 'Bucatarie' },
+    ],
+    pricing: {
+      price: 120000,
+      currency: 'EUR',
+      negotiable: true,
+    },
+    title: 'Apartament 3 camere, Drumul Taberei - renovat complet',
+    description: 'Apartament spațios cu 3 camere, complet renovat în 2023. Situat la etajul 3 din 10, cu vedere panoramică spre parc. Include loc de parcare subteran și boxă.',
+  };
+};
+
 // ============================================
 // COMPONENT
 // ============================================
 
-const CreatePropertyWizard: React.FC = () => {
+const EditPropertyScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
+  const route = useRoute<EditPropertyRouteProp>();
   const scrollViewRef = useRef<ScrollView>(null);
-  
+
+  const { propertyId } = route.params;
+
+  const [isLoading, setIsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<PropertyFormData>(INITIAL_FORM_DATA);
+  const [formData, setFormData] = useState<PropertyFormData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const totalSteps = 6;
+
+  useEffect(() => {
+    loadPropertyData();
+  }, [propertyId]);
+
+  const loadPropertyData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await fetchPropertyData(propertyId);
+      setFormData(data);
+    } catch (error) {
+      Alert.alert('Eroare', 'Nu am putut încărca datele proprietății.');
+      navigation.goBack();
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleBack = () => {
     if (currentStep > 1) {
@@ -144,23 +154,47 @@ const CreatePropertyWizard: React.FC = () => {
   };
 
   const handleClose = () => {
-    Alert.alert(
-      'Închide',
-      'Ești sigur că vrei să închizi? Datele introduse vor fi salvate ca draft.',
-      [
-        { text: 'Continuă editarea', style: 'cancel' },
-        { 
-          text: 'Salvează draft', 
-          onPress: () => navigation.goBack() 
-        },
-      ]
-    );
+    if (hasChanges) {
+      Alert.alert(
+        'Modificări nesalvate',
+        'Ai modificări nesalvate. Ce vrei să faci?',
+        [
+          { text: 'Continuă editarea', style: 'cancel' },
+          {
+            text: 'Salvează și ieși',
+            onPress: handleSaveAndExit,
+          },
+          {
+            text: 'Renunță',
+            style: 'destructive',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
   };
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  };
+
+  const handleSaveAndExit = async () => {
+    setIsSubmitting(true);
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      Alert.alert('Succes!', 'Modificările au fost salvate.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      Alert.alert('Eroare', 'Nu am putut salva modificările. Încearcă din nou.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -171,7 +205,7 @@ const CreatePropertyWizard: React.FC = () => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       Alert.alert(
         'Succes! 🎉',
-        'Anunțul tău a fost publicat și va fi vizibil după verificare.',
+        'Anunțul tău a fost actualizat și va fi vizibil după verificare.',
         [
           {
             text: 'Super!',
@@ -180,17 +214,22 @@ const CreatePropertyWizard: React.FC = () => {
         ]
       );
     } catch (error) {
-      Alert.alert('Eroare', 'Nu am putut publica anunțul. Încearcă din nou.');
+      Alert.alert('Eroare', 'Nu am putut actualiza anunțul. Încearcă din nou.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const updateFormData = (updates: Partial<PropertyFormData>) => {
-    setFormData((prev) => ({ ...prev, ...updates }));
+    if (formData) {
+      setFormData((prev) => prev ? { ...prev, ...updates } : prev);
+      setHasChanges(true);
+    }
   };
 
   const canProceed = (): boolean => {
+    if (!formData) return false;
+    
     switch (currentStep) {
       case 1:
         return !!formData.transactionType && !!formData.propertyType;
@@ -210,6 +249,8 @@ const CreatePropertyWizard: React.FC = () => {
   };
 
   const renderStep = () => {
+    if (!formData) return null;
+
     switch (currentStep) {
       case 1:
         return (
@@ -258,33 +299,45 @@ const CreatePropertyWizard: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Se încarcă datele...
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!formData) {
+    return null;
+  }
+
   return (
-    <SafeAreaView 
+    <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={handleBack}
-        >
+        <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
           <ArrowLeft size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
             {STEP_TITLES[currentStep - 1]}
           </Text>
-          <Text style={[styles.headerSubtitle, { color: theme.colors.textTertiary }]}>
-            Pasul {currentStep} din {totalSteps}
+          <Text style={[styles.headerSubtitle, { color: theme.colors.accent.main }]}>
+            Editare • Pasul {currentStep} din {totalSteps}
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={handleClose}
-        >
+        <TouchableOpacity style={styles.headerButton} onPress={handleClose}>
           <X size={24} color={theme.colors.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -317,15 +370,25 @@ const CreatePropertyWizard: React.FC = () => {
       </KeyboardAvoidingView>
 
       {/* Footer */}
-      <View 
+      <View
         style={[
-          styles.footer, 
-          { 
+          styles.footer,
+          {
             backgroundColor: theme.colors.surface,
             borderTopColor: theme.colors.border,
-          }
+          },
         ]}
       >
+        {/* Quick Save Button */}
+        {hasChanges && currentStep < totalSteps && (
+          <TouchableOpacity
+            style={[styles.quickSaveButton, { borderColor: theme.colors.accent.main }]}
+            onPress={handleSaveAndExit}
+          >
+            <Save size={18} color={theme.colors.accent.main} />
+          </TouchableOpacity>
+        )}
+
         {currentStep > 1 && (
           <Button
             title="Înapoi"
@@ -334,7 +397,7 @@ const CreatePropertyWizard: React.FC = () => {
             style={styles.footerButtonSecondary}
           />
         )}
-        
+
         {currentStep < totalSteps ? (
           <Button
             title="Continuă"
@@ -344,7 +407,7 @@ const CreatePropertyWizard: React.FC = () => {
           />
         ) : (
           <Button
-            title="Publică anunțul"
+            title="Actualizează anunțul"
             onPress={handleSubmit}
             loading={isSubmitting}
             style={styles.footerButtonPrimary}
@@ -358,6 +421,16 @@ const CreatePropertyWizard: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
   },
   header: {
     flexDirection: 'row',
@@ -379,7 +452,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 12,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inter-Medium',
     marginTop: 2,
   },
   progressContainer: {
@@ -404,6 +477,14 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: 1,
   },
+  quickSaveButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   footerButtonSecondary: {
     flex: 1,
   },
@@ -412,4 +493,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CreatePropertyWizard;
+export default EditPropertyScreen;

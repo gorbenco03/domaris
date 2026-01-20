@@ -12,6 +12,7 @@ import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 // ============================================
 
 export type AuthStackParamList = {
+  Onboarding: undefined;
   Welcome: undefined;
   Login: undefined;
   Register: undefined;
@@ -64,6 +65,7 @@ export type SearchStackParamList = {
   SearchFilters: undefined;
   MapSearch: undefined;
   SavedSearches: undefined;
+  AIChat: undefined;
 };
 
 // ============================================

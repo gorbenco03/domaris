@@ -16,6 +16,7 @@ import {
   OTPVerificationScreen,
   ForgotPasswordScreen,
   ResetPasswordScreen,
+  OnboardingScreen,
 } from '@/features/auth/screens';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -29,15 +30,20 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 const AuthNavigator: React.FC = () => {
   return (
     <Stack.Navigator
-      initialRouteName="Welcome"
+      initialRouteName="Onboarding"
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
         gestureEnabled: true,
       }}
     >
-      <Stack.Screen 
-        name="Welcome" 
+      <Stack.Screen
+        name="Onboarding"
+        component={OnboardingScreen}
+        options={{ animation: 'fade' }}
+      />
+      <Stack.Screen
+        name="Welcome"
         component={WelcomeScreen}
         options={{ animation: 'fade' }}
       />

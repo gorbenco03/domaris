@@ -33,6 +33,7 @@ import {
   Sparkles,
   CreditCard,
   Zap,
+  Plus,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -297,15 +298,34 @@ const ProfileScreen: React.FC = () => {
           />
         </ProfileSection>
 
-        {/* Premium Section */}
-        <ProfileSection title="Premium">
-          <ProfileMenuItem
-            icon={<Sparkles />}
-            label="Planuri de abonament"
-            description="Vezi toate beneficiile Premium"
-            onPress={() => navigation.navigate('Pricing')}
-          />
-        </ProfileSection>
+        {/* Add Property Action Card */}
+        <View style={{ marginHorizontal: theme.spacing[4], marginTop: theme.spacing[4] }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('CreateProperty')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={[theme.colors.accent.main, theme.colors.accent.dark || theme.colors.accent.main]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[
+                styles.addPropertyCard,
+                { borderRadius: theme.borderRadius.xl }
+              ]}
+            >
+              <View style={styles.addPropertyIcon}>
+                <Plus size={28} color="#ffffff" strokeWidth={2.5} />
+              </View>
+              <View style={styles.addPropertyContent}>
+                <Text style={styles.addPropertyTitle}>Adaugă anunț</Text>
+                <Text style={styles.addPropertySubtitle}>
+                  Publică o proprietate nouă
+                </Text>
+              </View>
+              <ChevronRight size={24} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
 
         {/* Core Features Section */}
         <ProfileSection title="Activitate">
@@ -481,6 +501,33 @@ const styles = StyleSheet.create({
   },
   versionText: {
     textAlign: 'center',
+  },
+  addPropertyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  addPropertyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  addPropertyContent: {
+    flex: 1,
+  },
+  addPropertyTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 2,
+  },
+  addPropertySubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
 });
 

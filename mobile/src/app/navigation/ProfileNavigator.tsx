@@ -14,7 +14,7 @@ import {
   ChangePasswordScreen,
 } from '@/features/profile/screens';
 import { VerificationHubScreen } from '@/features/profile/screens/verification';
-import { CreatePropertyWizard } from '@/features/properties/screens';
+import { CreatePropertyWizard, MyPropertiesScreen, EditPropertyScreen } from '@/features/properties/screens';
 import { ViewingsListScreen, ViewingDetailScreen, RequestViewingScreen, AvailabilitySettingsScreen } from '@/features/viewings';
 import { NotificationsCenterScreen, NotificationPreferencesScreen } from '@/features/notifications';
 import { PropertyAnalyticsScreen } from '@/features/analytics';
@@ -41,14 +41,17 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="VerificationHub" component={VerificationHubScreen} />
       {/* Properties */}
-      <Stack.Screen name="MyProperties" component={PlaceholderScreen} />
+      <Stack.Screen name="MyProperties" component={MyPropertiesScreen} />
       <Stack.Screen name="CreateProperty" component={CreatePropertyWizard} />
+      <Stack.Screen name="EditProperty" component={EditPropertyScreen} />
       <Stack.Screen name="PropertyStats" component={PropertyAnalyticsScreen} />
       {/* Viewings */}
       <Stack.Screen name="Viewings" component={ViewingsListScreen} />
       <Stack.Screen name="ViewingDetail" component={ViewingDetailScreen} />
       <Stack.Screen name="RequestViewing" component={RequestViewingScreen} />
       <Stack.Screen name="AvailabilitySettings" component={AvailabilitySettingsScreen} />
+      {/* Notifications */}
+      <Stack.Screen name="Notifications" component={NotificationsCenterScreen} />
       {/* Monetization */}
       <Stack.Screen name="Pricing" component={PricingScreen} />
       <Stack.Screen
