@@ -12,6 +12,9 @@ docs/
 ├── PROJECT-STATUS.md           # ⭐ STATUS ACTUAL - Gap analysis și recomandări
 ├── SYNC-GUIDE.md               # Ghid sincronizare între echipe
 │
+├── decisions/                  # 🆕 Decizii Arhitecturale (ADR)
+│   └── 001-UNIFIED-ACCOUNT-MODEL.md  # ⭐ IMPORTANT: Model cont fără roluri
+│
 ├── shared/                     # Documentație COMUNĂ tuturor echipelor
 │   ├── DATA-MODELS.md          # Modele de date (interfețe TypeScript)
 │   ├── BACKEND-API-CRUD-GUIDE.md # Specificații API complete
@@ -42,14 +45,15 @@ docs/
 
 ## 🚀 Quick Links
 
-| Document                                                               | Descriere                                      | Ultima Actualizare |
-| ---------------------------------------------------------------------- | ---------------------------------------------- | ------------------ |
-| [PROJECT-STATUS.md](./PROJECT-STATUS.md)                               | **Status actual al proiectului, gap analysis** | 20 Ian 2026        |
-| [SYNC-GUIDE.md](./SYNC-GUIDE.md)                                       | Ghid pentru sincronizare echipe                | 20 Ian 2026        |
-| [shared/DATA-MODELS.md](./shared/DATA-MODELS.md)                       | Modele de date comune                          | 20 Ian 2026        |
-| [shared/BACKEND-API-CRUD-GUIDE.md](./shared/BACKEND-API-CRUD-GUIDE.md) | Specificații API                               | 19 Ian 2026        |
-| [mobile/00-PROJECT-OVERVIEW.md](./mobile/00-PROJECT-OVERVIEW.md)       | Viziunea completă IMOBI                        | Ian 2026           |
-| [mobile/ui-ux/DESIGN-SYSTEM.md](./mobile/ui-ux/DESIGN-SYSTEM.md)       | Design System                                  | Ian 2026           |
+| Document                                                                           | Descriere                                                | Ultima Actualizare |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------ |
+| [PROJECT-STATUS.md](./PROJECT-STATUS.md)                                           | **Status actual al proiectului, gap analysis**           | 20 Ian 2026        |
+| [SYNC-GUIDE.md](./SYNC-GUIDE.md)                                                   | Ghid pentru sincronizare echipe                          | 20 Ian 2026        |
+| [decisions/001-UNIFIED-ACCOUNT-MODEL.md](./decisions/001-UNIFIED-ACCOUNT-MODEL.md) | **⭐ CITEȘTE PRIMUL: Model cont unificat (fără roluri)** | 20 Ian 2026        |
+| [shared/DATA-MODELS.md](./shared/DATA-MODELS.md)                                   | Modele de date comune                                    | 20 Ian 2026        |
+| [shared/BACKEND-API-CRUD-GUIDE.md](./shared/BACKEND-API-CRUD-GUIDE.md)             | Specificații API                                         | 19 Ian 2026        |
+| [mobile/00-PROJECT-OVERVIEW.md](./mobile/00-PROJECT-OVERVIEW.md)                   | Viziunea completă IMOBI                                  | Ian 2026           |
+| [mobile/ui-ux/DESIGN-SYSTEM.md](./mobile/ui-ux/DESIGN-SYSTEM.md)                   | Design System                                            | Ian 2026           |
 
 ---
 
@@ -74,11 +78,12 @@ docs/
 
 ## ⚡ Pentru Dezvoltatori Noi
 
-1. **Citește** [PROJECT-STATUS.md](./PROJECT-STATUS.md) pentru a înțelege starea actuală
-2. **Citește** [SYNC-GUIDE.md](./SYNC-GUIDE.md) pentru convenții și procese
-3. **Backend devs:** Citește [shared/BACKEND-API-CRUD-GUIDE.md](./shared/BACKEND-API-CRUD-GUIDE.md)
-4. **Mobile devs:** Citește [mobile/00-PROJECT-OVERVIEW.md](./mobile/00-PROJECT-OVERVIEW.md)
-5. **Toți:** Verifică [shared/DATA-MODELS.md](./shared/DATA-MODELS.md) pentru interfețe
+1. **⭐ CITEȘTE PRIMUL:** [decisions/001-UNIFIED-ACCOUNT-MODEL.md](./decisions/001-UNIFIED-ACCOUNT-MODEL.md) - Decizia critică: cont unificat, fără roluri
+2. **Citește** [PROJECT-STATUS.md](./PROJECT-STATUS.md) pentru a înțelege starea actuală
+3. **Citește** [SYNC-GUIDE.md](./SYNC-GUIDE.md) pentru convenții și procese
+4. **Backend devs:** Citește [shared/BACKEND-API-CRUD-GUIDE.md](./shared/BACKEND-API-CRUD-GUIDE.md)
+5. **Mobile devs:** Citește [mobile/00-PROJECT-OVERVIEW.md](./mobile/00-PROJECT-OVERVIEW.md)
+6. **Toți:** Verifică [shared/DATA-MODELS.md](./shared/DATA-MODELS.md) pentru interfețe
 
 ---
 
