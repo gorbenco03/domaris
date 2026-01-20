@@ -122,7 +122,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   return (
     <Card
       onPress={onPress}
-      style={[styles.card, variant === 'compact' && styles.compactCard]}
+      style={variant === 'compact' ? [styles.card, styles.compactCard] : styles.card}
       testID={`property-card-${id}`}
     >
       {/* Image Section */}
@@ -299,7 +299,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backdropFilter: 'blur(10px)',
   },
   priceText: {
     fontSize: 18,

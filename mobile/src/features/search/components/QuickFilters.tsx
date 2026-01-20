@@ -93,6 +93,7 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
       >
         {filters.map((filter) => {
           const isSelected = selectedFilters.includes(filter.id);
+          const iconColor = isSelected ? filter.color : theme.colors.textSecondary;
           
           return (
             <TouchableOpacity
@@ -111,8 +112,8 @@ export const QuickFilters: React.FC<QuickFiltersProps> = ({
               onPress={() => onFilterToggle(filter.id)}
               activeOpacity={0.7}
             >
-              {React.cloneElement(filter.icon as React.ReactElement, {
-                color: isSelected ? filter.color : theme.colors.textSecondary,
+              {React.cloneElement(filter.icon as React.ReactElement<{ color: string }>, {
+                color: iconColor,
               })}
               <Text
                 style={[

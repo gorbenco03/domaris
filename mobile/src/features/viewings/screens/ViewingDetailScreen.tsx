@@ -328,7 +328,7 @@ const ViewingDetailScreen: React.FC = () => {
                 onPress={handleCancel}
                 variant="outline"
                 fullWidth
-                style={[styles.actionButton, styles.cancelButton]}
+                style={{ ...styles.actionButton, ...styles.cancelButton }}
                 textStyle={{ color: '#ef4444' }}
               />
             </View>

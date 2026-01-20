@@ -13,15 +13,16 @@ import {
 } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Clock, Check } from 'lucide-react-native';
+import { TimeSlot } from '../types';
 
-interface TimeSlot {
+interface SimpleTimeSlot {
   startTime: string;
   endTime: string;
 }
 
 interface TimeSlotPickerProps {
   date: string;
-  availableSlots: TimeSlot[];
+  availableSlots: SimpleTimeSlot[];
   selectedSlots: TimeSlot[];
   onSlotSelect: (slot: TimeSlot) => void;
   maxSelections?: number;
@@ -45,25 +46,26 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     });
   };
   
-  const isSlotSelected = (slot: TimeSlot): boolean => {
+  const isSlotSelected = (slot: SimpleTimeSlot): boolean => {
     return selectedSlots.some(
       s => s.startTime === slot.startTime && s.endTime === slot.endTime
     );
   };
   
-  const handleSlotPress = (slot: TimeSlot) => {
+  const handleSlotPress = (slot: SimpleTimeSlot) => {
     const selected = isSlotSelected(slot);
+    const fullSlot: TimeSlot = { date, startTime: slot.startTime, endTime: slot.endTime };
     
     if (selected) {
-      onSlotSelect(slot);
+      onSlotSelect(fullSlot);
     } else if (selectedSlots.length < maxSelections) {
-      onSlotSelect(slot);
+      onSlotSelect(fullSlot);
     }
   };
   
   // Group slots by morning/afternoon/evening
   const groupedSlots = React.useMemo(() => {
-    const groups: { morning: TimeSlot[]; afternoon: TimeSlot[]; evening: TimeSlot[] } = {
+    const groups: { morning: SimpleTimeSlot[]; afternoon: SimpleTimeSlot[]; evening: SimpleTimeSlot[] } = {
       morning: [],
       afternoon: [],
       evening: [],
@@ -83,7 +85,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     return groups;
   }, [availableSlots]);
 
-  const renderSlotGroup = (title: string, slots: TimeSlot[], icon: string) => {
+  const renderSlotGroup = (title: string, slots: SimpleTimeSlot[], icon: string) => {
     if (slots.length === 0) return null;
     
     return (

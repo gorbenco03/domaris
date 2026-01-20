@@ -240,7 +240,7 @@ const ProfileScreen: React.FC = () => {
           <RatingBadge
             rating={user.rating}
             reviewCount={user.reviewCount}
-            onPress={() => console.log('View reviews')}
+            onPress={() => navigation.navigate('Reviews', { isOwnProfile: true })}
           />
         </View>
 
@@ -351,6 +351,12 @@ const ProfileScreen: React.FC = () => {
 
         {/* Menu Sections */}
         <ProfileSection title="Setări">
+          <ProfileMenuItem
+            icon={<Eye />}
+            label="Vezi profilul public"
+            description="Cum te văd alții"
+            onPress={() => navigation.navigate('PublicProfile', { userId: storeUser?.id || '' })}
+          />
           <ProfileMenuItem
             icon={<Settings />}
             label="Preferințe notificări"

@@ -25,6 +25,7 @@ import {
   Building2,
   Home,
   Store,
+  Bookmark,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { SearchBar } from '@/features/search/components/SearchBar';
@@ -266,9 +267,13 @@ const HomeScreen: React.FC = () => {
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
               Căutări populare
             </Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('SavedSearches' as never)}
+              style={styles.savedSearchesButton}
+            >
+              <Bookmark size={16} color={theme.colors.primary.main} />
               <Text style={[styles.seeAllText, { color: theme.colors.primary.main }]}>
-                Vezi toate
+                Căutări salvate
               </Text>
             </TouchableOpacity>
           </View>
@@ -498,6 +503,11 @@ const styles = StyleSheet.create({
   },
   propertiesContainer: {
     gap: 16,
+  },
+  savedSearchesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
 });
 

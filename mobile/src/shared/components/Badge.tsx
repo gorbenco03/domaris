@@ -64,7 +64,7 @@ export const Badge: React.FC<BadgeProps> = ({
     },
   };
 
-  const getVariantColors = (): { background: string; text: string; gradient?: string[] } => {
+  const getVariantColors = (): { background: string; text: string; gradient?: readonly string[] } => {
     switch (variant) {
       case 'primary':
         return { background: theme.colors.primary.main, text: '#ffffff' };
@@ -127,7 +127,7 @@ export const Badge: React.FC<BadgeProps> = ({
   if (colors.gradient) {
     return (
       <LinearGradient
-        colors={colors.gradient as [string, string]}
+        colors={colors.gradient as unknown as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[containerStyle, style]}

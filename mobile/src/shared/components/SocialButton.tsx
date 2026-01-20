@@ -6,7 +6,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View, ViewStyle, Platform } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { FontAwesome } from '@expo/vector-icons';
+import { Chrome, Apple, Facebook } from 'lucide-react-native';
 
 type SocialProvider = 'google' | 'apple' | 'facebook';
 
@@ -34,8 +34,8 @@ const SocialButton: React.FC<SocialButtonProps> = ({
           backgroundColor: '#FFFFFF',
           textColor: '#000000',
           borderColor: '#E2E8F0',
-          iconName: 'google' as const,
-          iconColor: '#000000',
+          Icon: Chrome,
+          iconColor: '#4285F4',
           defaultTitle: 'Continuă cu Google',
         };
       case 'apple':
@@ -43,7 +43,7 @@ const SocialButton: React.FC<SocialButtonProps> = ({
           backgroundColor: '#000000',
           textColor: '#FFFFFF',
           borderColor: '#000000',
-          iconName: 'apple' as const,
+          Icon: Apple,
           iconColor: '#FFFFFF',
           defaultTitle: 'Continuă cu Apple',
         };
@@ -52,7 +52,7 @@ const SocialButton: React.FC<SocialButtonProps> = ({
           backgroundColor: '#1877F2',
           textColor: '#FFFFFF',
           borderColor: '#1877F2',
-          iconName: 'facebook' as const,
+          Icon: Facebook,
           iconColor: '#FFFFFF',
           defaultTitle: 'Continuă cu Facebook',
         };
@@ -60,6 +60,7 @@ const SocialButton: React.FC<SocialButtonProps> = ({
   };
 
   const config = getProviderConfig();
+  const IconComponent = config.Icon;
 
   return (
     <TouchableOpacity
@@ -78,11 +79,9 @@ const SocialButton: React.FC<SocialButtonProps> = ({
       ]}
     >
       <View style={styles.iconContainer}>
-        <FontAwesome 
-          name={config.iconName} 
+        <IconComponent 
           size={20} 
           color={config.iconColor} 
-          style={styles.socialIcon}
         />
       </View>
       <Text style={[styles.text, { color: config.textColor }]}>

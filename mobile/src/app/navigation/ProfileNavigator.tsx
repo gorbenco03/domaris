@@ -12,6 +12,8 @@ import {
   EditProfileScreen,
   SettingsScreen,
   ChangePasswordScreen,
+  ReviewsScreen,
+  PublicProfileScreen,
 } from '@/features/profile/screens';
 import { VerificationHubScreen } from '@/features/profile/screens/verification';
 import { CreatePropertyWizard, MyPropertiesScreen, EditPropertyScreen } from '@/features/properties/screens';
@@ -65,6 +67,9 @@ const ProfileNavigator: React.FC = () => {
       {/* AI Assistant */}
       <Stack.Screen name="AIChat" component={AIChatScreen} />
       <Stack.Screen name="ListingAnalysis" component={ListingAnalysisScreen} />
+      {/* Reviews and Public Profile */}
+      <Stack.Screen name="Reviews" component={ReviewsScreen} />
+      <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
     </Stack.Navigator>
   );
 };

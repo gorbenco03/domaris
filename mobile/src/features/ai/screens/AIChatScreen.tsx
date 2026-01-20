@@ -322,13 +322,13 @@ const AIChatScreen: React.FC = () => {
                                   title="Vezi"
                                   onPress={() => {}}
                                   variant="secondary"
-                                  size="small"
+                                  size="sm"
                                 />
                                 <Button
                                   title="💬 Contact"
                                   onPress={() => {}}
                                   variant="primary"
-                                  size="small"
+                                  size="sm"
                                 />
                               </View>
                             </View>

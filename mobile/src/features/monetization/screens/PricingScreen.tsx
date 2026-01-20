@@ -285,7 +285,7 @@ const PricingScreen: React.FC = () => {
               <View style={styles.planHeader}>
                 {plan.gradient ? (
                   <LinearGradient
-                    colors={plan.gradient}
+                    colors={plan.gradient as [string, string, ...string[]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.iconContainer}

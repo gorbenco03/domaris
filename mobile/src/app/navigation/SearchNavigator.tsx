@@ -11,7 +11,8 @@ import {
   SearchResultsScreen, 
   FiltersScreen, 
   MapSearchScreen,
-  PropertyDetailScreen
+  PropertyDetailScreen,
+  SavedSearchesScreen
 } from '@/features/search/screens';
 
 const Stack = createNativeStackNavigator<SearchStackParamList>();
@@ -36,6 +37,7 @@ const SearchNavigator: React.FC = () => {
           animation: 'slide_from_bottom' 
         }} 
       />
+      <Stack.Screen name="SavedSearches" component={SavedSearchesScreen} />
     </Stack.Navigator>
   );
 };

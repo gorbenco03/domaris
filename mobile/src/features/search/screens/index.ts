@@ -7,3 +7,4 @@ export { default as SearchResultsScreen } from './SearchResultsScreen';
 export { default as FiltersScreen } from './FiltersScreen';
 export { default as MapSearchScreen } from './MapSearchScreen';
 export { default as PropertyDetailScreen } from './PropertyDetailScreen';
+export { default as SavedSearchesScreen } from './SavedSearchesScreen';

@@ -119,6 +119,9 @@ export type ProfileStackParamList = {
   BoostPurchase: { propertyId?: string };
   AIChat: { propertyId?: string };
   ListingAnalysis: { propertyId: string };
+  // Reviews and Public Profile
+  Reviews: { userId?: string; isOwnProfile?: boolean };
+  PublicProfile: { userId: string };
 };
 
 // ============================================
@@ -132,6 +135,7 @@ export type RootStackParamList = {
   PropertyDetail: { propertyId: string };
   ImageGallery: { images: string[]; initialIndex?: number };
   Map: { latitude: number; longitude: number; title?: string };
+  Notifications: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> = 

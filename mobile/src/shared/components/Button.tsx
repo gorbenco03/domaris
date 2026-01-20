@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/app/providers/ThemeProvider';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'ai';
-type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
   title: string;

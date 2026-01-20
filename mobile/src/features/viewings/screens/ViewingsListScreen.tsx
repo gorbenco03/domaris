@@ -288,6 +288,7 @@ const ViewingsListScreen: React.FC = () => {
       <View style={[styles.tabs, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         {tabs.map(tab => {
           const isActive = activeTab === tab.key;
+          const iconColor = isActive ? '#fff' : theme.colors.textSecondary;
           return (
             <TouchableOpacity
               key={tab.key}
@@ -297,8 +298,8 @@ const ViewingsListScreen: React.FC = () => {
               ]}
               onPress={() => setActiveTab(tab.key)}
             >
-              {React.cloneElement(tab.icon as React.ReactElement, {
-                color: isActive ? '#fff' : theme.colors.textSecondary,
+              {React.cloneElement(tab.icon as React.ReactElement<{ color: string }>, {
+                color: iconColor,
               })}
               <Text style={[
                 styles.tabText,

@@ -8,6 +8,7 @@ import {
   View,
   StyleSheet,
   ViewStyle,
+  StyleProp,
   TouchableOpacity,
   Animated,
 } from 'react-native';
@@ -19,7 +20,7 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 
 interface CardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   variant?: 'elevated' | 'outlined' | 'flat';
   onPress?: () => void;
   disabled?: boolean;
