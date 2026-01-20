@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View, ViewStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, View, ViewStyle, Platform } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { FontAwesome } from '@expo/vector-icons';
 
 type SocialProvider = 'google' | 'apple' | 'facebook';
 
@@ -30,29 +31,29 @@ const SocialButton: React.FC<SocialButtonProps> = ({
     switch (provider) {
       case 'google':
         return {
-          backgroundColor: '#ffffff',
-          textColor: '#1f1f1f',
-          borderColor: theme.colors.border,
-          icon: 'G',
-          iconColor: '#4285F4',
+          backgroundColor: '#FFFFFF',
+          textColor: '#000000',
+          borderColor: '#E2E8F0',
+          iconName: 'google' as const,
+          iconColor: '#000000',
           defaultTitle: 'Continuă cu Google',
         };
       case 'apple':
         return {
           backgroundColor: '#000000',
-          textColor: '#ffffff',
+          textColor: '#FFFFFF',
           borderColor: '#000000',
-          icon: '',
-          iconColor: '#ffffff',
+          iconName: 'apple' as const,
+          iconColor: '#FFFFFF',
           defaultTitle: 'Continuă cu Apple',
         };
       case 'facebook':
         return {
           backgroundColor: '#1877F2',
-          textColor: '#ffffff',
+          textColor: '#FFFFFF',
           borderColor: '#1877F2',
-          icon: 'f',
-          iconColor: '#ffffff',
+          iconName: 'facebook' as const,
+          iconColor: '#FFFFFF',
           defaultTitle: 'Continuă cu Facebook',
         };
     }
@@ -70,25 +71,19 @@ const SocialButton: React.FC<SocialButtonProps> = ({
         {
           backgroundColor: config.backgroundColor,
           borderColor: config.borderColor,
-          borderRadius: theme.borderRadius.lg,
-          height: theme.componentSizes.button.height,
+          borderRadius: 12,
         },
         disabled && styles.disabled,
         style,
       ]}
     >
       <View style={styles.iconContainer}>
-        {provider === 'google' && (
-          <View style={styles.googleIcon}>
-            <Text style={[styles.googleG, { color: '#4285F4' }]}>G</Text>
-          </View>
-        )}
-        {provider === 'apple' && (
-          <Text style={[styles.appleIcon, { color: config.iconColor }]}></Text>
-        )}
-        {provider === 'facebook' && (
-          <Text style={[styles.facebookIcon, { color: config.iconColor }]}>f</Text>
-        )}
+        <FontAwesome 
+          name={config.iconName} 
+          size={20} 
+          color={config.iconColor} 
+          style={styles.socialIcon}
+        />
       </View>
       <Text style={[styles.text, { color: config.textColor }]}>
         {title || config.defaultTitle}
@@ -104,35 +99,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     paddingHorizontal: 16,
+    paddingVertical: 16,
     width: '100%',
+    marginBottom: 12,
   },
   disabled: {
     opacity: 0.5,
   },
   iconContainer: {
     marginRight: 12,
-  },
-  googleIcon: {
     width: 24,
     height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  googleG: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  appleIcon: {
-    fontSize: 24,
-    fontWeight: '400',
-  },
-  facebookIcon: {
-    fontSize: 24,
-    fontWeight: '700',
+  socialIcon: {
+    marginTop: Platform.OS === 'ios' ? -1 : 0,
   },
   text: {
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });
 

@@ -11,11 +11,15 @@ import {
   ProfileScreen,
   EditProfileScreen,
   SettingsScreen,
-  NotificationSettingsScreen,
   ChangePasswordScreen,
 } from '@/features/profile/screens';
 import { VerificationHubScreen } from '@/features/profile/screens/verification';
 import { CreatePropertyWizard } from '@/features/properties/screens';
+import { ViewingsListScreen, ViewingDetailScreen, RequestViewingScreen, AvailabilitySettingsScreen } from '@/features/viewings';
+import { NotificationsCenterScreen, NotificationPreferencesScreen } from '@/features/notifications';
+import { PropertyAnalyticsScreen } from '@/features/analytics';
+import { PricingScreen, BoostPurchaseScreen } from '@/features/monetization';
+import { AIChatScreen, ListingAnalysisScreen } from '@/features/ai';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
@@ -33,13 +37,31 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationPreferencesScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="VerificationHub" component={VerificationHubScreen} />
-      {/* Placeholder screens - to be implemented */}
+      {/* Properties */}
       <Stack.Screen name="MyProperties" component={PlaceholderScreen} />
       <Stack.Screen name="CreateProperty" component={CreatePropertyWizard} />
-      <Stack.Screen name="Viewings" component={PlaceholderScreen} />
+      <Stack.Screen name="PropertyStats" component={PropertyAnalyticsScreen} />
+      {/* Viewings */}
+      <Stack.Screen name="Viewings" component={ViewingsListScreen} />
+      <Stack.Screen name="ViewingDetail" component={ViewingDetailScreen} />
+      <Stack.Screen name="RequestViewing" component={RequestViewingScreen} />
+      <Stack.Screen name="AvailabilitySettings" component={AvailabilitySettingsScreen} />
+      {/* Monetization */}
+      <Stack.Screen name="Pricing" component={PricingScreen} />
+      <Stack.Screen
+        name="BoostPurchase"
+        component={BoostPurchaseScreen}
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      {/* AI Assistant */}
+      <Stack.Screen name="AIChat" component={AIChatScreen} />
+      <Stack.Screen name="ListingAnalysis" component={ListingAnalysisScreen} />
     </Stack.Navigator>
   );
 };

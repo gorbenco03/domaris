@@ -45,6 +45,7 @@ import {
   RatingBadge,
   StatCard,
 } from '../components';
+import { OwnerDashboardWidget } from '@/features/analytics';
 
 // Initial dummy stats for the profile
 const DUMMY_STATS = {
@@ -123,9 +124,22 @@ const ProfileScreen: React.FC = () => {
             Profil
           </Text>
           <TouchableOpacity
+            onPress={() => navigation.navigate('Notifications')}
+            style={[
+              styles.headerIconButton,
+              {
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.borderRadius.full,
+                marginRight: 10,
+              },
+            ]}
+          >
+            <Bell size={22} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => navigation.navigate('Settings')}
             style={[
-              styles.settingsButton,
+              styles.headerIconButton,
               {
                 backgroundColor: theme.colors.surface,
                 borderRadius: theme.borderRadius.full,
@@ -227,27 +241,32 @@ const ProfileScreen: React.FC = () => {
           />
         </View>
 
-        {/* Stats Section - Only for Owners */}
-        {user.userType === 'owner' && (
-          <View style={{ marginTop: theme.spacing[5] }}>
+        {/* Stats Section - Shown if user has activity */}
+        {user.activeListings > 0 && (
+          <View style={{ marginTop: theme.spacing[5], paddingHorizontal: theme.spacing[4] }}>
             <Text
               style={[
                 styles.sectionTitle,
                 {
                   color: theme.colors.textSecondary,
                   fontSize: theme.typography.fontSize.xs,
-                  marginLeft: theme.spacing[5],
+                  marginLeft: theme.spacing[1],
                   marginBottom: theme.spacing[3],
                 },
               ]}
             >
-              STATISTICI LUNA ACEASTA
+              ACTIVITATE IMOBILIARĂ
             </Text>
-            <View style={[styles.statsRow, { marginHorizontal: theme.spacing[4] }]}>
+            
+            <OwnerDashboardWidget 
+              onPressDetails={() => navigation.navigate('PropertyStats', { propertyId: 'prop-123' })} 
+            />
+            
+            <View style={[styles.statsRow, { marginTop: theme.spacing[2] }]}>
               <StatCard
                 icon={<Home />}
                 value={user.activeListings}
-                label="Anunțuri active"
+                label="Anunțuri"
                 style={{ marginRight: theme.spacing[2] }}
               />
               <StatCard
@@ -266,12 +285,34 @@ const ProfileScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Menu Sections */}
-        <ProfileSection title="Setări">
+        {/* Core Features Section */}
+        <ProfileSection title="Activitate">
           <ProfileMenuItem
             icon={<Bell />}
             label="Notificări"
-            description="Preferințe push, email, SMS"
+            description="Vezi ultimele noutăți"
+            onPress={() => navigation.navigate('Notifications')}
+          />
+          <ProfileMenuItem
+            icon={<Home />}
+            label="Proprietățile mele"
+            description="Anunțuri postate și salvate"
+            onPress={() => navigation.navigate('MyProperties')}
+          />
+          <ProfileMenuItem
+            icon={<Calendar />}
+            label="Vizionări"
+            description="Programări și istoric"
+            onPress={() => navigation.navigate('Viewings')}
+          />
+        </ProfileSection>
+
+        {/* Menu Sections */}
+        <ProfileSection title="Setări">
+          <ProfileMenuItem
+            icon={<Settings />}
+            label="Preferințe notificări"
+            description="Push, email, SMS"
             onPress={() => navigation.navigate('NotificationSettings')}
           />
           <ProfileMenuItem
@@ -290,36 +331,7 @@ const ProfileScreen: React.FC = () => {
             }
             onPress={() => navigation.navigate('VerificationHub')}
           />
-          <ProfileMenuItem
-            icon={<Search />}
-            label="Preferințe căutare"
-            description="Filtre implicite, alerte"
-            onPress={() => console.log('Search preferences')}
-          />
         </ProfileSection>
-
-        {user.userType === 'owner' && (
-          <ProfileSection title="Anunțurile mele">
-            <ProfileMenuItem
-              icon={<Home />}
-              label="Proprietățile mele"
-              description={`${user.activeListings} anunțuri active`}
-              onPress={() => navigation.navigate('MyProperties')}
-            />
-            <ProfileMenuItem
-              icon={<Sparkles />}
-              label="Analiză AI"
-              description="Optimizează-ți anunțurile"
-              onPress={() => console.log('AI Analysis')}
-            />
-            <ProfileMenuItem
-              icon={<Calendar />}
-              label="Vizionări"
-              description="Programări și istoric"
-              onPress={() => navigation.navigate('Viewings')}
-            />
-          </ProfileSection>
-        )}
 
         <ProfileSection title="Legal">
           <ProfileMenuItem
@@ -385,7 +397,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: '700',
   },
-  settingsButton: {
+  headerIconButton: {
     width: 44,
     height: 44,
     justifyContent: 'center',

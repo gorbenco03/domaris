@@ -17,6 +17,8 @@ import MainNavigator from './MainNavigator';
 // Loading Screen Component (simple placeholder)
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
+import { NotificationsCenterScreen } from '@/features/notifications';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // ============================================
@@ -85,7 +87,17 @@ const RootNavigator: React.FC = () => {
         }}
       >
         {isAuthenticated ? (
-          <Stack.Screen name="Main" component={MainNavigator} />
+          <>
+            <Stack.Screen name="Main" component={MainNavigator} />
+            <Stack.Screen 
+              name="Notifications" 
+              component={NotificationsCenterScreen} 
+              options={{ 
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+          </>
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         )}

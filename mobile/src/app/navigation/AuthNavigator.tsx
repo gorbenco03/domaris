@@ -1,19 +1,19 @@
 /**
  * IMOBI - Auth Navigator
  * Authentication flow navigation
+ * Based on Unified Account Model - no role selection needed
  */
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthStackParamList } from './types';
 
-// Import actual screen components
+// Import screen components (UserTypeSelectionScreen removed per ADR-001)
 import {
   WelcomeScreen,
   LoginScreen,
   RegisterScreen,
   OTPVerificationScreen,
-  UserTypeSelectionScreen,
   ForgotPasswordScreen,
   ResetPasswordScreen,
 } from '@/features/auth/screens';
@@ -22,6 +22,8 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 // ============================================
 // AUTH NAVIGATOR
+// Simplified flow: Welcome → Register → OTP → Home
+// No role selection - users can do everything after verification
 // ============================================
 
 const AuthNavigator: React.FC = () => {
@@ -59,12 +61,9 @@ const AuthNavigator: React.FC = () => {
         name="OTPVerification" 
         component={OTPVerificationScreen} 
       />
-      <Stack.Screen 
-        name="UserTypeSelection" 
-        component={UserTypeSelectionScreen} 
-      />
     </Stack.Navigator>
   );
 };
 
 export default AuthNavigator;
+

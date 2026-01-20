@@ -162,6 +162,7 @@ const HomeScreen: React.FC = () => {
           </View>
           <TouchableOpacity 
             style={[styles.notificationButton, { backgroundColor: theme.colors.surface }]}
+            onPress={() => navigation.navigate('Notifications' as never)}
           >
             <Bell size={22} color={theme.colors.textSecondary} />
             <View style={[styles.notificationDot, { backgroundColor: theme.colors.secondary.error }]} />

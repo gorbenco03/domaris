@@ -17,9 +17,9 @@ export type AuthStackParamList = {
   Register: undefined;
   ForgotPassword: undefined;
   ResetPassword: { token: string };
-  OTPVerification: { 
-    email?: string; 
-    phone?: string; 
+  OTPVerification: {
+    email?: string;
+    phone?: string;
     type: 'email' | 'phone';
   };
   UserTypeSelection: undefined;
@@ -104,11 +104,19 @@ export type ProfileStackParamList = {
   PropertyStats: { propertyId: string };
   Viewings: undefined;
   ViewingDetail: { viewingId: string };
+  RequestViewing: { propertyId: string };
+  AvailabilitySettings: undefined;
+  Notifications: undefined;
   Settings: undefined;
   NotificationSettings: undefined;
   ChangePassword: undefined;
   VerificationHub: undefined;
   AIAnalysis: { propertyId: string };
+  // Monetization and AI features
+  Pricing: undefined;
+  BoostPurchase: { propertyId?: string };
+  AIChat: { propertyId?: string };
+  ListingAnalysis: { propertyId: string };
 };
 
 // ============================================

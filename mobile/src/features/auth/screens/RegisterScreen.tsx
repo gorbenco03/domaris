@@ -124,7 +124,9 @@ const RegisterScreen: React.FC = () => {
       if (method === 'phone') {
         navigation.navigate('OTPVerification', { phone, type: 'phone' });
       } else {
-        navigation.navigate('UserTypeSelection');
+        // Based on Unified Account Model, we go directly to Home or OTP
+        // AuthProvider will update state and MainNavigator will show up
+        console.log('Registered successfully - Unified Account');
       }
     }, 1500);
   };
@@ -157,10 +159,9 @@ const RegisterScreen: React.FC = () => {
               <ArrowLeft size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
             
-            {/* Progress Indicator */}
+            {/* Progress Indicator - Simplified for Unified Account */}
             <View style={styles.progressContainer}>
               <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
-              <View style={[styles.progressStep, { backgroundColor: theme.colors.divider }]} />
               <View style={[styles.progressStep, { backgroundColor: theme.colors.divider }]} />
             </View>
           </View>

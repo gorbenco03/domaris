@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Shield, CheckCircle, Clock, AlertCircle } from 'lucide-react-native';
+import { ArrowLeft, Shield, CheckCircle, Clock, AlertCircle, Lock, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
@@ -75,14 +75,18 @@ const VerificationHubScreen: React.FC = () => {
     },
   ];
 
-  const getStatusIcon = (status: VerificationLevel['status']) => {
+  const getStatusIcon = (status: VerificationLevel['status'], size: number = 20) => {
     switch (status) {
       case 'verified':
-        return <CheckCircle size={20} color={theme.colors.accent.main} />;
+        return <CheckCircle size={size} color={theme.colors.accent.main} />;
       case 'pending':
-        return <Clock size={20} color={theme.colors.secondary.warning} />;
+        return <Clock size={size} color={theme.colors.secondary.warning} />;
       case 'rejected':
-        return <AlertCircle size={20} color={theme.colors.secondary.error} />;
+        return <AlertCircle size={size} color={theme.colors.secondary.error} />;
+      case 'locked':
+        return <Lock size={size} color={theme.colors.textTertiary} />;
+      case 'available':
+        return <ChevronRight size={size} color={theme.colors.primary.main} />;
       default:
         return null;
     }
@@ -172,217 +176,207 @@ const VerificationHubScreen: React.FC = () => {
           </Text>
 
           {/* Current Level Badge */}
-          <LinearGradient
-            colors={[theme.colors.accent.main, theme.colors.accent.dark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.currentLevelBadge, { marginTop: theme.spacing[6] }]}
+          <View
+            style={[
+              styles.currentLevelBadge,
+              {
+                backgroundColor: theme.colors.accent.main,
+                marginTop: theme.spacing[5],
+              },
+            ]}
           >
+            <CheckCircle size={16} color="#ffffff" />
             <Text style={styles.currentLevelText}>
-              Nivel Curent: {verificationLevels[currentLevel].label}
+              Nivel {currentLevel}: {verificationLevels[currentLevel].label}
             </Text>
-            <Text style={styles.currentLevelBadge}>
-              {verificationLevels[currentLevel].badge}
-            </Text>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Verification Levels */}
-        <View style={[styles.levelsSection, { paddingHorizontal: theme.spacing[4] }]}>
+        <View style={styles.levelsSection}>
           <Text
             style={[
               styles.sectionTitle,
               {
                 color: theme.colors.textPrimary,
-                fontSize: theme.typography.fontSize.xl,
-                marginBottom: theme.spacing[4],
+                fontSize: theme.typography.fontSize.lg,
+                marginHorizontal: theme.spacing[4],
+                marginBottom: theme.spacing[3],
               },
             ]}
           >
             Niveluri de Verificare
           </Text>
 
-          {verificationLevels.map((level, index) => (
-            <View
-              key={level.level}
-              style={[
-                styles.levelCard,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor:
-                    level.status === 'verified'
-                      ? theme.colors.accent.main
-                      : theme.colors.border,
-                  borderWidth: level.status === 'verified' ? 2 : 1,
-                  marginBottom: theme.spacing[4],
-                  ...theme.shadows.card,
-                },
-              ]}
-            >
-              {/* Level Header */}
-              <View style={styles.levelHeader}>
-                <View style={styles.levelInfo}>
-                  <View style={styles.levelTitleRow}>
-                    <Text
-                      style={[
-                        styles.levelLabel,
-                        {
-                          color: getStatusColor(level.status),
-                          fontSize: theme.typography.fontSize.lg,
-                        },
-                      ]}
-                    >
-                      Nivel {level.level}
-                    </Text>
-                    {getStatusIcon(level.status)}
-                  </View>
-                  <Text
-                    style={[
-                      styles.levelTitle,
-                      {
-                        color: theme.colors.textPrimary,
-                        fontSize: theme.typography.fontSize.xl,
-                      },
-                    ]}
-                  >
-                    {level.label}
-                  </Text>
-                  {level.badge && (
-                    <View
-                      style={[
-                        styles.badgeContainer,
-                        { backgroundColor: theme.colors.accent.main + '15' },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.badgeText,
-                          { color: theme.colors.accent.main },
-                        ]}
-                      >
-                        {level.badge}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+          {verificationLevels.map((level) => {
+            const isLocked = level.status === 'locked';
+            const isVerified = level.status === 'verified';
+            const isAvailable = level.status === 'available';
+            const isPending = level.status === 'pending';
 
-              {/* Description */}
-              <Text
+            return (
+              <View
+                key={level.level}
                 style={[
-                  styles.levelDescription,
+                  styles.levelCard,
                   {
-                    color: theme.colors.textSecondary,
-                    fontSize: theme.typography.fontSize.sm,
+                    backgroundColor: theme.colors.surface,
+                    borderLeftColor: isVerified
+                      ? theme.colors.accent.main
+                      : isAvailable
+                      ? theme.colors.primary.main
+                      : isPending
+                      ? theme.colors.secondary.warning
+                      : theme.colors.border,
+                    marginHorizontal: theme.spacing[4],
+                    marginBottom: theme.spacing[3],
+                    opacity: isLocked ? 0.5 : 1,
+                    ...theme.shadows.sm,
                   },
                 ]}
               >
-                {level.description}
-              </Text>
-
-              {/* Requirements */}
-              <View style={styles.section}>
-                <Text
-                  style={[
-                    styles.subsectionTitle,
-                    {
-                      color: theme.colors.textPrimary,
-                      fontSize: theme.typography.fontSize.sm,
-                    },
-                  ]}
-                >
-                  Cerințe:
-                </Text>
-                {level.requirements.map((req, idx) => (
-                  <View key={idx} style={styles.listItem}>
-                    <CheckCircle
-                      size={16}
-                      color={
-                        level.status === 'verified'
-                          ? theme.colors.accent.main
-                          : theme.colors.textTertiary
-                      }
-                    />
+                {/* Level Header */}
+                <View style={styles.levelHeader}>
+                  <View style={styles.levelInfo}>
+                    <View style={styles.levelTitleRow}>
+                      <Text
+                        style={[
+                          styles.levelLabel,
+                          {
+                            color: isVerified
+                              ? theme.colors.accent.main
+                              : isAvailable
+                              ? theme.colors.primary.main
+                              : theme.colors.textTertiary,
+                            fontSize: theme.typography.fontSize.xs,
+                          },
+                        ]}
+                      >
+                        NIVEL {level.level}
+                      </Text>
+                      {isVerified && (
+                        <CheckCircle size={14} color={theme.colors.accent.main} />
+                      )}
+                      {isLocked && (
+                        <Lock size={12} color={theme.colors.textTertiary} />
+                      )}
+                    </View>
                     <Text
                       style={[
-                        styles.listItemText,
+                        styles.levelTitle,
                         {
-                          color: theme.colors.textSecondary,
-                          fontSize: theme.typography.fontSize.sm,
+                          color: isLocked
+                            ? theme.colors.textTertiary
+                            : theme.colors.textPrimary,
+                          fontSize: theme.typography.fontSize.base,
                         },
                       ]}
                     >
-                      {req}
+                      {level.label}
                     </Text>
                   </View>
-                ))}
-              </View>
+                </View>
 
-              {/* Capabilities */}
-              <View style={styles.section}>
-                <Text
-                  style={[
-                    styles.subsectionTitle,
-                    {
-                      color: theme.colors.textPrimary,
-                      fontSize: theme.typography.fontSize.sm,
-                    },
-                  ]}
-                >
-                  Capabilități:
-                </Text>
-                {level.capabilities.map((cap, idx) => (
-                  <View key={idx} style={styles.listItem}>
-                    <Text style={styles.bullet}>•</Text>
+                {/* Content - Only for non-locked */}
+                {!isLocked && (
+                  <>
                     <Text
                       style={[
-                        styles.listItemText,
+                        styles.levelDescription,
                         {
                           color: theme.colors.textSecondary,
                           fontSize: theme.typography.fontSize.sm,
+                          marginTop: theme.spacing[2],
                         },
                       ]}
                     >
-                      {cap}
+                      {level.description}
                     </Text>
-                  </View>
-                ))}
-              </View>
 
-              {/* Action Button */}
-              {level.status === 'available' && (
-                <Button
-                  title={`Începe Verificarea Nivel ${level.level}`}
-                  onPress={() => {/* Navigate to verification flow */}}
-                  variant="primary"
-                  fullWidth
-                  style={{ marginTop: theme.spacing[4] }}
-                />
-              )}
-              
-              {level.status === 'pending' && (
-                <View
-                  style={[
-                    styles.statusBanner,
-                    { backgroundColor: theme.colors.secondary.warning + '15' },
-                  ]}
-                >
-                  <Clock size={16} color={theme.colors.secondary.warning} />
+                    {/* Requirements */}
+                    <View style={[styles.requirementsList, { marginTop: theme.spacing[3] }]}>
+                      {level.requirements.map((req, idx) => (
+                        <View key={idx} style={styles.requirementItem}>
+                          <CheckCircle
+                            size={14}
+                            color={
+                              isVerified
+                                ? theme.colors.accent.main
+                                : theme.colors.textTertiary
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.requirementText,
+                              {
+                                color: theme.colors.textSecondary,
+                                fontSize: theme.typography.fontSize.sm,
+                              },
+                            ]}
+                          >
+                            {req}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Action Button for Available */}
+                    {isAvailable && (
+                      <Button
+                        title="Începe Verificarea"
+                        onPress={() => {/* Navigate to verification flow */}}
+                        variant="primary"
+                        fullWidth
+                        style={{ marginTop: theme.spacing[4] }}
+                      />
+                    )}
+
+                    {/* Status Banner */}
+                    {isPending && (
+                      <View
+                        style={[
+                          styles.statusBanner,
+                          {
+                            backgroundColor: theme.colors.secondary.warning + '10',
+                            marginTop: theme.spacing[3],
+                          },
+                        ]}
+                      >
+                        <Clock size={14} color={theme.colors.secondary.warning} />
+                        <Text
+                          style={[
+                            styles.statusText,
+                            {
+                              color: theme.colors.secondary.warning,
+                              fontSize: theme.typography.fontSize.xs,
+                            },
+                          ]}
+                        >
+                          În curs de verificare
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {/* Locked Message */}
+                {isLocked && (
                   <Text
                     style={[
-                      styles.statusText,
+                      styles.lockedText,
                       {
-                        color: theme.colors.secondary.warning,
-                        fontSize: theme.typography.fontSize.sm,
+                        color: theme.colors.textTertiary,
+                        fontSize: theme.typography.fontSize.xs,
+                        marginTop: theme.spacing[1],
                       },
                     ]}
                   >
-                    În curs de verificare (~ 5 minute)
+                    Finalizează nivelul anterior
                   </Text>
-                </View>
-              )}
-            </View>
-          ))}
+                )}
+              </View>
+            );
+          })}
         </View>
 
         {/* Security Info */}
@@ -452,17 +446,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   heroSection: {
-    paddingTop: 32,
+    paddingTop: 24,
     paddingBottom: 24,
     alignItems: 'center',
   },
   heroIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -474,36 +468,38 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+    maxWidth: 280,
   },
   currentLevelBadge: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   currentLevelText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   levelsSection: {
-    paddingTop: 24,
+    paddingTop: 8,
   },
   sectionTitle: {
     fontWeight: '600',
   },
   levelCard: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    padding: 16,
   },
   levelHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
   },
   levelInfo: {
     flex: 1,
@@ -511,65 +507,44 @@ const styles = StyleSheet.create({
   levelTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 6,
+    marginBottom: 2,
   },
   levelLabel: {
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   levelTitle: {
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  badgeContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  badgeText: {
-    fontSize: 12,
     fontWeight: '600',
   },
   levelDescription: {
-    marginBottom: 16,
     lineHeight: 20,
   },
-  section: {
-    marginBottom: 12,
+  requirementsList: {
+    gap: 6,
   },
-  subsectionTitle: {
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  listItem: {
+  requirementItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 6,
   },
-  bullet: {
-    fontSize: 16,
-    lineHeight: 16,
-  },
-  listItemText: {
+  requirementText: {
     flex: 1,
     lineHeight: 20,
   },
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 12,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
-    marginTop: 12,
   },
   statusText: {
     fontWeight: '500',
   },
-  securitySection: {
-    marginTop: 8,
-  },
+  lockedText: {},
+  securitySection: {},
   securityTitle: {
     fontWeight: '600',
     marginBottom: 8,
