@@ -21,6 +21,7 @@ import {
   List,
   ArrowUpDown,
   X,
+  Home,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { SearchBar } from '@/features/search/components/SearchBar';
@@ -311,7 +312,9 @@ const SearchResultsScreen: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>🏠</Text>
+      <View style={[styles.emptyIconContainer, { backgroundColor: theme.colors.divider }]}>
+        <Home size={32} color={theme.colors.textTertiary} />
+      </View>
       <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>
         Nicio proprietate găsită
       </Text>
@@ -464,8 +467,12 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     paddingHorizontal: 40,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
   },
   emptyTitle: {

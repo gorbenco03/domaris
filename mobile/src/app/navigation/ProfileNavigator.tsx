@@ -120,7 +120,6 @@ const PlaceholderScreen: React.FC = () => {
         <View style={{ width: 44 }} />
       </View>
       <View style={styles.content}>
-        <Text style={[styles.emoji]}>🚧</Text>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
           În dezvoltare
         </Text>
@@ -158,10 +157,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  emoji: {
-    fontSize: 64,
-    marginBottom: 16,
   },
   title: {
     fontSize: 24,

@@ -218,7 +218,7 @@ const ListingAnalysisScreen: React.FC = () => {
               },
             ]}
           >
-            🏠 {property.title}
+            {property.title}
           </Text>
           <Text
             style={[
@@ -230,7 +230,7 @@ const ListingAnalysisScreen: React.FC = () => {
               },
             ]}
           >
-            📍 {property.location}
+            {property.location}
           </Text>
         </View>
 
@@ -432,7 +432,7 @@ const ListingAnalysisScreen: React.FC = () => {
                             },
                           ]}
                         >
-                          💡 Recomandări:
+                          Recomandări:
                         </Text>
                         {section.suggestions.map((suggestion, index) => (
                           <View key={index} style={styles.suggestionRow}>

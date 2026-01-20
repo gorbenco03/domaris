@@ -55,7 +55,7 @@ const AIChatScreen: React.FC = () => {
       id: '1',
       role: 'assistant',
       content:
-        'Bună! Sunt IMOBI AI, asistentul tău imobiliar. 🏠\n\nSpune-mi ce cauți și îți găsesc cele mai potrivite opțiuni!\n\nPoți să-mi spui, de exemplu:\n• "Caut apartament 2 camere..."\n• "Vreau casă cu grădină..."\n• "Ceva aproape de centru..."',
+        'Bună! Sunt IMOBI AI, asistentul tău imobiliar.\n\nSpune-mi ce cauți și îți găsesc cele mai potrivite opțiuni!\n\nPoți să-mi spui, de exemplu:\n• "Caut apartament 2 camere..."\n• "Vreau casă cu grădină..."\n• "Ceva aproape de centru..."',
       timestamp: new Date(),
     },
   ]);
@@ -90,7 +90,7 @@ const AIChatScreen: React.FC = () => {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content:
-          'Am înțeles perfect! 🎯\n\nAm găsit 8 apartamente potrivite pentru criteriile tale.',
+          'Am înțeles perfect!\n\nAm găsit 8 apartamente potrivite pentru criteriile tale.',
         timestamp: new Date(),
         properties: [
           {
@@ -298,7 +298,7 @@ const AIChatScreen: React.FC = () => {
                                 },
                               ]}
                             >
-                              📍 {property.location} • {property.area}
+                              {property.location} • {property.area}
                             </Text>
                             <View
                               style={[
@@ -325,7 +325,7 @@ const AIChatScreen: React.FC = () => {
                                   size="sm"
                                 />
                                 <Button
-                                  title="💬 Contact"
+                                  title="Contact"
                                   onPress={() => {}}
                                   variant="primary"
                                   size="sm"
@@ -432,7 +432,7 @@ const AIChatScreen: React.FC = () => {
                   },
                 ]}
               >
-                💡 Sugestii:
+                Sugestii:
               </Text>
               {quickSuggestions.map((suggestion, index) => (
                 <TouchableOpacity
@@ -658,20 +658,23 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   suggestionsContainer: {
-    maxHeight: 50,
+    minHeight: 56,
   },
   suggestionsContent: {
     paddingVertical: 12,
+    paddingRight: 16,
     gap: 8,
     alignItems: 'center',
+    flexDirection: 'row',
   },
   suggestionLabel: {
     fontWeight: '500',
   },
   suggestionChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderWidth: 1,
+    marginVertical: 2,
   },
   suggestionText: {
     fontWeight: '500',

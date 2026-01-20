@@ -170,7 +170,7 @@ const CreatePropertyWizard: React.FC = () => {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
       Alert.alert(
-        'Succes! 🎉',
+        'Succes',
         'Anunțul tău a fost publicat și va fi vizibil după verificare.',
         [
           {

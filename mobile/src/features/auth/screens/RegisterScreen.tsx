@@ -169,7 +169,7 @@ const RegisterScreen: React.FC = () => {
           {/* Title */}
           <View style={styles.titleContainer}>
             <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-              Creează cont 🎉
+              Creează cont
             </Text>
             <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
               Înregistrează-te gratuit în mai puțin de 60 de secunde

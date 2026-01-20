@@ -6,7 +6,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { NotificationItem } from '../components';
 import { Notification } from '../types';
@@ -30,7 +30,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
     read: true, channels: ['push', 'in_app'], deliveredVia: ['in_app'], createdAt: new Date(Date.now() - 25 * 3600000),
   },
   {
-    id: '4', userId: 'u1', type: 'price_change', title: 'Preț redus! 🎉',
+    id: '4', userId: 'u1', type: 'price_change', title: 'Preț redus!',
     body: 'Studio Central a scazut prețul cu 5%',
     read: true, channels: ['push', 'in_app'], deliveredVia: ['push'], createdAt: new Date(Date.now() - 48 * 3600000),
   },
@@ -113,7 +113,23 @@ const NotificationsCenterScreen: React.FC = () => {
               <CheckCheck size={22} color={theme.colors.accent.main} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={() => navigation.navigate('NotificationSettings' as never)} style={styles.headerBtn}>
+          <TouchableOpacity
+            onPress={() => {
+              navigation.goBack();
+              navigation.dispatch(
+                CommonActions.navigate({
+                  name: 'Main',
+                  params: {
+                    screen: 'ProfileTab',
+                    params: {
+                      screen: 'NotificationSettings',
+                    },
+                  },
+                })
+              );
+            }}
+            style={styles.headerBtn}
+          >
             <Settings size={22} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         </View>

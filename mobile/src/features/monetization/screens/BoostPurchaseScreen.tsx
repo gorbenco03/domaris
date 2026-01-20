@@ -175,7 +175,7 @@ const BoostPurchaseScreen: React.FC = () => {
                   },
                 ]}
               >
-                🏠 {property.title}
+                {property.title}
               </Text>
               <Text
                 style={[
@@ -187,7 +187,7 @@ const BoostPurchaseScreen: React.FC = () => {
                   },
                 ]}
               >
-                📍 {property.location}
+                {property.location}
               </Text>
             </View>
           </View>
@@ -412,7 +412,7 @@ const BoostPurchaseScreen: React.FC = () => {
               },
             ]}
           >
-            💡 Cum funcționează?
+            Cum funcționează?
           </Text>
           <Text
             style={[

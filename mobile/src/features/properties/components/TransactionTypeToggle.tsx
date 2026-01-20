@@ -3,13 +3,14 @@
  * Toggle between Sale and Rent transaction types
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
+  LayoutChangeEvent,
 } from 'react-native';
 import { DollarSign, Key } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
@@ -35,34 +36,40 @@ export const TransactionTypeToggle: React.FC<TransactionTypeToggleProps> = ({
 }) => {
   const { theme } = useTheme();
   const slideAnim = useRef(new Animated.Value(value === 'SALE' ? 0 : 1)).current;
+  const [containerWidth, setContainerWidth] = useState(300);
+
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0) {
+      setContainerWidth(width);
+    }
+  }, []);
+
+  const sliderWidth = (containerWidth - 8) / 2; // container padding is 4 on each side
 
   useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: value === 'SALE' ? 0 : 1,
+      toValue: value === 'SALE' ? 0 : sliderWidth,
       useNativeDriver: false,
       tension: 50,
       friction: 8,
     }).start();
-  }, [value]);
-
-  const translateX = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 148], // Half of container width minus padding
-  });
+  }, [value, sliderWidth]);
 
   return (
     <View style={styles.container}>
       <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
         Tip tranzacție
       </Text>
-      <View 
+      <View
         style={[
-          styles.toggleContainer, 
-          { 
+          styles.toggleContainer,
+          {
             backgroundColor: theme.colors.divider,
             borderRadius: theme.borderRadius.lg,
           }
         ]}
+        onLayout={onLayout}
       >
         {/* Animated Slider */}
         <Animated.View
@@ -71,7 +78,8 @@ export const TransactionTypeToggle: React.FC<TransactionTypeToggleProps> = ({
             {
               backgroundColor: theme.colors.primary.main,
               borderRadius: theme.borderRadius.lg - 2,
-              transform: [{ translateX }],
+              transform: [{ translateX: slideAnim }],
+              width: sliderWidth,
               ...theme.shadows.sm,
             },
           ]}
@@ -148,7 +156,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     left: 4,
-    width: 148,
     height: 44,
   },
   option: {

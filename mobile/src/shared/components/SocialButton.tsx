@@ -1,12 +1,12 @@
 /**
  * IMOBI - Social Login Button Component
- * Google, Apple, Facebook login buttons
+ * Google, Apple, Facebook login buttons with official brand icons
  */
 
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View, ViewStyle, Platform } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Chrome, Apple, Facebook } from 'lucide-react-native';
+import { FontAwesome } from '@expo/vector-icons';
 
 type SocialProvider = 'google' | 'apple' | 'facebook';
 
@@ -34,7 +34,7 @@ const SocialButton: React.FC<SocialButtonProps> = ({
           backgroundColor: '#FFFFFF',
           textColor: '#000000',
           borderColor: '#E2E8F0',
-          Icon: Chrome,
+          iconName: 'google' as const,
           iconColor: '#4285F4',
           defaultTitle: 'Continuă cu Google',
         };
@@ -43,7 +43,7 @@ const SocialButton: React.FC<SocialButtonProps> = ({
           backgroundColor: '#000000',
           textColor: '#FFFFFF',
           borderColor: '#000000',
-          Icon: Apple,
+          iconName: 'apple' as const,
           iconColor: '#FFFFFF',
           defaultTitle: 'Continuă cu Apple',
         };
@@ -52,7 +52,7 @@ const SocialButton: React.FC<SocialButtonProps> = ({
           backgroundColor: '#1877F2',
           textColor: '#FFFFFF',
           borderColor: '#1877F2',
-          Icon: Facebook,
+          iconName: 'facebook' as const,
           iconColor: '#FFFFFF',
           defaultTitle: 'Continuă cu Facebook',
         };
@@ -60,7 +60,6 @@ const SocialButton: React.FC<SocialButtonProps> = ({
   };
 
   const config = getProviderConfig();
-  const IconComponent = config.Icon;
 
   return (
     <TouchableOpacity
@@ -79,9 +78,10 @@ const SocialButton: React.FC<SocialButtonProps> = ({
       ]}
     >
       <View style={styles.iconContainer}>
-        <IconComponent 
-          size={20} 
-          color={config.iconColor} 
+        <FontAwesome
+          name={config.iconName}
+          size={20}
+          color={config.iconColor}
         />
       </View>
       <Text style={[styles.text, { color: config.textColor }]}>

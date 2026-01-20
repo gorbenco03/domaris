@@ -269,15 +269,17 @@ const PricingScreen: React.FC = () => {
             >
               {/* Popular Badge */}
               {plan.badge && (
-                <View
-                  style={[
-                    styles.popularBadge,
-                    {
-                      backgroundColor: theme.colors.secondary.warning,
-                    },
-                  ]}
-                >
-                  <Text style={styles.popularBadgeText}>{plan.badge}</Text>
+                <View style={styles.popularBadgeContainer}>
+                  <View
+                    style={[
+                      styles.popularBadge,
+                      {
+                        backgroundColor: theme.colors.secondary.warning,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.popularBadgeText}>{plan.badge}</Text>
+                  </View>
                 </View>
               )}
 
@@ -429,7 +431,7 @@ const PricingScreen: React.FC = () => {
               },
             ]}
           >
-            ❓ Întrebări Frecvente
+            Întrebări Frecvente
           </Text>
           <Text
             style={[
@@ -536,16 +538,18 @@ const styles = StyleSheet.create({
     padding: 24,
     position: 'relative',
   },
-  popularBadge: {
+  popularBadgeContainer: {
     position: 'absolute',
-    top: -1,
-    left: '50%',
-    transform: [{ translateX: -75 }],
+    top: -12,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  popularBadge: {
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 12,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
   },
   popularBadgeText: {
     color: '#ffffff',

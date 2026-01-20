@@ -119,7 +119,7 @@ const CharacteristicsStep: React.FC<CharacteristicsStepProps> = ({
       {/* Rooms */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
-          🏠 Structură
+          Structură
         </Text>
         <View style={styles.row}>
           <View style={[styles.fieldContainer, { flex: 1 }]}>

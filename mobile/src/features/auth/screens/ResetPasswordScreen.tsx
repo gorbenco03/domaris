@@ -75,7 +75,7 @@ const ResetPasswordScreen: React.FC = () => {
           <View style={[styles.successIcon, { backgroundColor: theme.colors.accent.main }]}>
             <Check size={48} color="#ffffff" />
           </View>
-          <Text style={[styles.successTitle, { color: theme.colors.textPrimary }]}>Parolă schimbată! 🎉</Text>
+          <Text style={[styles.successTitle, { color: theme.colors.textPrimary }]}>Parolă schimbată cu succes!</Text>
           <Text style={[styles.successText, { color: theme.colors.textSecondary }]}>
             Parola ta a fost resetată cu succes. Acum te poți autentifica cu noua parolă.
           </Text>
@@ -100,7 +100,7 @@ const ResetPasswordScreen: React.FC = () => {
               <Shield size={40} color={theme.colors.accent.main} />
             </View>
 
-            <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Setează parola nouă 🔒</Text>
+            <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Setează parola nouă</Text>
             <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
               Alege o parolă puternică pentru a-ți proteja contul
             </Text>

@@ -783,17 +783,17 @@ const styles = StyleSheet.create({
   },
   badgeCard: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 16,
-    minWidth: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    minWidth: 80,
   },
   badgeIcon: {
-    fontSize: 28,
-    marginBottom: 8,
+    fontSize: 20,
+    marginBottom: 4,
   },
   badgeName: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Inter-SemiBold',
     textAlign: 'center',
   },
@@ -836,9 +836,10 @@ const styles = StyleSheet.create({
   },
   listingsGrid: {
     gap: 16,
+    alignItems: 'center',
   },
   listingCardWrapper: {
-    // Card wrapper if needed
+    width: '100%',
   },
   reportSection: {
     flexDirection: 'row',

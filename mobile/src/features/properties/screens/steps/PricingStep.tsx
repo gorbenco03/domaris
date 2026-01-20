@@ -240,7 +240,7 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
         ]}
       >
         <Text style={[styles.tipsTitle, { color: theme.colors.secondary.info }]}>
-          💡 Sfaturi pentru o descriere bună
+          Sfaturi pentru o descriere bună
         </Text>
         <Text style={[styles.tipsText, { color: theme.colors.textSecondary }]}>
           • Menționează an renovare și tipul finisajelor{'\n'}

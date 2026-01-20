@@ -3,13 +3,15 @@
  * Horizontal tabs for filtering conversations (All, Unread, Archived)
  */
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
+  LayoutChangeEvent,
+  Dimensions,
 } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { ConversationFilter } from '../types';
@@ -41,6 +43,7 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
 }) => {
   const { theme } = useTheme();
   const slideAnim = React.useRef(new Animated.Value(0)).current;
+  const [containerWidth, setContainerWidth] = useState(Dimensions.get('window').width - 32);
 
   const tabs: FilterTab[] = [
     { key: 'all', label: 'Toate' },
@@ -49,21 +52,23 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
   ];
 
   const activeIndex = tabs.findIndex((tab) => tab.key === activeFilter);
+  const tabWidth = containerWidth / tabs.length;
+
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0) {
+      setContainerWidth(width);
+    }
+  }, []);
 
   React.useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: activeIndex,
+      toValue: activeIndex * tabWidth,
       damping: 20,
       stiffness: 300,
       useNativeDriver: true,
     }).start();
-  }, [activeIndex]);
-
-  const tabWidth = 100; // Approximate tab width
-  const translateX = slideAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [0, tabWidth, tabWidth * 2],
-  });
+  }, [activeIndex, tabWidth]);
 
   return (
     <View
@@ -75,15 +80,15 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
         },
       ]}
     >
-      <View style={styles.tabsContainer}>
+      <View style={styles.tabsContainer} onLayout={onLayout}>
         {/* Active indicator */}
         <Animated.View
           style={[
             styles.indicator,
             {
               backgroundColor: theme.colors.primary.main,
-              transform: [{ translateX }],
-              width: `${100 / tabs.length}%`,
+              transform: [{ translateX: slideAnim }],
+              width: tabWidth,
             },
           ]}
         />

@@ -308,7 +308,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpful, onReport }) 
       {review.propertyTitle && (
         <View style={[styles.propertyRef, { backgroundColor: theme.colors.background }]}>
           <Text style={[styles.propertyRefText, { color: theme.colors.textTertiary }]}>
-            📍 {review.propertyTitle}
+            {review.propertyTitle}
           </Text>
         </View>
       )}

@@ -212,7 +212,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
 
       {/* Characteristics */}
       <Card style={styles.infoCard}>
-        <SectionHeader title="🏠 Caracteristici" step={3} />
+        <SectionHeader title="Caracteristici" step={3} />
         
         <View style={styles.characteristicsGrid}>
           {formData.characteristics?.bedrooms && (

@@ -117,11 +117,11 @@ const AMENITIES: (iconColor: string, iconSize: number) => AmenityOption[] = (ico
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  comfort: '🏠 Confort',
-  appliances: '🔌 Electrocasnice',
-  outdoor: '🌳 Exterior',
-  security: '🔒 Securitate',
-  tech: '📡 Tehnologie',
+  comfort: 'Confort',
+  appliances: 'Electrocasnice',
+  outdoor: 'Exterior',
+  security: 'Securitate',
+  tech: 'Tehnologie',
 };
 
 // ============================================

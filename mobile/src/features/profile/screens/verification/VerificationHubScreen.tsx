@@ -68,7 +68,7 @@ const VerificationHubScreen: React.FC = () => {
       level: 3,
       label: 'Proprietar Verificat',
       description: 'Proprietar confirmat cu documente',
-      badge: '🏠 Proprietar',
+      badge: 'Proprietar Verificat',
       requirements: ['Nivel 2 completat', 'Document proprietate', 'Extras CF sau Contract'],
       capabilities: ['Badge special', 'Prioritate în căutări', 'Încredere premium'],
       status: currentLevel >= 3 ? 'verified' : (currentLevel >= 2 ? 'available' : 'locked'),
@@ -401,7 +401,7 @@ const VerificationHubScreen: React.FC = () => {
               },
             ]}
           >
-            🔒 Securitate și Confidențialitate
+            Securitate și Confidențialitate
           </Text>
           <Text
             style={[
