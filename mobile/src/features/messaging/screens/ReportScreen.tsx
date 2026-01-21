@@ -96,7 +96,7 @@ const ReportScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.warningBox}>
+        <View style={[styles.warningBox, { backgroundColor: theme.colors.secondary.warning + '15' }]}>
           <AlertTriangle size={24} color={theme.colors.secondary.warning} />
           <View style={styles.warningTextContainer}>
             <Text style={[styles.warningTitle, { color: theme.colors.textPrimary }]}>Siguranța ta e prioritară</Text>
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   },
   warningBox: {
     flexDirection: 'row',
-    backgroundColor: '#fffbeb', // Light amber
+    // backgroundColor applied dynamically with theme.colors.secondary.warning + '15'
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,

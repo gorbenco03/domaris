@@ -46,6 +46,9 @@ import { ProfileStackParamList } from '@/app/navigation/types';
 import Button from '@/shared/components/Button';
 import { PropertyCard } from '@/features/properties/components';
 
+// Route prop type
+type PublicProfileRouteProp = RouteProp<ProfileStackParamList, 'PublicProfile'>;
+
 // ============================================
 // TYPES
 // ============================================
@@ -257,9 +260,16 @@ const BadgeCard: React.FC<BadgeCardProps> = ({ badge }) => {
 const PublicProfileScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<PublicProfileRouteProp>();
+  
+  // Get userId from route params
+  const { userId } = route.params;
 
   const [refreshing, setRefreshing] = useState(false);
-  const [user] = useState<PublicUser>(MOCK_USER);
+  const [isLoading, setIsLoading] = useState(false);
+  // In a real app, you would fetch user data based on userId
+  // For now we use mock data but acknowledge the userId
+  const [user] = useState<PublicUser>({ ...MOCK_USER, id: userId });
   const [listings] = useState<PropertyListing[]>(MOCK_LISTINGS);
   const [isFollowing, setIsFollowing] = useState(false);
 
@@ -364,8 +374,8 @@ const PublicProfileScreen: React.FC = () => {
               </Text>
             </View>
             {user.isVerified && (
-              <View style={styles.verifiedBadgeOverlay}>
-                <CheckCircle size={24} color={theme.colors.accent.main} fill="#fff" />
+              <View style={[styles.verifiedBadgeOverlay, { backgroundColor: theme.colors.surface }]}>
+                <CheckCircle size={24} color={theme.colors.accent.main} fill={theme.colors.surface} />
               </View>
             )}
           </View>
@@ -653,9 +663,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 2,
+    // backgroundColor applied dynamically with theme.colors.surface
   },
   userName: {
     fontSize: 24,

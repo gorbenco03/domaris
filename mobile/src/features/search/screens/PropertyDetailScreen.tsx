@@ -39,8 +39,17 @@ import {
   Button, 
   Divider 
 } from '@/shared/components';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, CompositeNavigationProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SearchStackParamList, MainTabParamList, ProfileStackParamList } from '@/app/navigation/types';
+
+// Combined navigation type for cross-tab navigation
+type PropertyDetailNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<SearchStackParamList, 'PropertyDetail'>,
+  BottomTabNavigationProp<MainTabParamList>
+>;
 
 const { width } = Dimensions.get('window');
 const IMAGE_HEIGHT = 400;
@@ -51,7 +60,7 @@ const IMAGE_HEIGHT = 400;
 
 const PropertyDetailScreen: React.FC = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<PropertyDetailNavigationProp>();
   const route = useRoute();
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -78,7 +87,9 @@ const PropertyDetailScreen: React.FC = () => {
     },
     amenities: ['Centrală proprie', 'Aer condiționat', 'Mobilat', 'Utilat', 'Boxă', 'Balcon închis'],
     description: 'Vă propunem spre vânzare un apartament cu 3 camere situat în zona Dristor, la doar 5 minute de gura de metrou. Apartamentul a fost renovat complet în 2023, fiind schimbate inclusiv instalațiile electrice și sanitare.\n\nFinisaje premium: gresie PORCELANOSA, parchet din lemn stratificat, baterii GROHE.',
+    ownerId: 'owner-123',
     owner: {
+      id: 'owner-123',
       name: 'Andrei Popescu',
       isVerified: true,
       memberSince: '2021',
@@ -151,7 +162,7 @@ const PropertyDetailScreen: React.FC = () => {
         </View>
 
         {/* Content */}
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.badgesRow}>
             <Badge label="De vânzare" variant="primary" />
             <Badge label="Apartament" variant="info" />
@@ -215,7 +226,17 @@ const PropertyDetailScreen: React.FC = () => {
           {/* Owner Info */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Publicat de</Text>
-            <View style={styles.ownerCard}>
+            <TouchableOpacity 
+              style={[styles.ownerCard, { backgroundColor: theme.colors.surface }]}
+              activeOpacity={0.7}
+              onPress={() => {
+                // Navigate to public profile - cross-tab navigation
+                navigation.navigate('ProfileTab', {
+                  screen: 'PublicProfile',
+                  params: { userId: property.ownerId }
+                } as any);
+              }}
+            >
               <View style={styles.ownerInfo}>
                 <Image source={{ uri: property.owner.photo }} style={styles.ownerPhoto} />
                 <View>
@@ -223,11 +244,11 @@ const PropertyDetailScreen: React.FC = () => {
                     <Text style={[styles.ownerName, { color: theme.colors.textPrimary }]}>{property.owner.name}</Text>
                     {property.owner.isVerified && <ShieldCheck size={16} color={theme.colors.accent.main} />}
                   </View>
-                  <Text style={[styles.ownerMeta, { color: theme.colors.textTertiary }]}>Proprietar</Text>
+                  <Text style={[styles.ownerMeta, { color: theme.colors.textTertiary }]}>Proprietar · Vezi profil</Text>
                 </View>
               </View>
               <Badge label="Verificat" variant="info" size="sm" />
-            </View>
+            </TouchableOpacity>
           </View>
 
           <View style={{ height: 100 }} />
@@ -321,7 +342,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -30,
-    backgroundColor: '#ffffff',
+    // backgroundColor is now applied dynamically via theme.colors.surface
   },
   badgesRow: {
     flexDirection: 'row',
@@ -421,8 +442,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#f8fafc',
     borderRadius: 16,
+    // backgroundColor is now applied dynamically
   },
   ownerInfo: {
     flexDirection: 'row',

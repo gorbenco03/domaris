@@ -269,7 +269,7 @@ const BoostPurchaseScreen: React.FC = () => {
                       },
                     ]}
                   >
-                    <Text style={styles.popularText}>RECOMANDAT</Text>
+                    <Text style={[styles.popularText, { color: theme.colors.surface }]}>RECOMANDAT</Text>
                   </View>
                 )}
 
@@ -281,7 +281,7 @@ const BoostPurchaseScreen: React.FC = () => {
                     end={{ x: 1, y: 1 }}
                     style={styles.boostIcon}
                   >
-                    <Icon size={28} color="#ffffff" />
+                    <Icon size={28} color={theme.colors.surface} />
                   </LinearGradient>
 
                   {/* Info */}
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
   },
   popularText: {
-    color: '#ffffff',
+    // color applied dynamically
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,

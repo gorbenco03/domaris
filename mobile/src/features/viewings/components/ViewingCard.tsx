@@ -108,8 +108,8 @@ const ViewingCard: React.FC<ViewingCardProps> = ({
         {/* Date & Time */}
         <View style={styles.dateTimeSection}>
           <View style={[styles.timeBox, { backgroundColor: theme.colors.primary.main }]}>
-            <Clock size={16} color="#fff" />
-            <Text style={styles.timeText}>
+            <Clock size={16} color={theme.colors.surface} />
+            <Text style={[styles.timeText, { color: theme.colors.surface }]}>
               {slot.startTime} - {slot.endTime}
             </Text>
           </View>
@@ -158,7 +158,7 @@ const ViewingCard: React.FC<ViewingCardProps> = ({
             {contact.avatar ? (
               <Image source={{ uri: contact.avatar }} style={styles.avatarImage} />
             ) : (
-              <User size={16} color="#fff" />
+              <User size={16} color={theme.colors.surface} />
             )}
           </View>
           <Text style={[styles.contactName, { color: theme.colors.textSecondary }]}>
@@ -180,11 +180,11 @@ const ViewingCard: React.FC<ViewingCardProps> = ({
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: '#ef444420' }]}
+            style={[styles.actionButton, { backgroundColor: theme.colors.secondary.error + '20' }]}
             onPress={onCancel}
           >
-            <XCircle size={16} color="#ef4444" />
-            <Text style={[styles.actionText, { color: '#ef4444' }]}>
+            <XCircle size={16} color={theme.colors.secondary.error} />
+            <Text style={[styles.actionText, { color: theme.colors.secondary.error }]}>
               Anulează
             </Text>
           </TouchableOpacity>
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    // color applied dynamically
   },
   dateBox: {
     flexDirection: 'row',

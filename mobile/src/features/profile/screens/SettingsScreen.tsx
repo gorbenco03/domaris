@@ -24,6 +24,7 @@ import {
   Trash2,
   Info,
   ChevronRight,
+  HelpCircle,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -31,15 +32,28 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import { ProfileMenuItem, ProfileSection, SettingsToggle } from '../components';
+import { useTutorial } from '@/features/tutorial';
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
 
 const SettingsScreen: React.FC = () => {
   const { theme, themeMode, setThemeMode } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const { resetTutorial, startTutorial } = useTutorial();
 
   const [isDarkMode, setIsDarkMode] = useState(themeMode === 'dark');
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+
+  const handleReplayTutorial = () => {
+    // Reset and start tutorial
+    resetTutorial();
+    // Navigate to Home tab first
+    navigation.getParent()?.navigate('HomeTab');
+    // Small delay to allow navigation, then start tutorial
+    setTimeout(() => {
+      startTutorial();
+    }, 500);
+  };
 
   const handleDarkModeToggle = (value: boolean) => {
     setIsDarkMode(value);
@@ -153,6 +167,16 @@ const SettingsScreen: React.FC = () => {
             description="Face ID / Fingerprint"
             value={biometricEnabled}
             onValueChange={setBiometricEnabled}
+          />
+        </ProfileSection>
+
+        {/* Help */}
+        <ProfileSection title="Ajutor">
+          <ProfileMenuItem
+            icon={<HelpCircle />}
+            label="Tutorial aplicație"
+            description="Revedeți ghidul de utilizare"
+            onPress={handleReplayTutorial}
           />
         </ProfileSection>
 

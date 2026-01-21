@@ -194,7 +194,7 @@ const PricingScreen: React.FC = () => {
                 {
                   color:
                     billingCycle === 'monthly'
-                      ? '#ffffff'
+                      ? theme.colors.surface
                       : theme.colors.textSecondary,
                   fontSize: theme.typography.fontSize.sm,
                 },
@@ -223,7 +223,7 @@ const PricingScreen: React.FC = () => {
                   {
                     color:
                       billingCycle === 'yearly'
-                        ? '#ffffff'
+                        ? theme.colors.surface
                         : theme.colors.textSecondary,
                     fontSize: theme.typography.fontSize.sm,
                   },
@@ -242,7 +242,7 @@ const PricingScreen: React.FC = () => {
                   },
                 ]}
               >
-                <Text style={styles.discountText}>-20%</Text>
+                <Text style={[styles.discountText, { color: theme.colors.accent.main }]}>-20%</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -278,7 +278,7 @@ const PricingScreen: React.FC = () => {
                       },
                     ]}
                   >
-                    <Text style={styles.popularBadgeText}>{plan.badge}</Text>
+                    <Text style={[styles.popularBadgeText, { color: theme.colors.surface }]}>{plan.badge}</Text>
                   </View>
                 </View>
               )}
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   discountText: {
-    color: '#10b981',
+    // color applied dynamically
     fontSize: 11,
     fontWeight: '700',
   },
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   popularBadgeText: {
-    color: '#ffffff',
+    // color applied dynamically
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,

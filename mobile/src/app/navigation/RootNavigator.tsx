@@ -3,7 +3,7 @@
  * Main navigation structure
  */
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@/app/providers/AuthProvider';
@@ -18,6 +18,9 @@ import MainNavigator from './MainNavigator';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { NotificationsCenterScreen } from '@/features/notifications';
+
+// Tutorial
+import { TutorialOverlay, TutorialPromptModal, useTutorial } from '@/features/tutorial';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -42,6 +45,37 @@ const LoadingScreen: React.FC = () => {
 const RootNavigator: React.FC = () => {
   const { isAuthenticated, isInitialized, isLoading } = useAuth();
   const { theme, isDark } = useTheme();
+  const { shouldShowPrompt, startTutorial, dismissPrompt } = useTutorial();
+
+  // Track if user just logged in
+  const wasAuthenticated = useRef(isAuthenticated);
+  const [showTutorialPrompt, setShowTutorialPrompt] = useState(false);
+
+  // Detect transition from unauthenticated to authenticated
+  useEffect(() => {
+    if (!wasAuthenticated.current && isAuthenticated && shouldShowPrompt) {
+      // Small delay to let navigation settle
+      const timer = setTimeout(() => {
+        setShowTutorialPrompt(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+    wasAuthenticated.current = isAuthenticated;
+  }, [isAuthenticated, shouldShowPrompt]);
+
+  // Handle tutorial prompt responses
+  const handleAcceptTutorial = () => {
+    setShowTutorialPrompt(false);
+    // Small delay to let modal close
+    setTimeout(() => {
+      startTutorial();
+    }, 300);
+  };
+
+  const handleDeclineTutorial = () => {
+    setShowTutorialPrompt(false);
+    dismissPrompt();
+  };
 
   // Show loading while auth is initializing
   if (!isInitialized || isLoading) {
@@ -49,6 +83,7 @@ const RootNavigator: React.FC = () => {
   }
 
   return (
+    <>
     <NavigationContainer
       theme={{
         dark: isDark,
@@ -103,6 +138,17 @@ const RootNavigator: React.FC = () => {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+
+    {/* Tutorial Prompt Modal */}
+    <TutorialPromptModal
+      visible={showTutorialPrompt}
+      onAccept={handleAcceptTutorial}
+      onDecline={handleDeclineTutorial}
+    />
+
+    {/* Tutorial Overlay */}
+    <TutorialOverlay />
+    </>
   );
 };
 

@@ -3,9 +3,9 @@
  * Main app navigation with bottom tabs
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Search, MessageCircle, Heart, User } from 'lucide-react-native';
 
@@ -16,6 +16,7 @@ import DiscoveryNavigator from './DiscoveryNavigator';
 import SearchNavigator from './SearchNavigator';
 import { FavoritesNavigator } from '@/features/favorites';
 import { MessagingNavigator } from '@/features/messaging';
+import { useTutorialTarget } from '@/features/tutorial';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -28,15 +29,25 @@ interface TabIconProps {
   color: string;
   size: number;
   IconComponent: React.FC<{ size: number; color: string; strokeWidth?: number }>;
+  tutorialKey?: string;
 }
 
-const TabIcon: React.FC<TabIconProps> = ({ focused, color, size, IconComponent }) => {
+const TabIcon: React.FC<TabIconProps> = ({ focused, color, size, IconComponent, tutorialKey }) => {
+  const ref = useRef<View>(null);
+
+  // Register as tutorial target if key provided
+  if (tutorialKey) {
+    useTutorialTarget(tutorialKey, ref);
+  }
+
   return (
-    <IconComponent 
-      size={size} 
-      color={color} 
-      strokeWidth={focused ? 2.5 : 2}
-    />
+    <View ref={ref}>
+      <IconComponent
+        size={size}
+        color={color}
+        strokeWidth={focused ? 2.5 : 2}
+      />
+    </View>
   );
 };
 
@@ -107,11 +118,12 @@ const MainNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Mesaje',
           tabBarIcon: ({ focused, color, size }) => (
-            <TabIcon 
-              focused={focused} 
-              color={color} 
-              size={size} 
-              IconComponent={MessageCircle} 
+            <TabIcon
+              focused={focused}
+              color={color}
+              size={size}
+              IconComponent={MessageCircle}
+              tutorialKey="tab-messages"
             />
           ),
         }}
@@ -122,11 +134,12 @@ const MainNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Favorite',
           tabBarIcon: ({ focused, color, size }) => (
-            <TabIcon 
-              focused={focused} 
-              color={color} 
-              size={size} 
-              IconComponent={Heart} 
+            <TabIcon
+              focused={focused}
+              color={color}
+              size={size}
+              IconComponent={Heart}
+              tutorialKey="tab-favorites"
             />
           ),
         }}
@@ -137,11 +150,12 @@ const MainNavigator: React.FC = () => {
         options={{
           tabBarLabel: 'Profil',
           tabBarIcon: ({ focused, color, size }) => (
-            <TabIcon 
-              focused={focused} 
-              color={color} 
-              size={size} 
-              IconComponent={User} 
+            <TabIcon
+              focused={focused}
+              color={color}
+              size={size}
+              IconComponent={User}
+              tutorialKey="tab-profile"
             />
           ),
         }}

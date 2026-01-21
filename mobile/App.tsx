@@ -15,6 +15,9 @@ import { QueryProvider } from '@/app/providers/QueryProvider';
 import { ThemeProvider, useTheme } from '@/app/providers/ThemeProvider';
 import { AuthProvider } from '@/app/providers/AuthProvider';
 
+// Tutorial
+import { TutorialProvider } from '@/features/tutorial';
+
 // Navigation
 import RootNavigator from '@/app/navigation/RootNavigator';
 
@@ -91,7 +94,9 @@ export default function App() {
         <QueryProvider>
           <ThemeProvider>
             <AuthProvider>
-              <AppContent />
+              <TutorialProvider>
+                <AppContent />
+              </TutorialProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryProvider>

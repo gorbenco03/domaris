@@ -230,7 +230,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </View>
 
         {/* Footer with stats and verified badge */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { borderTopColor: theme.colors.divider }]}>
           {isVerified && (
             <View style={styles.verifiedRow}>
               <CheckCircle size={14} color={theme.colors.accent.main} />
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    // borderTopColor applied dynamically
   },
   verifiedRow: {
     flexDirection: 'row',

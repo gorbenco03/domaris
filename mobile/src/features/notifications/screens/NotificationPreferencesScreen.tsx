@@ -50,7 +50,7 @@ const NotificationPreferencesScreen: React.FC = () => {
   const SettingRow = ({ label, value, onToggle, disabled }: { label: string; value: boolean; onToggle: (v: boolean) => void; disabled?: boolean }) => (
     <View style={[styles.settingRow, { borderBottomColor: theme.colors.divider }]}>
       <Text style={[styles.settingLabel, { color: disabled ? theme.colors.textTertiary : theme.colors.textPrimary }]}>{label}</Text>
-      <Switch value={value} onValueChange={onToggle} disabled={disabled} trackColor={{ true: theme.colors.accent.main, false: theme.colors.border }} thumbColor="#fff" />
+      <Switch value={value} onValueChange={onToggle} disabled={disabled} trackColor={{ true: theme.colors.accent.main, false: theme.colors.border }} thumbColor={theme.colors.surface} />
     </View>
   );
 
@@ -67,7 +67,7 @@ const NotificationPreferencesScreen: React.FC = () => {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {/* Push Section */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, { borderBottomColor: theme.colors.divider }]}>
             <Bell size={20} color={theme.colors.primary.main} />
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Push Notifications</Text>
           </View>
@@ -80,7 +80,7 @@ const NotificationPreferencesScreen: React.FC = () => {
 
         {/* Quiet Hours */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, { borderBottomColor: theme.colors.divider }]}>
             <Moon size={20} color={theme.colors.secondary.main} />
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Quiet Hours</Text>
           </View>
@@ -94,7 +94,7 @@ const NotificationPreferencesScreen: React.FC = () => {
 
         {/* Email Section */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, { borderBottomColor: theme.colors.divider }]}>
             <Mail size={20} color={theme.colors.accent.main} />
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Email</Text>
           </View>
@@ -105,10 +105,10 @@ const NotificationPreferencesScreen: React.FC = () => {
               {(['none', 'daily', 'weekly'] as const).map(opt => (
                 <TouchableOpacity
                   key={opt}
-                  style={[styles.digestBtn, prefs.email.digest === opt && { backgroundColor: theme.colors.accent.main }]}
+                  style={[styles.digestBtn, { backgroundColor: prefs.email.digest === opt ? theme.colors.accent.main : theme.colors.divider }]}
                   onPress={() => updateEmail('digest', opt)}
                 >
-                  <Text style={{ color: prefs.email.digest === opt ? '#fff' : theme.colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
+                  <Text style={{ color: prefs.email.digest === opt ? theme.colors.surface : theme.colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
                     {opt === 'none' ? 'Niciodată' : opt === 'daily' ? 'Zilnic' : 'Săptămânal'}
                   </Text>
                 </TouchableOpacity>
@@ -120,7 +120,7 @@ const NotificationPreferencesScreen: React.FC = () => {
 
         {/* SMS Section */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, { borderBottomColor: theme.colors.divider }]}>
             <MessageSquare size={20} color={theme.colors.secondary.warning} />
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>SMS</Text>
           </View>
@@ -141,13 +141,15 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
   section: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, marginBottom: 20 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 16, borderBottomWidth: 1 },
+  // sectionHeader borderBottomColor applied dynamically
   sectionTitle: { fontSize: 16, fontWeight: '600' },
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1 },
   settingLabel: { fontSize: 14 },
   quietHint: { fontSize: 13, paddingVertical: 12 },
   digestOptions: { flexDirection: 'row', gap: 8 },
-  digestBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#f1f5f9' },
+  digestBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  // backgroundColor applied dynamically
 });
 
 export default NotificationPreferencesScreen;

@@ -112,7 +112,7 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
               <Text 
                 style={[
                   styles.periodTabText,
-                  { color: selectedPeriod === period.id ? '#FFF' : theme.colors.textSecondary }
+                  { color: selectedPeriod === period.id ? theme.colors.surface : theme.colors.textSecondary }
                 ]}
               >
                 {period.label}
@@ -177,16 +177,16 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
             style={[styles.actionButton, { backgroundColor: theme.colors.primary.main }]}
             onPress={() => navigation.navigate('BoostPurchase', { propertyId })}
           >
-            <Zap size={20} color="#ffffff" />
-            <Text style={styles.actionButtonText}>Promovează anunțul</Text>
+            <Zap size={20} color={theme.colors.surface} />
+            <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Promovează anunțul</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.colors.secondary.main }]}
             onPress={() => navigation.navigate('ListingAnalysis', { propertyId })}
           >
-            <TrendingUp size={20} color="#ffffff" />
-            <Text style={styles.actionButtonText}>Analiză AI</Text>
+            <TrendingUp size={20} color={theme.colors.surface} />
+            <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Analiză AI</Text>
           </TouchableOpacity>
         </View>
 
@@ -230,6 +230,7 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
                   {key.charAt(0).toUpperCase() + key.slice(1)}
                 </Text>
                 <View style={styles.sourceBarContainer}>
+                  <View style={[styles.sourceBarBg, { backgroundColor: theme.colors.divider }]} />
                   <View 
                     style={[
                       styles.sourceBar, 
@@ -362,10 +363,18 @@ const styles = StyleSheet.create({
   sourceBarContainer: {
     flex: 1,
     height: 8,
-    backgroundColor: '#E2E8F0',
     borderRadius: 4,
     marginHorizontal: 12,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  sourceBarBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 4,
   },
   sourceBar: {
     height: '100%',
@@ -392,7 +401,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButtonText: {
-    color: '#ffffff',
+    // color applied dynamically
     fontSize: 15,
     fontWeight: '600',
   },

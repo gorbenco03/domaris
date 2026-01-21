@@ -172,7 +172,7 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
             >
               <Text style={[
                 styles.dayText,
-                { color: selected ? '#fff' : theme.colors.textPrimary },
+                { color: selected ? theme.colors.surface : theme.colors.textPrimary },
                 !available && { color: theme.colors.textTertiary },
               ]}>
                 {date.getDate()}
@@ -180,7 +180,7 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
               {available && (
                 <View style={[
                   styles.availableDot,
-                  { backgroundColor: selected ? '#fff' : theme.colors.accent.main }
+                  { backgroundColor: selected ? theme.colors.surface : theme.colors.accent.main }
                 ]} />
               )}
             </TouchableOpacity>
@@ -203,7 +203,7 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
                   style={[styles.selectedChip, { backgroundColor: theme.colors.accent.main }]}
                   onPress={() => onDateSelect(dateStr)}
                 >
-                  <Text style={styles.selectedChipText}>
+                  <Text style={[styles.selectedChipText, { color: theme.colors.surface }]}>
                     {date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}
                   </Text>
                 </TouchableOpacity>
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   selectedChipText: {
-    color: '#fff',
+    // color applied dynamically
     fontSize: 13,
     fontWeight: '500',
   },

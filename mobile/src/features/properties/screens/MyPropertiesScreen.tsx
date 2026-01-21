@@ -289,7 +289,7 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
         </View>
 
         {/* Actions Row */}
-        <View style={styles.actionsRow}>
+        <View style={[styles.actionsRow, { borderTopColor: theme.colors.divider }]}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.colors.primary.main + '15' }]}
             onPress={onEdit}
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    // borderTopColor applied dynamically
   },
   actionButton: {
     width: 40,

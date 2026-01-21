@@ -19,11 +19,25 @@ export interface UIState {
   themeMode: ThemeMode;
   language: Language;
   hasCompletedOnboarding: boolean;
-  
+
+  // Tutorial State
+  hasSeenTutorialPrompt: boolean;
+  hasCompletedTutorial: boolean;
+  isTutorialActive: boolean;
+  currentTutorialStep: number;
+
   // Actions
   setThemeMode: (mode: ThemeMode) => void;
   setLanguage: (language: Language) => void;
   setOnboardingComplete: (complete: boolean) => void;
+
+  // Tutorial Actions
+  setTutorialPromptSeen: (seen: boolean) => void;
+  startTutorial: () => void;
+  nextTutorialStep: () => void;
+  prevTutorialStep: () => void;
+  endTutorial: (completed: boolean) => void;
+  resetTutorial: () => void;
 }
 
 // ============================================
@@ -32,11 +46,17 @@ export interface UIState {
 
 export const useUIStore = create<UIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Initial State
       themeMode: 'system',
       language: 'ro',
       hasCompletedOnboarding: false,
+
+      // Tutorial Initial State
+      hasSeenTutorialPrompt: false,
+      hasCompletedTutorial: false,
+      isTutorialActive: false,
+      currentTutorialStep: 0,
 
       // Actions
       setThemeMode: (themeMode) => {
@@ -49,6 +69,48 @@ export const useUIStore = create<UIState>()(
 
       setOnboardingComplete: (hasCompletedOnboarding) => {
         set({ hasCompletedOnboarding });
+      },
+
+      // Tutorial Actions
+      setTutorialPromptSeen: (hasSeenTutorialPrompt) => {
+        set({ hasSeenTutorialPrompt });
+      },
+
+      startTutorial: () => {
+        set({
+          isTutorialActive: true,
+          currentTutorialStep: 0,
+          hasSeenTutorialPrompt: true,
+        });
+      },
+
+      nextTutorialStep: () => {
+        const { currentTutorialStep } = get();
+        set({ currentTutorialStep: currentTutorialStep + 1 });
+      },
+
+      prevTutorialStep: () => {
+        const { currentTutorialStep } = get();
+        if (currentTutorialStep > 0) {
+          set({ currentTutorialStep: currentTutorialStep - 1 });
+        }
+      },
+
+      endTutorial: (completed) => {
+        set({
+          isTutorialActive: false,
+          hasCompletedTutorial: completed,
+          currentTutorialStep: 0,
+        });
+      },
+
+      resetTutorial: () => {
+        set({
+          hasSeenTutorialPrompt: false,
+          hasCompletedTutorial: false,
+          isTutorialActive: false,
+          currentTutorialStep: 0,
+        });
       },
     }),
     {

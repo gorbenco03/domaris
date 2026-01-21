@@ -123,7 +123,7 @@ const FavoritesListScreen: React.FC = () => {
           style={[
             styles.listChipText,
             {
-              color: isSelected ? '#ffffff' : theme.colors.textPrimary,
+              color: isSelected ? theme.colors.surface : theme.colors.textPrimary,
               fontSize: theme.typography.fontSize.sm,
             },
           ]}
@@ -226,7 +226,7 @@ const FavoritesListScreen: React.FC = () => {
                 },
               ]}
             >
-              {isSelected && <Text style={styles.checkmark}>✓</Text>}
+              {isSelected && <Text style={[styles.checkmark, { color: theme.colors.surface }]}>✓</Text>}
             </View>
           )}
         </View>
@@ -503,7 +503,7 @@ const FavoritesListScreen: React.FC = () => {
               style={styles.compareButtonInner}
               onPress={() => {/* Navigate to compare screen */}}
             >
-              <Text style={styles.compareButtonText}>
+              <Text style={[styles.compareButtonText, { color: theme.colors.surface }]}>
                 Compară {selectedProperties.length} proprietăți
               </Text>
             </TouchableOpacity>
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkmark: {
-    color: '#ffffff',
+    // color applied dynamically
     fontSize: 14,
     fontWeight: '700',
   },
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   compareButtonText: {
-    color: '#ffffff',
+    // color applied dynamically
     fontSize: 16,
     fontWeight: '700',
   },

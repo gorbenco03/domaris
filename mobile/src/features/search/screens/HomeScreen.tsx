@@ -3,7 +3,7 @@
  * Main discovery screen with search and property highlights
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
+import { useTutorialTarget } from '@/features/tutorial';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -110,6 +111,16 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [quickFilters, setQuickFilters] = useState<string[]>([]);
 
+  // Tutorial target refs
+  const searchBarRef = useRef<View>(null);
+  const categoriesRef = useRef<View>(null);
+  const aiBannerRef = useRef<View>(null);
+
+  // Register tutorial targets
+  useTutorialTarget('home-search-bar', searchBarRef);
+  useTutorialTarget('home-categories', categoriesRef);
+  useTutorialTarget('home-ai-banner', aiBannerRef);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => {
@@ -181,7 +192,7 @@ const HomeScreen: React.FC = () => {
         </View>
 
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
+        <View style={styles.searchContainer} ref={searchBarRef}>
           <SearchBar
             value={searchText}
             onChangeText={setSearchText}
@@ -191,7 +202,7 @@ const HomeScreen: React.FC = () => {
         </View>
 
         {/* Quick Categories */}
-        <View style={styles.categoriesSection}>
+        <View style={styles.categoriesSection} ref={categoriesRef}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -228,7 +239,7 @@ const HomeScreen: React.FC = () => {
         </View>
 
         {/* AI Chat Banner */}
-        <View style={styles.aiSection}>
+        <View style={styles.aiSection} ref={aiBannerRef}>
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => navigation.navigate('AIChat' as never)}

@@ -32,7 +32,7 @@ interface MessageBubbleProps {
 // STATUS ICON COMPONENT
 // ============================================
 
-const StatusIcon: React.FC<{ status: MessageStatus; color: string }> = ({ status, color }) => {
+const StatusIcon: React.FC<{ status: MessageStatus; color: string; theme: any }> = ({ status, color, theme }) => {
   const iconSize = 14;
   
   switch (status) {
@@ -43,9 +43,9 @@ const StatusIcon: React.FC<{ status: MessageStatus; color: string }> = ({ status
     case 'delivered':
       return <CheckCheck size={iconSize} color={color} />;
     case 'read':
-      return <CheckCheck size={iconSize} color="#10b981" />;
+      return <CheckCheck size={iconSize} color={theme.colors.accent.main} />;
     case 'failed':
-      return <AlertCircle size={iconSize} color="#ef4444" />;
+      return <AlertCircle size={iconSize} color={theme.colors.secondary.error} />;
     default:
       return null;
   }
@@ -90,7 +90,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               <Text
                 style={[
                   styles.imageCaption,
-                  { color: isOwn ? '#ffffff' : theme.colors.textPrimary },
+                  { color: isOwn ? theme.colors.surface : theme.colors.textPrimary },
                 ]}
               >
                 {message.content}
@@ -118,12 +118,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             <View style={styles.viewingHeader}>
               <Calendar 
                 size={18} 
-                color={isOwn ? '#ffffff' : theme.colors.accent.main} 
+                color={isOwn ? theme.colors.surface : theme.colors.accent.main} 
               />
               <Text
                 style={[
                   styles.viewingTitle,
-                  { color: isOwn ? '#ffffff' : theme.colors.accent.main },
+                  { color: isOwn ? theme.colors.surface : theme.colors.accent.main },
                 ]}
               >
                 Programează vizionare
@@ -159,7 +159,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           <Text
             style={[
               styles.text,
-              { color: isOwn ? '#ffffff' : theme.colors.textPrimary },
+              { color: isOwn ? theme.colors.surface : theme.colors.textPrimary },
             ]}
           >
             {message.content}
@@ -224,6 +224,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <StatusIcon
                   status={message.status}
                   color="rgba(255,255,255,0.7)"
+                  theme={theme}
                 />
               </View>
             )}
