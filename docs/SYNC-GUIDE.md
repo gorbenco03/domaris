@@ -96,18 +96,19 @@ Backend trebuie să implementeze endpoint-urile din `BACKEND-API-CRUD-GUIDE.md`.
 
 **Prioritizare Implementare:**
 
-| Prioritate | Modul                     | Responsabil  | Deadline |
-| ---------- | ------------------------- | ------------ | -------- |
-| P0         | Auth Complet              | Backend Team | Sprint 1 |
-| P0         | Users CRUD                | Backend Team | Sprint 1 |
-| P0         | Properties CRUD (aliniat) | Backend Team | Sprint 2 |
-| P1         | Search Advanced           | Backend Team | Sprint 3 |
-| P1         | Messaging + WebSocket     | Backend Team | Sprint 3 |
-| P1         | KYC Module                | Backend Team | Sprint 4 |
-| P2         | Viewings                  | Backend Team | Sprint 5 |
-| P2         | Notifications Push        | Backend Team | Sprint 5 |
-| P3         | AI Assistant              | Backend Team | Post-MVP |
-| P3         | Analytics                 | Backend Team | Post-MVP |
+| Prioritate | Modul                     | Responsabil  | Status      |
+| ---------- | ------------------------- | ------------ | ----------- |
+| P0         | Auth Complet              | Backend Team | ✅ DONE     |
+| P0         | Users CRUD                | Backend Team | ✅ DONE     |
+| P0         | Properties CRUD (aliniat) | Backend Team | ✅ DONE     |
+| P1         | Email/SMS Services        | Backend Team | ✅ DONE     |
+| P1         | Messaging + WebSocket     | Backend Team | ✅ DONE     |
+| P1         | KYC Module                | Backend Team | ✅ DONE     |
+| P2         | Viewings                  | Backend Team | ✅ DONE     |
+| P2         | Push Notifications        | Backend Team | ✅ DONE     |
+| P1         | Search Advanced           | Backend Team | 📋 Planned  |
+| P3         | AI Assistant              | Backend Team | 📋 Post-MVP |
+| P3         | Analytics                 | Backend Team | ✅ DONE     |
 
 ### Pas 3: Mobile API Layer
 

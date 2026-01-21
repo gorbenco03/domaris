@@ -17,6 +17,11 @@ export class AppExceptionFilter implements ExceptionFilter {
 
         const message = exception instanceof HttpException ? exception.getResponse()  : 'Internal server error';
 
+        // Log the error for debugging
+        if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+            console.error('🔴 Internal Server Error:', exception);
+        }
+
         const responseBody = {
             statusCode: status,
             path: request.url,

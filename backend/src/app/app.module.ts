@@ -1,11 +1,26 @@
+/**
+ * 🏠 APP MODULE - Modulul principal al aplicației
+ *
+ * Configurare conform ADR-001: Model de Cont Unificat
+ * - AuthModule pentru autentificare JWT
+ * - RedisModule pentru sesiuni și OTP
+ * - Toate modulele de feature
+ */
+
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { DatabaseModule } from './db/database.module.js';
+import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
+
+import { AppController } from './app.controller';
 import { AppExceptionFilter } from './core/exception.filter';
+
+// Core Modules
+import { DatabaseModule } from './db/database.module.js';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './core/redis.module';
-import { UserService } from './modules/user/user.service';
+import { MessagingModule } from './core/messaging.module';
+
+// Feature Modules
 import { ListingModule } from './modules/listing/listing.module.js';
 import { KycModule } from './modules/kyc/kyc.module.js';
 import { SearchModule } from './modules/search/search.module.js';
@@ -16,24 +31,36 @@ import { NotificationModule } from './modules/notification/notification.module.j
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { S3Module } from './s3/s3.module';
-
-import { ConfigModule } from '@nestjs/config';
+import { UserModule } from './modules/user/user.module.js';
 
 @Module({
   imports: [
+    // Config - must be first
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    // AuthModule.forRoot({
-    //   isGlobal: true,
-    //   secret: process.env.JWT_SECRET!,
-    //   expiresIn: 86400, // 24 hours in seconds (24 * 60 * 60)
-    //   refreshExpiresIn: 2678400, // 31 days in seconds (31 * 24 * 60 * 60)
-    //   audience: 'mobile',
-    //   type: 'user',
-    // }),
-    // RedisModule,
+
+    // Messaging - Email & SMS (global)
+    MessagingModule,
+
+    // Redis - for sessions, OTP, caching
+    RedisModule,
+
+    // Auth - JWT authentication (global guard)
+    AuthModule.forRoot({
+      isGlobal: true,
+      secret: process.env.JWT_SECRET || 'default-secret-change-in-production',
+      expiresIn: 86400, // 24 hours in seconds
+      refreshExpiresIn: 2678400, // 31 days in seconds
+      audience: 'domaris',
+      type: 'user',
+    }),
+
+    // Database
     DatabaseModule,
+
+    // Feature Modules
+    UserModule,
     ListingModule,
     KycModule,
     SearchModule,
@@ -43,13 +70,15 @@ import { ConfigModule } from '@nestjs/config';
     NotificationModule,
     AnalyticsModule,
     AdminModule,
+    S3Module,
   ],
   controllers: [AppController],
   providers: [
+    // Global exception filter
     {
       provide: APP_FILTER,
       useClass: AppExceptionFilter,
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -1,66 +1,232 @@
-import { Public, AuthOnly, CurrentUser } from '../../core/decorators.js';
-import { CompleteProfileDto } from './user.dto.js';
-import { Controller, Post, Body, Req, Get, Patch, Delete, Param, BadRequestException, Put, UploadedFile, UseInterceptors } from '@nestjs/common';
-import { UserService } from './user.service.js';
+/**
+ * 👤 USER CONTROLLER - Conform ADR-001: Model de Cont Unificat
+ *
+ * Endpoints:
+ * - GET /users/me - Get current user profile (authenticated)
+ * - PUT /users/me - Update profile (authenticated)
+ * - PATCH /users/me/avatar - Upload avatar (authenticated)
+ * - PATCH /users/me/notifications - Update notification preferences
+ * - GET /users/:id - Get public profile (public)
+ * - POST /users/me/export - Request data export (GDPR)
+ * - DELETE /users/me - Delete account
+ *
+ * Admin Endpoints:
+ * - GET /users/admin/all - List all users
+ * - PATCH /users/admin/:id/verification - Update verification level
+ * - PATCH /users/admin/:id/admin - Toggle admin status
+ */
+
+import {
+  Controller,
+  Get,
+  Put,
+  Patch,
+  Post,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  UploadedFile,
+  UseInterceptors,
+  ParseIntPipe,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { UserService } from './user.service.js';
+import {
+  CompleteProfileDto,
+  UpdateNotificationPreferencesDto,
+} from './user.dto.js';
+import {
+  Public,
+  CurrentUserId,
+  RequireAdmin,
+} from '../../core/decorators.js';
+import { AuthGuard } from '../../auth/auth.guard';
+import { AdminGuard } from '../../core/admin.guard';
 
 @ApiTags('users')
 @Controller('users')
 export class UserController {
-    constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
-    @AuthOnly()
-    @Get('me')
-    @ApiOperation({ summary: 'Get current user profile' })
-    async me(@CurrentUser() user: any) {
-        return this.userService.getProfile(user.id);
-    }
+  // ============================================================================
+  // CURRENT USER ENDPOINTS
+  // ============================================================================
 
-    @AuthOnly()
-    @Put('me')
-    @ApiOperation({ summary: 'Update current user profile' })
-    async updateProfile(@CurrentUser() user: any, @Body() dto: CompleteProfileDto) {
-        return this.userService.updateProfile(user.id, dto);
-    }
+  @UseGuards(AuthGuard)
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'User profile' })
+  async me(@CurrentUserId() userId: number) {
+    return this.userService.getProfile(userId);
+  }
 
-    @AuthOnly()
-    @Patch('me/avatar')
-    @UseInterceptors(FileInterceptor('file'))
-    @ApiConsumes('multipart/form-data')
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                file: {
-                    type: 'string',
-                    format: 'binary',
-                },
-            },
+  @UseGuards(AuthGuard)
+  @Put('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated' })
+  async updateProfile(
+    @CurrentUserId() userId: number,
+    @Body() dto: CompleteProfileDto,
+  ) {
+    return this.userService.updateProfile(userId, dto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('me/avatar')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
         },
-    })
-    @ApiOperation({ summary: 'Upload user avatar' })
-    async uploadAvatar(@CurrentUser() user: any, @UploadedFile() file: Express.Multer.File) {
-        // In a real app, upload to S3 here. For now, mock return.
-        const mockUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
-        return this.userService.updateAvatar(user.id, mockUrl);
-    }
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Upload user avatar' })
+  @ApiResponse({ status: 200, description: 'Avatar updated' })
+  async uploadAvatar(
+    @CurrentUserId() userId: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    // TODO: Upload to S3 in production
+    const mockUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}&timestamp=${Date.now()}`;
+    return this.userService.updateAvatar(userId, mockUrl);
+  }
 
-    @Get(':id')
-    @Public()
-    @ApiOperation({ summary: 'Get public user profile' })
-    async getPublicProfile(@Param('id') id: string) {
-        return this.userService.getPublicProfile(id);
-    }
+  @UseGuards(AuthGuard)
+  @Patch('me/notifications')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update notification preferences' })
+  @ApiResponse({ status: 200, description: 'Preferences updated' })
+  async updateNotifications(
+    @CurrentUserId() userId: number,
+    @Body() dto: UpdateNotificationPreferencesDto,
+  ) {
+    return this.userService.updateNotificationPreferences(userId, dto);
+  }
 
-    @Delete(':id')
-    @Public() // Make it public for testing - REMOVE THIS IN PRODUCTION!
-    @ApiOperation({ summary: 'Delete user (Debug only)' })
-    async deleteUser(@Param('id') id: string) {
-        const userId = parseInt(id);
-        if (isNaN(userId)) {
-            throw new BadRequestException('Invalid user ID');
-        }
-        return await this.userService.deleteUser(userId);
-    }
+  @UseGuards(AuthGuard)
+  @Post('me/export')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Request data export (GDPR)' })
+  @ApiResponse({ status: 200, description: 'Export initiated' })
+  async requestExport(@CurrentUserId() userId: number) {
+    return this.userService.requestDataExport(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete my account' })
+  @ApiResponse({ status: 200, description: 'Account deleted' })
+  async deleteMyAccount(@CurrentUserId() userId: number) {
+    return this.userService.deleteUser(userId);
+  }
+
+  // ============================================================================
+  // PUBLIC PROFILE
+  // ============================================================================
+
+  @Public()
+  @Get(':id')
+  @ApiOperation({ summary: 'Get public user profile' })
+  @ApiResponse({ status: 200, description: 'Public profile' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getPublicProfile(@Param('id') id: string) {
+    return this.userService.getPublicProfile(id);
+  }
+
+  // ============================================================================
+  // ADMIN ENDPOINTS
+  // ============================================================================
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @RequireAdmin()
+  @Get('admin/all')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Admin] List all users' })
+  @ApiResponse({ status: 200, description: 'Paginated users list' })
+  async getAllUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('verificationLevel') verificationLevel?: string,
+  ) {
+    return this.userService.getAllUsers({
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+      search,
+      verificationLevel: verificationLevel ? parseInt(verificationLevel) : undefined,
+    });
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @RequireAdmin()
+  @Patch('admin/:id/verification')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Admin] Update user verification level' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['level'],
+      properties: {
+        level: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 3,
+          description: '0=new, 1=email/phone verified, 2=identity verified, 3=property verified',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Level updated' })
+  async updateVerificationLevel(
+    @Param('id', ParseIntPipe) userId: number,
+    @Body('level') level: number,
+    @CurrentUserId() adminId: number,
+  ) {
+    return this.userService.updateVerificationLevel(userId, level, adminId);
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @RequireAdmin()
+  @Patch('admin/:id/admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Admin] Toggle admin status' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['isAdmin'],
+      properties: {
+        isAdmin: {
+          type: 'boolean',
+          description: 'Grant or revoke admin privileges',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Admin status updated' })
+  async toggleAdmin(
+    @Param('id', ParseIntPipe) userId: number,
+    @Body('isAdmin') isAdmin: boolean,
+  ) {
+    return this.userService.toggleAdminStatus(userId, isAdmin);
+  }
 }

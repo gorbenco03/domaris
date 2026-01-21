@@ -1,70 +1,230 @@
-import { Controller, Post, Get, UseInterceptors, UploadedFiles, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
-import { KycService } from './kyc.service';
+/**
+ * 🔍 KYC CONTROLLER - Verificare Identitate
+ *
+ * Conform ADR-001: Model de Cont Unificat
+ *
+ * Endpoints:
+ * - POST /kyc/verify-id - Start identity verification (nivel 2)
+ * - GET /kyc/status - Get current KYC status
+ * - POST /kyc/property-doc - Upload property document (nivel 3)
+ *
+ * Admin Endpoints:
+ * - GET /kyc/admin/pending - List pending verifications
+ * - POST /kyc/admin/approve/:userId - Approve verification
+ * - POST /kyc/admin/reject/:userId - Reject verification
+ */
+
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  Body,
+  UseInterceptors,
+  UploadedFiles,
+  UseGuards,
+  ParseIntPipe,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiConsumes,
+  ApiBody,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { AuthOnly, CurrentUser } from '../../core/decorators';
+import { KycService } from './kyc.service';
+import {
+  CurrentUserId,
+  RequireAdmin,
+} from '../../core/decorators';
+import { AuthGuard } from '../../auth/auth.guard';
+import { AdminGuard } from '../../core/admin.guard';
 
 @ApiTags('kyc')
 @Controller('kyc')
-@AuthOnly()
+@UseGuards(AuthGuard)
+@ApiBearerAuth()
 export class KycController {
-    constructor(private readonly kycService: KycService) { }
+  constructor(private readonly kycService: KycService) {}
 
-    @Post('verify-id')
-    @UseInterceptors(FileFieldsInterceptor([
-        { name: 'docFront', maxCount: 1 },
-        { name: 'docBack', maxCount: 1 },
-        { name: 'selfie', maxCount: 1 },
-    ]))
-    @ApiConsumes('multipart/form-data')
-    @ApiOperation({ summary: 'Start identity verification' })
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                docType: { type: 'string', enum: ['id_card', 'passport', 'driving_license'] },
-                docFront: { type: 'string', format: 'binary' },
-                docBack: { type: 'string', format: 'binary' },
-                selfie: { type: 'string', format: 'binary' },
-            }
-        }
-    })
-    async verifyId(
-        @CurrentUser() user: any,
-        @UploadedFiles() files: { docFront?: Express.Multer.File[], docBack?: Express.Multer.File[], selfie?: Express.Multer.File[] },
-        @Body('docType') docType: string
-    ) {
-        return this.kycService.startIdVerification(user.id, docType, files);
-    }
+  // ============================================================================
+  // USER ENDPOINTS
+  // ============================================================================
 
-    @Get('status')
-    @ApiOperation({ summary: 'Get KYC status' })
-    async getStatus(@CurrentUser() user: any) {
-        return this.kycService.getStatus(user.id);
-    }
+  @Post('verify-id')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'docFront', maxCount: 1 },
+      { name: 'docBack', maxCount: 1 },
+      { name: 'selfie', maxCount: 1 },
+    ]),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Start identity verification (for level 2)',
+    description:
+      'Upload identity documents to start KYC process. Required for posting listings.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['docType', 'docFront', 'selfie'],
+      properties: {
+        docType: {
+          type: 'string',
+          enum: ['ID_CARD', 'PASSPORT', 'DRIVING_LICENSE'],
+          description: 'Type of identity document',
+        },
+        docFront: {
+          type: 'string',
+          format: 'binary',
+          description: 'Front side of the document',
+        },
+        docBack: {
+          type: 'string',
+          format: 'binary',
+          description: 'Back side of the document (if applicable)',
+        },
+        selfie: {
+          type: 'string',
+          format: 'binary',
+          description: 'Selfie holding the document',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Verification started' })
+  @ApiResponse({ status: 400, description: 'Already pending or invalid data' })
+  async verifyId(
+    @CurrentUserId() userId: number,
+    @UploadedFiles()
+    files: {
+      docFront?: Express.Multer.File[];
+      docBack?: Express.Multer.File[];
+      selfie?: Express.Multer.File[];
+    },
+    @Body('docType') docType: string,
+  ) {
+    return this.kycService.startIdVerification(userId, docType, files);
+  }
 
-    @Post('property-doc')
-    @UseInterceptors(FileFieldsInterceptor([
-        { name: 'file', maxCount: 1 },
-    ]))
-    @ApiConsumes('multipart/form-data')
-    @ApiOperation({ summary: 'Upload property ownership document' })
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                propertyId: { type: 'integer' },
-                docType: { type: 'string' },
-                file: { type: 'string', format: 'binary' },
-            }
-        }
-    })
-    async uploadPropertyDoc(
-        @CurrentUser() user: any,
-        @UploadedFiles() files: { file?: Express.Multer.File[] },
-        @Body('propertyId') propertyId: number,
-        @Body('docType') docType: string
-    ) {
-        return this.kycService.verifyProperty(user.id, propertyId, docType, files.file?.[0]);
-    }
+  @Get('status')
+  @ApiOperation({
+    summary: 'Get KYC status',
+    description:
+      'Returns current verification level, pending verifications, and next steps.',
+  })
+  @ApiResponse({ status: 200, description: 'KYC status retrieved' })
+  async getStatus(@CurrentUserId() userId: number) {
+    return this.kycService.getStatus(userId);
+  }
+
+  @Post('property-doc')
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'file', maxCount: 1 }]))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Upload property ownership document (for level 3)',
+    description:
+      'Upload documents proving property ownership for verified owner badge.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['propertyId', 'docType', 'file'],
+      properties: {
+        propertyId: {
+          type: 'integer',
+          description: 'ID of the property to verify',
+        },
+        docType: {
+          type: 'string',
+          enum: ['PROPERTY_DEED', 'UTILITY_BILL', 'OTHER'],
+          description: 'Type of property document',
+        },
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Document file (PDF or image)',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Document uploaded' })
+  @ApiResponse({ status: 400, description: 'Identity not verified yet' })
+  async uploadPropertyDoc(
+    @CurrentUserId() userId: number,
+    @UploadedFiles() files: { file?: Express.Multer.File[] },
+    @Body('propertyId') propertyId: number,
+    @Body('docType') docType: string,
+  ) {
+    return this.kycService.verifyProperty(
+      userId,
+      propertyId,
+      docType,
+      files.file?.[0],
+    );
+  }
+
+  // ============================================================================
+  // ADMIN ENDPOINTS
+  // ============================================================================
+
+  @Get('admin/pending')
+  @UseGuards(AdminGuard)
+  @RequireAdmin()
+  @ApiOperation({
+    summary: '[Admin] List pending verifications',
+    description: 'Returns all verifications waiting for review.',
+  })
+  @ApiResponse({ status: 200, description: 'Pending verifications list' })
+  @ApiResponse({ status: 403, description: 'Admin privileges required' })
+  async getPendingVerifications() {
+    return this.kycService.getPendingVerifications();
+  }
+
+  @Post('admin/approve/:userId')
+  @UseGuards(AdminGuard)
+  @RequireAdmin()
+  @ApiOperation({
+    summary: '[Admin] Approve verification',
+    description: 'Approves a pending verification and updates user level.',
+  })
+  @ApiResponse({ status: 200, description: 'Verification approved' })
+  @ApiResponse({ status: 404, description: 'Verification not found' })
+  @ApiResponse({ status: 403, description: 'Admin privileges required' })
+  async approveVerification(@Param('userId', ParseIntPipe) userId: number) {
+    return this.kycService.approveVerification(userId);
+  }
+
+  @Post('admin/reject/:userId')
+  @UseGuards(AdminGuard)
+  @RequireAdmin()
+  @ApiOperation({
+    summary: '[Admin] Reject verification',
+    description: 'Rejects a pending verification with a reason.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['reason'],
+      properties: {
+        reason: {
+          type: 'string',
+          description: 'Rejection reason',
+          example: 'Document ilizibil sau expirat',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Verification rejected' })
+  @ApiResponse({ status: 404, description: 'Verification not found' })
+  @ApiResponse({ status: 403, description: 'Admin privileges required' })
+  async rejectVerification(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body('reason') reason: string,
+  ) {
+    return this.kycService.rejectVerification(userId, reason);
+  }
 }

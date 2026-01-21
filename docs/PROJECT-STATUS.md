@@ -1,422 +1,288 @@
 # 📊 DOMARIS/IMOBI - Project Status Report
 
-**Versiune:** 1.0.0  
-**Data Raportului:** 20 Ianuarie 2026  
+**Versiune:** 2.1.0  
+**Data Raportului:** 21 Ianuarie 2026  
 **Tip Proiect:** Monorepo - Platformă Imobiliară P2P
-
----
-
-## 📋 Cuprins
-
-1. [Executive Summary](#executive-summary)
-2. [Structura Monorepo](#structura-monorepo)
-3. [Status per Echipă](#status-per-echipa)
-4. [Gap Analysis: Backend vs Mobile](#gap-analysis-backend-vs-mobile)
-5. [Acțiuni Necesar de Sincronizare](#actiuni-necesare-de-sincronizare)
-6. [Roadmap Recomandat](#roadmap-recomandat)
-7. [Riscuri și Recomandări](#riscuri-si-recomandari)
 
 ---
 
 ## 🎯 Executive Summary
 
-### Stare Curentă
+### ✅ ADR-001 Complet Implementat în Backend
 
-| Componentă           | Status           | Completare UI | Completare Backend   | Integrare     |
-| -------------------- | ---------------- | ------------- | -------------------- | ------------- |
-| **Backend**          | 🟡 În Dezvoltare | N/A           | ~40%                 | -             |
-| **Frontend (Web)**   | 🟡 În Dezvoltare | ~35%          | Dependent de Backend | 🔴 Neintegrat |
-| **Mobile**           | 🟢 UI Avansat    | ~70% (UI/UX)  | 0% (Mock Data)       | 🔴 Neintegrat |
-| **Packages (Types)** | 🟠 Minimal       | N/A           | ~15%                 | Parțial       |
+**Model de Cont Unificat - Toate modulele actualizate:**
 
-### Concluzii Cheie
+| Package/Modul        | Status     | Completare |
+| -------------------- | ---------- | ---------- |
+| `packages/types/`    | ✅ Complet | 100%       |
+| `backend/auth`       | ✅ Complet | 100%       |
+| `backend/users`      | ✅ Complet | 100%       |
+| `backend/properties` | ✅ Complet | 100%       |
+| `backend/kyc`        | ✅ Complet | 100%       |
+| `backend/chat`       | ✅ Complet | 100%       |
+| `backend/viewings`   | ✅ Complet | 100%       |
+| `backend/favorites`  | ✅ Complet | 100%       |
 
-1. **Mobile este cel mai avansat în UI/UX** - documentație completă, design system implementat
-2. **Backend are infrastructură solidă** dar nu acoperă toate endpoint-urile necesare pentru Mobile
-3. **Există un GAP semnificativ** între specificațiile Mobile API și implementarea Backend
-4. **Nu există types/interfaces comune** care să fie shared între toate componentele
-
----
-
-## 🏗️ Structura Monorepo
+### Build Status
 
 ```
-domaris/
-├── backend/           # NestJS API (Sequelize + PostgreSQL)
-├── frontend/          # Next.js Web App (Dashboard)
-├── mobile/            # React Native App (iOS/Android)
-├── packages/
-│   └── types/         # Shared TypeScript Interfaces (INCOMPLET!)
-└── docs/              # 📁 NOU - Documentație Centralizată
-    ├── shared/        # Documentație comună toate echipele
-    ├── mobile/        # Documentație specifică Mobile
-    ├── backend/       # Documentație specifică Backend
-    ├── frontend/      # Documentație specifică Frontend
-    └── status/        # Rapoarte de status și sync
+✅ @domaris/types     - webpack compiled successfully
+✅ @domaris/backend   - webpack compiled successfully
 ```
 
 ---
 
-## 📱 Status per Echipă
-
-### 1. Mobile Team - Status: 🟢 Avansat (UI/UX)
-
-**Tehnologii:** React Native, TypeScript, React Navigation 6
-
-**Ce este IMPLEMENTAT (UI/UX complet):**
-
-| Feature                   | Status           | Fișiere                                  |
-| ------------------------- | ---------------- | ---------------------------------------- |
-| ✅ Auth & Registration    | UI Complet       | `features/auth/` - 7 ecrane              |
-| ✅ User Profile           | UI Complet       | `features/profile/`                      |
-| ✅ Verification Hub (KYC) | UI Complet       | `features/profile/screens/verification/` |
-| ✅ Favorites & Compare    | UI Complet       | `features/favorites/`                    |
-| ✅ Search & Filters       | UI Complet       | `features/search/`                       |
-| ✅ Messaging              | UI Complet       | `features/messaging/`                    |
-| ✅ Property Listing       | UI Complet       | `features/properties/`                   |
-| ⚠️ AI Assistant           | UI Parțial       | `features/ai/` (gol)                     |
-| ⚠️ Viewings               | Navigator Există | `features/viewings/` (gol)               |
-| ⚠️ Notifications          | Navigator Există | `features/notifications/` (gol)          |
-
-**Documentație Existentă:**
-
-- `/mobile/docs/00-PROJECT-OVERVIEW.md` - Viziune completă
-- `/mobile/docs/BACKEND-API-CRUD-GUIDE.md` - Specificații API necesare
-- `/mobile/docs/architecture/DATA-MODELS.md` - Modele de date complete
-- `/mobile/docs/architecture/API-CONTRACTS.md` - Contracte API detaliate
-- `/mobile/docs/features/*.md` - 12 documente de features
-- `/mobile/docs/ui-ux/DESIGN-SYSTEM.md` - Design system complet
-
-**Ce LIPSEȘTE:**
-
-- Integrare cu Backend (toate datele sunt mock)
-- Config pentru variabile de mediu API
-- Servicii API reale
-- Redux/State management pentru date reale
-
----
-
-### 2. Backend Team - Status: 🟡 În Dezvoltare
-
-**Tehnologii:** NestJS, Sequelize, PostgreSQL, TypeScript
-
-**Structura Modulelor Existente:**
+## 🏛️ Verification Levels (ADR-001 Core)
 
 ```
-backend/src/app/
-├── auth/              ✅ Implementat (JWT, Google OAuth)
-├── modules/
-│   ├── admin/         🟡 Parțial
-│   ├── analytics/     🟡 Basic
-│   ├── chat/          🟡 Parțial
-│   ├── favorite/      ✅ CRUD Basic
-│   ├── kyc/           🟡 Structură
-│   ├── listing/       ✅ CRUD Complet
-│   ├── notification/  🟡 Parțial
-│   ├── parser/        ⚡ FB Scraper (diferit de IMOBI)
-│   ├── search/        🟡 Basic
-│   ├── user/          ✅ CRUD Complet
-│   └── viewing/       🟡 Structură
-└── s3/                ✅ Upload imagini
+Level 0: Cont nou (doar autentificat)
+├── Căutare proprietăți (/properties - GET)
+├── Vizualizare detalii (/properties/:id - GET)
+├── Salvare în favorite (/favorites - POST)
+└── Vizualizare profil public (/users/:id - GET)
+
+Level 1: Email/Telefon verificat
+├── Tot ce e în Level 0
+├── Contactare proprietari (/conversations - POST) 🔒
+├── Trimitere mesaje (/conversations/:id/messages - POST) 🔒
+├── Solicitare vizionări (/viewings - POST) 🔒
+└── Chat în timp real
+
+Level 2: Identitate verificată (KYC) - POSTARE ANUNȚURI
+├── Tot ce e în Level 1
+├── Creare proprietăți (/properties - POST) 🔒
+├── Editare/Ștergere proprietăți 🔒
+├── Management proprietăți proprii
+├── Dashboard Analytics
+└── Răspuns mesaje ca proprietar
+
+Level 3: Proprietar verificat
+├── Tot ce e în Level 2
+├── Badge "Proprietar Verificat" ⭐
+└── Acces promovare plătită
 ```
 
-**Entități Database (16 entități):**
-
-- `user.entity.ts` - ✅ Complet (diferă de Mobile spec)
-- `listing.entity.ts` - ✅ Complet (orientat Facebook Scraper)
-- `favorite.entity.ts` - ✅ Basic
-- `conversation.entity.ts` - ✅ Basic
-- `message.entity.ts` - ✅ Basic
-- `viewing.entity.ts` - 🟡 Structură
-- `notification.entity.ts` - 🟡 Basic
-- `device.entity.ts` - 🟡 Basic
-- `listingImage.entity.ts` - ✅ Complet
-- `gisNode.entity.ts` - ⚡ Specific scraper
-- `groupSource.entity.ts` - ⚡ Specific FB
-- `listing-view.entity.ts` - 🟡 Analytics
-- `userOnboarding.entity.ts` - 🟡 Basic
-
-**Ce LIPSEȘTE vs Specificații Mobile:**
-
-- 🔴 OAuth Apple
-- 🔴 SMS OTP Login
-- 🔴 KYC/Verification endpoints complet
-- 🔴 AI Assistant endpoints
-- 🔴 Messaging WebSocket/realtime
-- 🔴 Favorite lists (liste personalizate)
-- 🔴 Saved searches
-- 🔴 Search alerts
-- 🔴 Comparing properties endpoint
-- 🔴 Analytics pentru proprietari
-- 🔴 Monetization/Subscriptions endpoints
+🔒 = Necesită VerificationGuard cu MinVerificationLevel
 
 ---
 
-### 3. Frontend (Web) Team - Status: 🟡 În Dezvoltare
+## 🔌 API Endpoints Complete
 
-**Tehnologii:** Next.js, TailwindCSS, TypeScript
+### Auth (`/auth`) - ✅ Complet
 
-**Componente Existente:**
+| Method | Endpoint                        | Description                     | Auth Level |
+| ------ | ------------------------------- | ------------------------------- | ---------- |
+| POST   | `/auth/register`                | Register with email/password    | Public     |
+| POST   | `/auth/register/phone`          | Register with phone (sends OTP) | Public     |
+| POST   | `/auth/login`                   | Login with email/password       | Public     |
+| POST   | `/auth/login/phone`             | Login with phone (sends OTP)    | Public     |
+| POST   | `/auth/verify-phone-otp`        | Verify phone OTP                | Public     |
+| POST   | `/auth/oauth/google`            | Login with Google               | Public     |
+| POST   | `/auth/oauth/apple`             | Login with Apple                | Public     |
+| POST   | `/auth/forgot-password`         | Request password reset          | Public     |
+| POST   | `/auth/reset-password`          | Reset password with code        | Public     |
+| POST   | `/auth/change-password`         | Change password                 | Auth       |
+| POST   | `/auth/verify-email`            | Verify email with code          | Public     |
+| POST   | `/auth/verify-phone`            | Verify phone with code          | Public     |
+| POST   | `/auth/send-email-verification` | Send email verification         | Auth       |
+| POST   | `/auth/send-phone-verification` | Send phone verification         | Auth       |
+| POST   | `/auth/refresh`                 | Refresh access token            | Public     |
+| POST   | `/auth/logout`                  | Logout                          | Auth       |
 
-- `PropertyCard.tsx`, `PropertyGrid.tsx`, `PropertyMap.tsx`
-- `SearchFilters.tsx`
-- `TourCalendar.tsx`, `TourRequestForm.tsx`
-- `MessagesInbox.tsx`
-- `WishlistManager.tsx`
-- UI Components library (49 componente)
+### Users (`/users`) - ✅ Complet
 
-**Dashboard Routes:**
+| Method | Endpoint                        | Description                 | Auth Level |
+| ------ | ------------------------------- | --------------------------- | ---------- |
+| GET    | `/users/me`                     | Get current user profile    | Auth       |
+| PUT    | `/users/me`                     | Update profile              | Auth       |
+| PATCH  | `/users/me/avatar`              | Upload avatar               | Auth       |
+| PATCH  | `/users/me/notifications`       | Update notification prefs   | Auth       |
+| POST   | `/users/me/export`              | Request data export (GDPR)  | Auth       |
+| DELETE | `/users/me`                     | Delete account              | Auth       |
+| GET    | `/users/:id`                    | Get public profile          | Public     |
+| GET    | `/users/admin/all`              | [Admin] List all users      | Admin      |
+| PATCH  | `/users/admin/:id/verification` | [Admin] Update verification | Admin      |
+| PATCH  | `/users/admin/:id/admin`        | [Admin] Toggle admin        | Admin      |
 
-- `/landlord/` - Dashboard proprietar
-- `/tenant/` - Dashboard chiriaș
-- `/property/` - Detalii proprietate
-- `/auth/` - Autentificare
+### Properties (`/properties`) - ✅ Complet
 
-**Ce LIPSEȘTE:**
+| Method | Endpoint                    | Description            | Auth Level      |
+| ------ | --------------------------- | ---------------------- | --------------- |
+| GET    | `/properties`               | Search/list properties | Public          |
+| GET    | `/properties/:id`           | Get property details   | Public          |
+| POST   | `/properties`               | Create property        | Level 2         |
+| PATCH  | `/properties/:id`           | Update property        | Level 2 + Owner |
+| DELETE | `/properties/:id`           | Delete property        | Level 2 + Owner |
+| GET    | `/properties/me/all`        | Get my properties      | Level 2         |
+| POST   | `/properties/:id/photos`    | Upload photos          | Level 2 + Owner |
+| PATCH  | `/properties/:id/status`    | Update status          | Level 2 + Owner |
+| GET    | `/properties/:id/analytics` | Get analytics          | Level 2 + Owner |
 
-- Integrare completă cu API
-- Admin panel
-- Analytics vizualizări
+### KYC (`/kyc`) - ✅ Complet
 
----
+| Method | Endpoint                     | Description                 | Auth Level |
+| ------ | ---------------------------- | --------------------------- | ---------- |
+| POST   | `/kyc/verify-id`             | Start identity verification | Auth       |
+| GET    | `/kyc/status`                | Get KYC status              | Auth       |
+| POST   | `/kyc/property-doc`          | Upload property document    | Level 2    |
+| GET    | `/kyc/admin/pending`         | [Admin] List pending        | Admin      |
+| POST   | `/kyc/admin/approve/:userId` | [Admin] Approve             | Admin      |
+| POST   | `/kyc/admin/reject/:userId`  | [Admin] Reject              | Admin      |
 
-### 4. Packages - Status: 🟠 Minimal
+### Conversations (`/conversations`) - ✅ Complet
 
-**Conținut Actual `/packages/types/`:**
+| Method | Endpoint                       | Description              | Auth Level |
+| ------ | ------------------------------ | ------------------------ | ---------- |
+| GET    | `/conversations`               | Get my conversations     | Auth       |
+| GET    | `/conversations/unread-count`  | Get unread count         | Auth       |
+| GET    | `/conversations/:id`           | Get conversation details | Auth       |
+| GET    | `/conversations/:id/messages`  | Get messages             | Auth       |
+| POST   | `/conversations`               | Start conversation       | Level 1    |
+| POST   | `/conversations/:id/messages`  | Send message             | Level 1    |
+| POST   | `/conversations/:id/read`      | Mark as read             | Auth       |
+| POST   | `/conversations/:id/archive`   | Archive                  | Auth       |
+| POST   | `/conversations/:id/unarchive` | Unarchive                | Auth       |
 
-```
-src/lib/
-├── auth.types.ts          # Minimal (RegisterDto, LoginDto)
-├── listing.interface.ts   # Basic (IListing)
-├── notification.interface.ts  # Minimal
-├── user.interface.ts      # Basic (IUser)
-└── types.ts               # Placeholder
-```
+### Viewings (`/viewings`) - ✅ Complet
 
-**Problema Majoră:**
+| Method | Endpoint                   | Description           | Auth Level |
+| ------ | -------------------------- | --------------------- | ---------- |
+| GET    | `/viewings`                | Get my viewings       | Auth       |
+| GET    | `/viewings/upcoming`       | Get upcoming viewings | Auth       |
+| GET    | `/viewings/:id`            | Get viewing details   | Auth       |
+| POST   | `/viewings`                | Request a viewing     | Level 1    |
+| PATCH  | `/viewings/:id/status`     | Accept/Reject/Cancel  | Auth       |
+| PATCH  | `/viewings/:id/reschedule` | Reschedule            | Auth       |
+| POST   | `/viewings/:id/feedback`   | Submit feedback       | Auth       |
 
-- Types-urile existente sunt INSUFICIENTE pentru Mobile
-- Mobile are definite propriile interfaces în docs care nu sunt exportate
-- Backend folosește alte denumiri și structuri decât Mobile
+### Favorites (`/favorites`) - ✅ Complet
 
----
-
-## 🔍 Gap Analysis: Backend vs Mobile API
-
-### Endpoint-uri Cerute de Mobile vs Implementate în Backend
-
-| Modul             | Endpoint Mobile                      | Backend Status               |
-| ----------------- | ------------------------------------ | ---------------------------- |
-| **Auth**          | `POST /auth/register`                | ✅ Există                    |
-|                   | `POST /auth/register/phone`          | 🔴 LIPSEȘTE                  |
-|                   | `POST /auth/login`                   | ✅ Există                    |
-|                   | `POST /auth/login/phone`             | 🔴 LIPSEȘTE                  |
-|                   | `POST /auth/oauth/google`            | ✅ Există                    |
-|                   | `POST /auth/oauth/apple`             | 🔴 LIPSEȘTE                  |
-|                   | `POST /auth/refresh`                 | ✅ Există                    |
-|                   | `POST /auth/verify-email`            | 🟡 Parțial                   |
-|                   | `POST /auth/verify-phone`            | 🔴 LIPSEȘTE                  |
-|                   | `POST /auth/forgot-password`         | 🔴 LIPSEȘTE                  |
-|                   | `POST /auth/reset-password`          | 🔴 LIPSEȘTE                  |
-| **Users**         | `GET /users/me`                      | ✅ Există                    |
-|                   | `PUT /users/me`                      | ✅ Există                    |
-|                   | `PATCH /users/me/avatar`             | 🟡 Parțial                   |
-|                   | `GET /users/:id`                     | ✅ Există                    |
-| **KYC**           | `POST /kyc/verify-id`                | 🔴 LIPSEȘTE                  |
-|                   | `GET /kyc/status`                    | 🔴 LIPSEȘTE                  |
-|                   | `POST /kyc/property-doc`             | 🔴 LIPSEȘTE                  |
-| **Properties**    | `GET /properties`                    | ✅ Există (diferit)          |
-|                   | `POST /properties`                   | ✅ Există (orientat scraper) |
-|                   | `GET /properties/:id`                | ✅ Există                    |
-|                   | `PUT /properties/:id`                | ✅ Există                    |
-|                   | `DELETE /properties/:id`             | ✅ Există                    |
-|                   | `POST /properties/:id/photos`        | ✅ Există                    |
-|                   | `PATCH /properties/:id/status`       | 🟡 Parțial                   |
-| **Search**        | `GET /properties/search`             | 🟡 Basic                     |
-|                   | `GET /properties/search/suggestions` | 🔴 LIPSEȘTE                  |
-|                   | `GET /properties/search/map`         | 🔴 LIPSEȘTE                  |
-| **Messaging**     | `GET /conversations`                 | ✅ Există                    |
-|                   | `POST /conversations`                | ✅ Există                    |
-|                   | `GET /conversations/:id/messages`    | ✅ Există                    |
-|                   | `POST /conversations/:id/messages`   | ✅ Există                    |
-|                   | WebSocket Realtime                   | 🔴 LIPSEȘTE                  |
-| **Viewings**      | `GET /viewings`                      | 🟡 Structură                 |
-|                   | `POST /viewings`                     | 🟡 Structură                 |
-|                   | `PATCH /viewings/:id/confirm`        | 🔴 LIPSEȘTE                  |
-|                   | `PATCH /viewings/:id/cancel`         | 🔴 LIPSEȘTE                  |
-| **Favorites**     | `GET /favorites`                     | ✅ Există                    |
-|                   | `POST /favorites`                    | ✅ Există                    |
-|                   | `DELETE /favorites/:propertyId`      | ✅ Există                    |
-|                   | Favorite Lists CRUD                  | 🔴 LIPSEȘTE                  |
-|                   | Compare Properties                   | 🔴 LIPSEȘTE                  |
-| **Notifications** | `GET /notifications`                 | 🟡 Basic                     |
-|                   | `PATCH /notifications/:id/read`      | 🟡 Basic                     |
-|                   | `POST /devices/push-token`           | 🔴 LIPSEȘTE                  |
-| **AI**            | `POST /ai/chat/stream`               | 🔴 LIPSEȘTE                  |
-|                   | `POST /ai/analyze-property/:id`      | 🔴 LIPSEȘTE                  |
-|                   | `POST /ai/generate-description`      | 🔴 LIPSEȘTE                  |
-|                   | `GET /ai/price-estimate`             | 🔴 LIPSEȘTE                  |
-| **Analytics**     | `GET /properties/:id/analytics`      | 🟡 Basic                     |
-
-### Diferențe de Structură Entități
-
-| Aspect                       | Backend Actual                                  | Mobile Spec                       | Acțiune          |
-| ---------------------------- | ----------------------------------------------- | --------------------------------- | ---------------- |
-| **User.role**                | `tenant/landlord/admin`                         | `OWNER/SEEKER/BOTH`               | 🔧 Aliniere      |
-| **Property.status**          | `new/early_access/public/rented/hidden/expired` | `DRAFT/PENDING_REVIEW/ACTIVE/...` | 🔧 Aliniere      |
-| **Property.type**            | N/A (derivat din rooms)                         | `APARTMENT/HOUSE/STUDIO/...`      | 🔧 Adăugare      |
-| **Property.transactionType** | N/A (doar RENT implicit)                        | `SALE/RENT`                       | 🔧 Adăugare      |
-| **Location**                 | Flat fields                                     | Nested object                     | 🔧 Restructurare |
-| **Pricing**                  | `priceEur` flat                                 | Nested `pricing` object           | 🔧 Restructurare |
+| Method | Endpoint                       | Description           | Auth Level |
+| ------ | ------------------------------ | --------------------- | ---------- |
+| GET    | `/favorites`                   | Get all favorites     | Auth       |
+| POST   | `/favorites`                   | Add to favorites      | Auth       |
+| DELETE | `/favorites/:propertyId`       | Remove from favorites | Auth       |
+| GET    | `/favorites/check/:propertyId` | Check if favorited    | Auth       |
+| GET    | `/favorites/lists`             | Get favorite lists    | Auth       |
+| POST   | `/favorites/lists`             | Create list           | Auth       |
+| PUT    | `/favorites/lists/:listId`     | Update list           | Auth       |
+| DELETE | `/favorites/lists/:listId`     | Delete list           | Auth       |
+| POST   | `/favorites/move`              | Move to another list  | Auth       |
+| POST   | `/favorites/compare`           | Compare properties    | Auth       |
 
 ---
 
-## ⚡ Acțiuni Necesare de Sincronizare
+## 📁 Fișiere Modificate în Acest Sprint
 
-### 🔴 Prioritate Critică (Blochează MVP)
+### packages/types/src/lib/
 
-1. **Definire Types Comune în `/packages/types/`**
-   - Export toate interfaces din Mobile docs
-   - Actualizare Backend să folosească aceste types
-   - Generare automată dacă posibil
+- `enums.ts` - VerificationLevel, Permissions, wszystkie
 
-2. **Implementare Auth Complet în Backend**
-   - SMS OTP flow
-   - Apple OAuth
-   - Forgot/Reset password
-   - Phone verification
+enums
 
-3. **Aliniere Structură Property Entity**
-   - Adăugare `transactionType` (SALE/RENT)
-   - Adăugare `propertyType` enum
-   - Restructurare `location` și `pricing` ca obiecte nested
-   - Migrare date existente
+- `user.interface.ts` - IUser cu verificationLevel
+- `auth.types.ts` - DTOs pentru phone login, OTP, forgot password
+- `property.interface.ts` - IProperty complet
+- `messaging.interface.ts` - IConversation, IMessage
+- `viewing.interface.ts` - IViewing complet
+- `favorite.interface.ts` - IFavorite, IFavoriteList
+- `search.interface.ts` - ISavedSearch, map search
+- `notification.interface.ts` - INotification
+- `api.types.ts` - IPagination, IApiResponse
 
-### 🟡 Prioritate Înaltă
+### backend/src/app/
 
-4. **Implementare KYC Module Backend**
-   - Integrare provider (Onfido/Veriff/Sumsub)
-   - Endpoints pentru upload documente
-   - Status checking
+- `app.module.ts` - Activat AuthModule, RedisModule
+- `auth/auth.dto.ts` - DTOs complete
+- `auth/auth.service.ts` - Phone login, OTP, verification
+- `auth/auth.controller.ts` - Toate endpoint-urile
+- `auth/auth.guard.ts` - Actualizat
+- `core/decorators.ts` - MinVerificationLevel, CurrentUserId
+- `core/verification.guard.ts` - NOU
+- `core/admin.guard.ts` - Actualizat cu isAdmin
+- `db/entities/user.entity.ts` - verificationLevel, isAdmin
+- `modules/user/*` - Complet refactorizat
+- `modules/listing/*` - Cu VerificationGuard
+- `modules/kyc/*` - Complet refactorizat
+- `modules/chat/*` - Complet refactorizat
+- `modules/viewing/*` - Complet refactorizat
+- `modules/favorite/*` - Complet refactorizat
 
-5. **Implementare Căutare Avansată**
-   - Full-text search
-   - Geo search pentru hartă
-   - Autocomplete suggestions
+### docs/
 
-6. **WebSocket pentru Messaging**
-   - Real-time message delivery
-   - Typing indicators
-   - Read receipts
-
-### 🟢 Prioritate Medie
-
-7. **Favorite Lists & Compare**
-8. **Viewings CRUD complet**
-9. **Notifications Push (FCM/APNs)**
-10. **Analytics pentru proprietari**
-
-### 🔵 Prioritate Scăzută (Post-MVP)
-
-11. **AI Assistant Integration**
-12. **Monetization/Subscriptions**
-13. **Advanced Analytics**
+- `PROJECT-STATUS.md` - Acest document
+- `backend/MIGRATION-ADR-001.md` - Script migrare DB
 
 ---
 
-## 🗓️ Roadmap Recomandat
+## 🚀 Următorii Pași Recomandați
 
-### Sprint 1-2: Foundation Alignment (2 săptămâni)
+### ✅ Completat Recent
 
-**Goal:** Toate echipele să lucreze pe aceleași specificații
+- [x] Rulare migrare DB în development
+- [x] Configurare Redis pentru development
+- [x] Email Service (console, SendGrid, SES)
+- [x] SMS Service (console, Twilio)
+- [x] Integrare în AuthService
+- [x] WebSocket pentru messaging real-time
+- [x] Documentație completă WebSocket API
+- [x] Push Notifications (FCM/APNs)
+- [x] Integrare push în ChatGateway
+- [x] Full-text Search (PostgreSQL native)
 
-- [ ] Crearea types comune în `/packages/types/`
-- [ ] Migrare Backend la noile types
-- [ ] Configurare Mobile pentru API real
-- [ ] Setup environment variables across all apps
+### 🔴 Priorități P0 (Critice pentru MVP)
 
-### Sprint 3-4: Auth & Core Features (2 săptămâni)
+- [ ] S3 Image Upload Real
+- [ ] AI Assistant Basic (diferențiator cheie!)
+- [ ] Cron Jobs pentru reminders
 
-**Goal:** MVP Auth + Listings funcțional
+### 🟠 Priorități P1 (Importante)
 
-- [ ] Backend: Complete auth flows
-- [ ] Backend: Property entity alignment
-- [ ] Mobile: API service layer
-- [ ] Frontend: API integration
+- [ ] Generare descriere AI
+- [ ] Sugestii preț AI
+- [ ] Salvare căutări + Alerte
+- [ ] Comparare proprietăți
 
-### Sprint 5-6: Communication & Discovery (2 săptămâni)
+### Mobile Integration
 
-**Goal:** Utilizatorii pot comunica și căuta
-
-- [ ] Backend: Messaging WebSocket
-- [ ] Backend: Search advanced
-- [ ] Mobile: Connect to real APIs
-- [ ] Testing end-to-end
-
-### Sprint 7-8: Polish & Beta (2 săptămâni)
-
-**Goal:** App ready for beta testing
-
-- [ ] Viewings complete flow
-- [ ] Notifications push
-- [ ] Bug fixes
-- [ ] Performance optimization
+- [ ] Creare API layer în mobile
+- [ ] Integrare cu noile endpoint-uri
+- [ ] Actualizare screens pentru verification flow
+- [ ] Integrare WebSocket pentru chat real-time
+- [ ] Integrare push notifications (FCM)
 
 ---
 
-## ⚠️ Riscuri și Recomandări
+## 📁 Fișiere Noi în Acest Update
 
-### Riscuri Identificate
+### core/
 
-1. **Divergență API** - Mobile și Backend au evoluat separat
-   - _Risc:_ Major refactoring necesar
-   - _Mitigare:_ Definire contract API înainte de implementare
+- `email/email.service.ts` - Serviciu email multi-provider
+- `sms/sms.service.ts` - Serviciu SMS multi-provider
+- `push/push.service.ts` - Serviciu push notifications (FCM)
+- `messaging.module.ts` - Modul global pentru Email/SMS/Push
 
-2. **Lipsa Types Comune** - Fiecare echipă are propriile definiții
-   - _Risc:_ Runtime errors, type mismatches
-   - _Mitigare:_ Packages/types ca source of truth
+### modules/
 
-3. **Backend orientat pentru Scraper** - Nu pentru creare manuală
-   - _Risc:_ Listings din App diferite de cele scraped
-   - _Mitigare:_ Separare sau unificare workflows
+- `chat/chat.gateway.ts` - WebSocket Gateway pentru real-time messaging
+- `search/search.service.ts` - Full-text search complet (refactored)
 
-4. **Lipsa Testing** - Nu am observat teste unitare/integrare
-   - _Risc:_ Regresii în producție
-   - _Mitigare:_ Setup CI/CD cu teste
+### docs/backend/
 
-### Recomandări CTO
-
-1. **🎯 Contract-First Development**
-   - OpenAPI/Swagger specification ÎNAINTE de implementare
-   - Code generation pentru types
-
-2. **📦 Monorepo Best Practices**
-   - Folosire Nx pentru build/test orchestration
-   - Shared libraries în `/packages/`
-   - Consistent linting și formatting
-
-3. **🔄 Sync Meetings**
-   - Weekly sync între Mobile și Backend leads
-   - Shared Kanban pentru features cross-team
-
-4. **📋 Documentation as Code**
-   - Toate specs în `/docs/`
-   - Auto-generate docs din cod unde posibil
+- `EMAIL-SMS-SERVICES.md` - Documentație servicii mesagerie (actualizat cu Push)
+- `WEBSOCKET-API.md` - Documentație completă WebSocket API
+- `IMPLEMENTATION-STATUS.md` - **⭐ Status detaliat per feature!**
 
 ---
 
-## 📞 Echipe și Responsabilități
+## 📊 Pentru Status Detaliat
 
-| Responsabilitate | Echipă   | Contact |
-| ---------------- | -------- | ------- |
-| API Contracts    | Backend  | TBD     |
-| Mobile UI/UX     | Mobile   | TBD     |
-| Web Dashboard    | Frontend | TBD     |
-| Shared Types     | All      | TBD     |
-| DevOps/CI        | TBD      | TBD     |
+**Vezi:** [`docs/backend/IMPLEMENTATION-STATUS.md`](./backend/IMPLEMENTATION-STATUS.md)
+
+Document cu status exact per feature (ce e făcut, ce lipsește, procente).
 
 ---
 
-**Document generat:** 20 Ianuarie 2026  
-**Următoarea actualizare:** După sync meeting echipe  
-**Solicitat de:** Product Team
+**Document actualizat:** 22 Ianuarie 2026, 01:15  
+**Sprint completat:** Backend Search & Documentation  
+**Build status:** ✅ Passing

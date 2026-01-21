@@ -49,7 +49,7 @@ pg.defaults.parseInt8 = true;
             ListingView,
           ],
           synchronize: true,
-          // synchronize: process.env.NODE_ENV !== 'development',
+          sync: { alter: true }, // Force alter to add missing columns
           logging: (sql: string) => {
             // Log only in development or if explicitly enabled
             if (
@@ -59,14 +59,17 @@ pg.defaults.parseInt8 = true;
               console.log('📊 [DB Query]', sql.substring(0, 200));
             }
           },
-          // Enable SSL for Neon and other cloud databases
-          ssl: true,
-          dialectOptions: {
-            ssl: {
-              require: true,
-              rejectUnauthorized: false,
+          // Enable SSL only for production (cloud databases like Neon, Supabase)
+          // Disable SSL for local development (Docker PostgreSQL)
+          ...(configService.get<string>('NODE_ENV') === 'production' && {
+            ssl: true,
+            dialectOptions: {
+              ssl: {
+                require: true,
+                rejectUnauthorized: false,
+              },
             },
-          },
+          }),
         };
       },
       inject: [ConfigService],

@@ -1,58 +1,114 @@
+/**
+ * 👤 USER DTOs - Data Transfer Objects pentru utilizatori
+ */
+
 import {
-  IsArray,
-  ArrayMinSize,
-  ArrayMaxSize,
-  IsBoolean,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsPhoneNumber,
   IsString,
+  IsOptional,
+  IsBoolean,
   MaxLength,
+  ValidateNested,
+  IsPhoneNumber,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
-export class SocialLoginDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  idToken: string;
-}
+// ============================================================================
+// PROFILE DTOs
+// ============================================================================
 
+/**
+ * Update profile (general)
+ */
 export class CompleteProfileDto {
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional({ example: 'Ion Popescu', maxLength: 150 })
   @IsString()
   @IsOptional()
   @MaxLength(150)
   fullName?: string;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional({ example: 'Ion' })
   @IsString()
   @IsOptional()
   firstName?: string;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional({ example: 'Popescu' })
   @IsString()
   @IsOptional()
   lastName?: string;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional({ example: 'Agent imobiliar cu 5 ani experiență' })
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   bio?: string;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional({ example: 'București, România' })
   @IsString()
   @IsOptional()
   location?: string;
 
-  @ApiProperty({ required: false })
-  @IsPhoneNumber('RO')
+  @ApiPropertyOptional({ example: '+40712345678' })
+  @IsString()
   @IsOptional()
-  phoneNumber?: string;
+  phone?: string;
+}
 
-  @ApiProperty({ required: false, enum: ['individual', 'company', 'agency'] })
-  @IsEnum(['individual', 'company', 'agency'])
+// ============================================================================
+// NOTIFICATION PREFERENCES
+// ============================================================================
+
+/**
+ * Update notification preferences
+ */
+export class UpdateNotificationPreferencesDto {
+  @ApiPropertyOptional()
+  @IsBoolean()
   @IsOptional()
-  ownerType?: 'individual' | 'company' | 'agency';
+  email?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  push?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  sms?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  marketing?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  newMessages?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  viewingReminders?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  priceDrops?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  newListingsAlerts?: boolean;
+}
+
+// ============================================================================
+// LEGACY (pentru compatibilitate)
+// ============================================================================
+
+export class SocialLoginDto {
+  @ApiProperty()
+  @IsString()
+  idToken!: string;
 }
