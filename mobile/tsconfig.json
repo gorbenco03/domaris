@@ -4,32 +4,15 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@/app/*": [
-        "src/app/*"
-      ],
-      "@/features/*": [
-        "src/features/*"
-      ],
-      "@/shared/*": [
-        "src/shared/*"
-      ],
-      "@/core/*": [
-        "src/core/*"
-      ],
-      "@/config/*": [
-        "src/config/*"
-      ],
-      "@/assets/*": [
-        "src/assets/*"
-      ]
+      "@/*": ["src/*"],
+      "@/app/*": ["src/app/*"],
+      "@/features/*": ["src/features/*"],
+      "@/shared/*": ["src/shared/*"],
+      "@/core/*": ["src/core/*"],
+      "@/config/*": ["src/config/*"],
+      "@/assets/*": ["src/assets/*"]
     },
-    "types": [
-      "react-native",
-      "jest"
-    ],
+    "types": ["react-native", "jest"],
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -37,11 +20,11 @@
     "resolveJsonModule": true,
     "jsx": "react-native"
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules"
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../packages/types"
+    }
   ]
 }

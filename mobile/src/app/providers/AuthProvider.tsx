@@ -1,13 +1,13 @@
 /**
  * IMOBI - Auth Provider
  * Authentication context and initialization
+ * Connected to real backend API
  */
 
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useAuthStore, User } from '@/core/stores/authStore';
 import { tokenManager } from '@/core/auth/tokenManager';
-import apiClient from '@/core/api/client';
-import { API_ENDPOINTS } from '@/core/api/endpoints';
+import { authApi } from '@/features/auth/api';
 
 // ============================================
 // CONTEXT
@@ -24,13 +24,14 @@ interface AuthContextValue {
   refreshUser: () => Promise<void>;
 }
 
+/**
+ * Register data (aligned with backend - no userType per ADR-001)
+ */
 interface RegisterData {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  userType: 'seeker' | 'owner';
+  firstName?: string;
+  lastName?: string;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -53,10 +54,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const initializeAuth = async () => {
     store.setLoading(true);
-    
+
     try {
       const hasValidTokens = await tokenManager.hasValidTokens();
-      
+
       if (hasValidTokens) {
         await refreshUser();
       } else {
@@ -71,75 +72,74 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  /**
+   * Login with email and password (real backend call)
+   */
   const login = async (email: string, password: string): Promise<void> => {
     store.setLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     try {
-      // Mock user and tokens
-      const mockUser: User = {
-        id: '123',
-        email,
-        firstName: 'Utilizator',
-        lastName: 'Demo',
-        userType: 'seeker',
-        isVerified: true,
-        isPhoneVerified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      const accessToken = 'mock-access-token';
-      const refreshToken = 'mock-refresh-token';
-      
-      await store.login(mockUser, accessToken, refreshToken);
+      const response = await authApi.loginWithEmail({ email, password });
+
+      await store.login(
+        response.user,
+        response.accessToken,
+        response.refreshToken
+      );
     } catch (error) {
       store.setLoading(false);
       throw error;
     }
   };
 
+  /**
+   * Register with email and password (real backend call)
+   */
   const register = async (data: RegisterData): Promise<void> => {
     store.setLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     try {
-      // Mock user and tokens
-      const mockUser: User = {
-        id: '124',
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
-        userType: data.userType,
-        isVerified: true,
-        isPhoneVerified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      const accessToken = 'mock-access-token';
-      const refreshToken = 'mock-refresh-token';
-      
-      await store.login(mockUser, accessToken, refreshToken);
+      const response = await authApi.registerWithEmail(data);
+
+      await store.login(
+        response.user,
+        response.accessToken,
+        response.refreshToken
+      );
     } catch (error) {
       store.setLoading(false);
       throw error;
     }
   };
 
+  /**
+   * Logout (real backend call)
+   */
   const logout = async (): Promise<void> => {
-    await store.logout();
+    try {
+      const refreshToken = await tokenManager.getRefreshToken();
+      if (refreshToken) {
+        await authApi.logout({ refreshToken });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      await store.logout();
+    }
   };
 
+  /**
+   * Refresh user data from backend
+   */
   const refreshUser = async (): Promise<void> => {
-    // Just keep the current user for mock
-    if (store.user) {
-      store.setUser(store.user);
+    try {
+      const userData = await authApi.getCurrentUser();
+      store.setUser(userData);
+    } catch (error) {
+      console.error('Refresh user error:', error);
+      // If token is invalid, logout
+      await store.logout();
+      throw error;
     }
   };
 

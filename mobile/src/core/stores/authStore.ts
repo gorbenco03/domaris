@@ -7,24 +7,16 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { createMMKVStorage } from '@/core/storage/mmkvStorage';
 import { tokenManager } from '@/core/auth/tokenManager';
+import type { IUserSession } from '@/core/api/types';
 
 // ============================================
 // TYPES
 // ============================================
 
-export interface User {
-  id: string;
-  email: string;
-  phone?: string;
-  firstName: string;
-  lastName: string;
-  avatar?: string;
-  userType: 'seeker' | 'owner';
-  isVerified: boolean;
-  isPhoneVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+/**
+ * User type (aligned with backend UserSessionDto)
+ */
+export type User = IUserSession;
 
 export interface AuthState {
   // State

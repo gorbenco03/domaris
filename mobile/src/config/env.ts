@@ -17,8 +17,8 @@ const getEnvConfig = (): EnvConfig => {
   const env = process.env.EXPO_PUBLIC_ENV || 'development';
   
   return {
-    API_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api',
-    WS_URL: process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:3000',
+    API_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api',
+    WS_URL: process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:4000',
     ENVIRONMENT: env as EnvConfig['ENVIRONMENT'],
     DEBUG_MODE: env !== 'production',
     ENABLE_ANALYTICS: env === 'production',

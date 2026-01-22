@@ -14,6 +14,7 @@ import {
   Switch,
   Alert,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,6 +39,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { SearchStackParamList } from '@/app/navigation/types';
 import { EmptyState } from '@/shared/components/EmptyState';
+import {
+  useSavedSearches,
+  useDeleteSavedSearch,
+  useToggleSavedSearchAlerts,
+} from '../hooks/useSavedSearches';
+import type { ISavedSearch } from '../api/savedSearchesApi';
 
 // ============================================
 // TYPES
@@ -45,111 +52,10 @@ import { EmptyState } from '@/shared/components/EmptyState';
 
 type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
-interface SavedSearch {
-  id: string;
-  name: string;
-  transactionType: 'SALE' | 'RENT' | 'ALL';
-  propertyType: string[];
-  location: {
-    city: string;
-    neighborhoods?: string[];
-  };
-  priceRange: {
-    min?: number;
-    max?: number;
-    currency: 'EUR' | 'RON';
-  };
-  characteristics?: {
-    minRooms?: number;
-    maxRooms?: number;
-    minArea?: number;
-    maxArea?: number;
-  };
-  alertsEnabled: boolean;
-  alertFrequency: 'instant' | 'daily' | 'weekly';
-  newListings: number;
-  createdAt: string;
-  lastChecked: string;
-}
-
-// ============================================
-// MOCK DATA
-// ============================================
-
-const MOCK_SAVED_SEARCHES: SavedSearch[] = [
-  {
-    id: 'search-1',
-    name: 'Apartament 2-3 camere Drumul Taberei',
-    transactionType: 'SALE',
-    propertyType: ['APARTMENT'],
-    location: {
-      city: 'București',
-      neighborhoods: ['Drumul Taberei', 'Militari'],
-    },
-    priceRange: { min: 80000, max: 120000, currency: 'EUR' },
-    characteristics: { minRooms: 2, maxRooms: 3, minArea: 50 },
-    alertsEnabled: true,
-    alertFrequency: 'instant',
-    newListings: 5,
-    createdAt: '2026-01-10',
-    lastChecked: '2026-01-20T14:30:00',
-  },
-  {
-    id: 'search-2',
-    name: 'Casă cu grădină Pipera',
-    transactionType: 'SALE',
-    propertyType: ['HOUSE', 'VILLA'],
-    location: {
-      city: 'București',
-      neighborhoods: ['Pipera', 'Băneasa'],
-    },
-    priceRange: { min: 200000, max: 400000, currency: 'EUR' },
-    characteristics: { minRooms: 4, minArea: 150 },
-    alertsEnabled: true,
-    alertFrequency: 'daily',
-    newListings: 2,
-    createdAt: '2026-01-05',
-    lastChecked: '2026-01-20T10:00:00',
-  },
-  {
-    id: 'search-3',
-    name: 'Garsonieră centrală chirie',
-    transactionType: 'RENT',
-    propertyType: ['STUDIO'],
-    location: {
-      city: 'București',
-      neighborhoods: ['Universitate', 'Unirii', 'Piața Romană'],
-    },
-    priceRange: { min: 300, max: 500, currency: 'EUR' },
-    alertsEnabled: false,
-    alertFrequency: 'weekly',
-    newListings: 0,
-    createdAt: '2026-01-15',
-    lastChecked: '2026-01-19T18:00:00',
-  },
-  {
-    id: 'search-4',
-    name: 'Spațiu comercial zona nord',
-    transactionType: 'RENT',
-    propertyType: ['COMMERCIAL'],
-    location: {
-      city: 'București',
-      neighborhoods: ['Aviatiei', 'Floreasca', 'Dorobanți'],
-    },
-    priceRange: { min: 1000, max: 3000, currency: 'EUR' },
-    characteristics: { minArea: 50 },
-    alertsEnabled: true,
-    alertFrequency: 'weekly',
-    newListings: 1,
-    createdAt: '2026-01-12',
-    lastChecked: '2026-01-20T08:00:00',
-  },
-];
-
 const ALERT_FREQUENCY_LABELS: Record<string, string> = {
-  instant: 'Instant',
-  daily: 'Zilnic',
-  weekly: 'Săptămânal',
+  INSTANT: 'Instant',
+  DAILY: 'Zilnic',
+  WEEKLY: 'Săptămânal',
 };
 
 // ============================================
@@ -157,7 +63,7 @@ const ALERT_FREQUENCY_LABELS: Record<string, string> = {
 // ============================================
 
 interface SavedSearchCardProps {
-  search: SavedSearch;
+  search: ISavedSearch;
   onPress: () => void;
   onToggleAlert: (enabled: boolean) => void;
   onDelete: () => void;
@@ -173,26 +79,22 @@ const SavedSearchCard: React.FC<SavedSearchCardProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  const formatPrice = (value: number, currency: string) => {
-    return `${value.toLocaleString('ro-RO')} ${currency === 'EUR' ? '€' : 'RON'}`;
+  const formatPrice = (value: number) => {
+    return `${value.toLocaleString('ro-RO')} €`;
   };
 
   const formatPriceRange = () => {
-    const { min, max, currency } = search.priceRange;
-    if (min && max) {
-      return `${formatPrice(min, currency)} - ${formatPrice(max, currency)}`;
+    const { priceMin, priceMax } = search.params;
+    if (priceMin && priceMax) {
+      return `${formatPrice(priceMin)} - ${formatPrice(priceMax)}`;
     }
-    if (min) return `de la ${formatPrice(min, currency)}`;
-    if (max) return `până la ${formatPrice(max, currency)}`;
+    if (priceMin) return `de la ${formatPrice(priceMin)}`;
+    if (priceMax) return `până la ${formatPrice(priceMax)}`;
     return 'Orice preț';
   };
 
-  const getTransactionLabel = () => {
-    switch (search.transactionType) {
-      case 'SALE': return 'Vânzare';
-      case 'RENT': return 'Închiriere';
-      default: return 'Toate';
-    }
+  const getCityLabel = () => {
+    return search.params.city || 'Orice oraș';
   };
 
   return (
@@ -219,9 +121,9 @@ const SavedSearchCard: React.FC<SavedSearchCardProps> = ({
             {search.name}
           </Text>
         </View>
-        {search.newListings > 0 && (
+        {search.newMatchesCount > 0 && (
           <View style={[styles.newBadge, { backgroundColor: theme.colors.secondary.error }]}>
-            <Text style={styles.newBadgeText}>{search.newListings} noi</Text>
+            <Text style={styles.newBadgeText}>{search.newMatchesCount} noi</Text>
           </View>
         )}
       </View>
@@ -229,11 +131,6 @@ const SavedSearchCard: React.FC<SavedSearchCardProps> = ({
       {/* Search criteria */}
       <View style={styles.criteriaContainer}>
         <View style={styles.criteriaRow}>
-          <View style={[styles.criteriaTag, { backgroundColor: theme.colors.primary.main + '15' }]}>
-            <Text style={[styles.criteriaTagText, { color: theme.colors.primary.main }]}>
-              {getTransactionLabel()}
-            </Text>
-          </View>
           <View style={[styles.criteriaTag, { backgroundColor: theme.colors.accent.main + '15' }]}>
             <Euro size={12} color={theme.colors.accent.main} />
             <Text style={[styles.criteriaTagText, { color: theme.colors.accent.main }]}>
@@ -245,21 +142,21 @@ const SavedSearchCard: React.FC<SavedSearchCardProps> = ({
         <View style={styles.locationRow}>
           <MapPin size={14} color={theme.colors.textSecondary} />
           <Text style={[styles.locationText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-            {search.location.neighborhoods?.join(', ') || search.location.city}
+            {getCityLabel()}
           </Text>
         </View>
 
-        {search.characteristics && (
+        {(search.params.roomsMin || search.params.surfaceMin) && (
           <View style={styles.characteristicsRow}>
-            {search.characteristics.minRooms && (
+            {search.params.roomsMin && (
               <Text style={[styles.characteristicText, { color: theme.colors.textTertiary }]}>
-                {search.characteristics.minRooms}
-                {search.characteristics.maxRooms ? `-${search.characteristics.maxRooms}` : '+'} camere
+                {search.params.roomsMin}
+                {search.params.roomsMax ? `-${search.params.roomsMax}` : '+'} camere
               </Text>
             )}
-            {search.characteristics.minArea && (
+            {search.params.surfaceMin && (
               <Text style={[styles.characteristicText, { color: theme.colors.textTertiary }]}>
-                • min {search.characteristics.minArea} m²
+                • min {search.params.surfaceMin} m²
               </Text>
             )}
           </View>
@@ -334,38 +231,59 @@ const SavedSearchesScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
 
+  // React Query hooks
+  const { data: searches = [], isLoading, refetch } = useSavedSearches();
+  const deleteMutation = useDeleteSavedSearch();
+  const toggleAlertsMutation = useToggleSavedSearchAlerts();
+
   const [refreshing, setRefreshing] = useState(false);
-  const [searches, setSearches] = useState<SavedSearch[]>(MOCK_SAVED_SEARCHES);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
-  const handleSearchPress = (search: SavedSearch) => {
-    // Navigate to search results with saved filters
-    navigation.navigate('SearchResults', { filters: search });
+  const handleSearchPress = (search: ISavedSearch) => {
+    // Navigate to search results with saved search ID
+    navigation.navigate('SavedSearchResults', { searchId: search.id });
   };
 
-  const handleToggleAlert = (searchId: string, enabled: boolean) => {
-    setSearches((prev) =>
-      prev.map((s) => (s.id === searchId ? { ...s, alertsEnabled: enabled } : s))
-    );
+  const handleToggleAlert = async (searchId: number, enabled: boolean) => {
+    try {
+      await toggleAlertsMutation.mutateAsync({
+        id: searchId,
+        enabled,
+        frequency: enabled ? 'DAILY' : undefined,
+      });
+    } catch (error) {
+      Alert.alert('Eroare', 'Nu s-au putut actualiza alertele');
+    }
   };
 
-  const handleChangeFrequency = (search: SavedSearch) => {
-    const frequencies: Array<'instant' | 'daily' | 'weekly'> = ['instant', 'daily', 'weekly'];
-    const currentIndex = frequencies.indexOf(search.alertFrequency);
+  const handleChangeFrequency = async (search: ISavedSearch) => {
+    const frequencies: Array<'INSTANT' | 'DAILY' | 'WEEKLY'> = [
+      'INSTANT',
+      'DAILY',
+      'WEEKLY',
+    ];
+    const currentIndex = search.alertFrequency
+      ? frequencies.indexOf(search.alertFrequency)
+      : 0;
     const nextFrequency = frequencies[(currentIndex + 1) % frequencies.length];
-    
-    setSearches((prev) =>
-      prev.map((s) =>
-        s.id === search.id ? { ...s, alertFrequency: nextFrequency } : s
-      )
-    );
+
+    try {
+      await toggleAlertsMutation.mutateAsync({
+        id: search.id,
+        enabled: true,
+        frequency: nextFrequency,
+      });
+    } catch (error) {
+      Alert.alert('Eroare', 'Nu s-a putut actualiza frecvența');
+    }
   };
 
-  const handleDelete = (searchId: string) => {
+  const handleDelete = (searchId: number) => {
     Alert.alert(
       'Șterge căutarea',
       'Ești sigur că vrei să ștergi această căutare salvată?',
@@ -374,8 +292,12 @@ const SavedSearchesScreen: React.FC = () => {
         {
           text: 'Șterge',
           style: 'destructive',
-          onPress: () => {
-            setSearches((prev) => prev.filter((s) => s.id !== searchId));
+          onPress: async () => {
+            try {
+              await deleteMutation.mutateAsync(searchId);
+            } catch (error) {
+              Alert.alert('Eroare', 'Nu s-a putut șterge căutarea');
+            }
           },
         },
       ]
@@ -386,8 +308,30 @@ const SavedSearchesScreen: React.FC = () => {
     navigation.navigate('SearchFilters');
   };
 
-  const totalNewListings = searches.reduce((acc, s) => acc + s.newListings, 0);
+  const totalNewListings = searches.reduce(
+    (acc, s) => acc + s.newMatchesCount,
+    0
+  );
   const activeAlerts = searches.filter((s) => s.alertsEnabled).length;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          <Text
+            style={[styles.loadingText, { color: theme.colors.textSecondary }]}
+          >
+            Se încarcă căutările salvate...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -719,6 +663,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     lineHeight: 18,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
   },
 });
 

@@ -35,7 +35,7 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/properties/${id}`,
     DELETE: (id: string) => `/properties/${id}`,
     MY_PROPERTIES: '/properties/my',
-    UPLOAD_IMAGES: (id: string) => `/properties/${id}/images`,
+    UPLOAD_PHOTOS: (id: string) => `/properties/${id}/photos`, // Backend uses /photos
     DELETE_IMAGE: (id: string, imageId: string) => `/properties/${id}/images/${imageId}`,
     STATS: (id: string) => `/properties/${id}/stats`,
     TOGGLE_ACTIVE: (id: string) => `/properties/${id}/toggle-active`,
@@ -45,10 +45,16 @@ export const API_ENDPOINTS = {
   SEARCH: {
     PROPERTIES: '/search/properties',
     SUGGESTIONS: '/search/suggestions',
-    SAVE: '/search/saved',
-    SAVED_LIST: '/search/saved',
-    DELETE_SAVED: (id: string) => `/search/saved/${id}`,
-    ALERTS: '/search/alerts',
+  },
+
+  // Saved Searches (aligned with backend /saved-searches)
+  SAVED_SEARCHES: {
+    LIST: '/saved-searches',
+    CREATE: '/saved-searches',
+    DETAIL: (id: string) => `/saved-searches/${id}`,
+    DELETE: (id: string) => `/saved-searches/${id}`,
+    RUN: (id: string) => `/saved-searches/${id}/run`,
+    TOGGLE_ALERTS: (id: string) => `/saved-searches/${id}/alerts`,
   },
 
   // Favorites
@@ -86,7 +92,11 @@ export const API_ENDPOINTS = {
     READ: (id: string) => `/notifications/${id}/read`,
     READ_ALL: '/notifications/read-all',
     SETTINGS: '/notifications/settings',
-    REGISTER_PUSH: '/notifications/register-push',
+  },
+
+  // Devices (for push notification tokens)
+  DEVICES: {
+    REGISTER_PUSH_TOKEN: '/devices/push-token',
   },
 
   // AI
