@@ -51,8 +51,7 @@ const EditProfileScreen: React.FC = () => {
     bio: (user as any)?.bio || '',
     email: user?.email || '',
     phone: (user as any)?.phone || '',
-    city: (user as any)?.city || '',
-    county: (user as any)?.county || '',
+    location: (user as any)?.location || '',
   });
   
   const [isLoading, setIsLoading] = useState(false);
@@ -93,8 +92,8 @@ const EditProfileScreen: React.FC = () => {
         const type = match ? `image/${match[1]}` : 'image/jpeg';
         
         const formData = new FormData();
-        formData.append('avatar', { uri: localUri, name: filename, type } as any);
-        
+        formData.append('file', { uri: localUri, name: filename, type } as any);
+
         await uploadAvatarMutation.mutateAsync(formData);
         Alert.alert('Succes', 'Fotografia a fost actualizată.');
       } catch (error) {
@@ -112,10 +111,9 @@ const EditProfileScreen: React.FC = () => {
         lastName: formData.lastName,
         bio: formData.bio,
         phone: formData.phone,
-        city: formData.city,
-        county: formData.county,
+        location: formData.location,
       });
-      
+
       setHasChanges(false);
       Alert.alert('Succes', 'Profilul a fost actualizat cu succes!', [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -330,7 +328,7 @@ const EditProfileScreen: React.FC = () => {
               >
                 LOCAȚIE
               </Text>
-              
+
               <View
                 style={[
                   styles.formCard,
@@ -342,23 +340,13 @@ const EditProfileScreen: React.FC = () => {
                   },
                 ]}
               >
-                <View style={styles.inputRow}>
-                  <View style={[styles.inputHalf, { marginRight: theme.spacing[2] }]}>
-                    <Input
-                      label="Oraș"
-                      value={formData.city}
-                      onChangeText={(text) => updateField('city', text)}
-                      leftIcon={<MapPin size={20} color={theme.colors.textTertiary} />}
-                    />
-                  </View>
-                  <View style={[styles.inputHalf, { marginLeft: theme.spacing[2] }]}>
-                    <Input
-                      label="Sector/Județ"
-                      value={formData.county}
-                      onChangeText={(text) => updateField('county', text)}
-                    />
-                  </View>
-                </View>
+                <Input
+                  label="Locație"
+                  value={formData.location}
+                  onChangeText={(text) => updateField('location', text)}
+                  leftIcon={<MapPin size={20} color={theme.colors.textTertiary} />}
+                  placeholder="ex. București, Sector 1"
+                />
               </View>
             </View>
           </View>

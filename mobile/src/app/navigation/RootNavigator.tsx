@@ -42,10 +42,15 @@ const LoadingScreen: React.FC = () => {
 // ROOT NAVIGATOR
 // ============================================
 
+import { useSocketUpdates } from '@/features/messaging/hooks/useMessaging';
+
 const RootNavigator: React.FC = () => {
   const { isAuthenticated, isInitialized, isLoading } = useAuth();
   const { theme, isDark } = useTheme();
   const { shouldShowPrompt, startTutorial, dismissPrompt } = useTutorial();
+
+  // Enable global socket updates
+  useSocketUpdates();
 
   // Track if user just logged in
   const wasAuthenticated = useRef(isAuthenticated);

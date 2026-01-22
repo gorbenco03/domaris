@@ -3,7 +3,7 @@
  * Shows all viewings with tabs: Upcoming, Past, Cancelled
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   Animated,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -21,12 +23,23 @@ import { ProfileStackParamList } from '@/app/navigation/types';
 import { ViewingCard } from '../components';
 import { Viewing, ViewingStatus } from '../types';
 import { Calendar, Clock, XCircle, ChevronRight, Plus } from 'lucide-react-native';
+import { useViewings, useCancelViewing } from '../hooks/useViewings';
+import type { IViewingListItem } from '@domaris/types';
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList, 'Viewings'>;
 
 type TabType = 'upcoming' | 'past' | 'cancelled';
 
-// Mock data for demonstration
+// Map backend status to tab type
+const mapStatusToTab = (status: string): TabType => {
+  const lowerStatus = status.toLowerCase();
+  if (['pending', 'confirmed'].includes(lowerStatus)) return 'upcoming';
+  if (['completed'].includes(lowerStatus)) return 'past';
+  if (['cancelled', 'rejected'].includes(lowerStatus)) return 'cancelled';
+  return 'upcoming';
+};
+
+/* REMOVED MOCK DATA - Using real API now
 const MOCK_VIEWINGS: Viewing[] = [
   {
     id: '1',
@@ -150,15 +163,17 @@ const MOCK_VIEWINGS: Viewing[] = [
     createdAt: new Date('2026-01-12'),
     cancelledAt: new Date('2026-01-17'),
   },
-];
+]; */
 
 const ViewingsListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
-  
+
   const [activeTab, setActiveTab] = useState<TabType>('upcoming');
-  const [refreshing, setRefreshing] = useState(false);
-  const [viewings] = useState<Viewing[]>(MOCK_VIEWINGS);
+
+  // Fetch viewings from API
+  const { data: viewingsData = [], isLoading, refetch, isFetching } = useViewings();
+  const cancelMutation = useCancelViewing();
   
   const tabs: { key: TabType; label: string; icon: React.ReactNode }[] = [
     { key: 'upcoming', label: 'Viitoare', icon: <Calendar size={16} /> },

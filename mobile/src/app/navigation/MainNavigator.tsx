@@ -16,6 +16,7 @@ import DiscoveryNavigator from './DiscoveryNavigator';
 import SearchNavigator from './SearchNavigator';
 import { FavoritesNavigator } from '@/features/favorites';
 import { MessagingNavigator } from '@/features/messaging';
+import { useUnreadCount } from '@/features/messaging/hooks/useMessaging';
 import { useTutorialTarget } from '@/features/tutorial';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -58,6 +59,10 @@ const TabIcon: React.FC<TabIconProps> = ({ focused, color, size, IconComponent, 
 const MainNavigator: React.FC = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  
+  // Get unread count for badge
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.count || 0;
 
   return (
     <Tab.Navigator
@@ -117,6 +122,12 @@ const MainNavigator: React.FC = () => {
         component={MessagingNavigator}
         options={{
           tabBarLabel: 'Mesaje',
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: theme.colors.primary.main,
+            color: '#ffffff',
+            fontSize: 10,
+          },
           tabBarIcon: ({ focused, color, size }) => (
             <TabIcon
               focused={focused}

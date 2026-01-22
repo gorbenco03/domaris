@@ -5,45 +5,21 @@
 
 import { apiClient } from '@/core/api/client';
 import { API_ENDPOINTS } from '@/core/api/endpoints';
-import type { IPropertyListing } from '@/core/api/types';
 
-// ============================================================================
-// TYPES
-// ============================================================================
+// Import types from shared package
+export type {
+  IViewing,
+  IViewingListItem,
+  IViewingTimeSlot,
+  IViewingFeedback,
+  ICreateViewingDto,
+  IConfirmViewingDto,
+  ICancelViewingDto,
+  IRescheduleViewingDto,
+  ISubmitViewingFeedbackDto,
+} from '@domaris/types';
 
-export type ViewingStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'CANCELLED'
-  | 'COMPLETED'
-  | 'NO_SHOW';
-
-export interface IViewing {
-  id: number;
-  propertyId: number;
-  property?: IPropertyListing;
-  userId: number;
-  ownerId: number;
-  scheduledAt: string; // ISO date string
-  status: ViewingStatus;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ICreateViewingRequest {
-  propertyId: number;
-  scheduledAt: string; // ISO date string
-  notes?: string;
-}
-
-export interface IUpdateViewingStatusRequest {
-  status: ViewingStatus;
-}
-
-export interface IRescheduleViewingRequest {
-  scheduledAt: string; // ISO date string
-}
+import type { IViewing, IViewingListItem } from '@domaris/types';
 
 // ============================================================================
 // VIEWINGS ENDPOINTS (Authenticated)
@@ -52,19 +28,35 @@ export interface IRescheduleViewingRequest {
 /**
  * Get all viewings for current user
  */
-export const getViewings = async (): Promise<IViewing[]> => {
-  const response = await apiClient.get<IViewing[]>(
-    API_ENDPOINTS.VIEWINGS.LIST
+export const getViewings = async (params?: {
+  role?: 'seeker' | 'owner';
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<IViewingListItem[]> => {
+  const response = await apiClient.get<IViewingListItem[]>(
+    API_ENDPOINTS.VIEWINGS.LIST,
+    { params }
   );
   return response.data;
 };
 
 /**
- * Get viewing by ID
+ * Get upcoming viewings
  */
-export const getViewingById = async (id: number): Promise<IViewing> => {
+export const getUpcomingViewings = async (): Promise<IViewingListItem[]> => {
+  const response = await apiClient.get<IViewingListItem[]>(
+    `${API_ENDPOINTS.VIEWINGS.LIST}/upcoming`
+  );
+  return response.data;
+};
+
+/**
+ * Get viewing by ID (detailed)
+ */
+export const getViewingById = async (id: string): Promise<IViewing> => {
   const response = await apiClient.get<IViewing>(
-    API_ENDPOINTS.VIEWINGS.DETAIL(String(id))
+    API_ENDPOINTS.VIEWINGS.DETAIL(id)
   );
   return response.data;
 };
@@ -72,9 +64,11 @@ export const getViewingById = async (id: number): Promise<IViewing> => {
 /**
  * Create new viewing request
  */
-export const createViewing = async (
-  data: ICreateViewingRequest
-): Promise<IViewing> => {
+export const requestViewing = async (data: {
+  propertyId: number;
+  slot: string;
+  notes?: string;
+}): Promise<IViewing> => {
   const response = await apiClient.post<IViewing>(
     API_ENDPOINTS.VIEWINGS.CREATE,
     data
@@ -83,87 +77,18 @@ export const createViewing = async (
 };
 
 /**
- * Confirm viewing (owner action)
- */
-export const confirmViewing = async (id: number): Promise<IViewing> => {
-  const response = await apiClient.patch<IViewing>(
-    API_ENDPOINTS.VIEWINGS.CONFIRM(String(id))
-  );
-  return response.data;
-};
-
-/**
- * Cancel viewing
- */
-export const cancelViewing = async (id: number): Promise<IViewing> => {
-  const response = await apiClient.patch<IViewing>(
-    API_ENDPOINTS.VIEWINGS.CANCEL(String(id))
-  );
-  return response.data;
-};
-
-/**
- * Reschedule viewing
- */
-export const rescheduleViewing = async (
-  id: number,
-  data: IRescheduleViewingRequest
-): Promise<IViewing> => {
-  const response = await apiClient.patch<IViewing>(
-    API_ENDPOINTS.VIEWINGS.RESCHEDULE(String(id)),
-    data
-  );
-  return response.data;
-};
-
-/**
- * Update viewing status
+ * Update viewing status (confirm/reject/cancel)
  */
 export const updateViewingStatus = async (
-  id: number,
-  status: ViewingStatus
+  id: string,
+  status: 'CONFIRMED' | 'REJECTED' | 'CANCELLED',
+  reason?: string
 ): Promise<IViewing> => {
   const response = await apiClient.patch<IViewing>(
-    `${API_ENDPOINTS.VIEWINGS.DETAIL(String(id))}/status`,
-    { status }
+    `${API_ENDPOINTS.VIEWINGS.DETAIL(id)}/status`,
+    { status, reason }
   );
   return response.data;
-};
-
-// ============================================================================
-// CONVENIENCE FUNCTIONS
-// ============================================================================
-
-/**
- * Get upcoming viewings
- */
-export const getUpcomingViewings = async (): Promise<IViewing[]> => {
-  const viewings = await getViewings();
-  const now = new Date();
-  return viewings
-    .filter(
-      (v) =>
-        new Date(v.scheduledAt) > now &&
-        (v.status === 'PENDING' || v.status === 'CONFIRMED')
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
-    );
-};
-
-/**
- * Get past viewings
- */
-export const getPastViewings = async (): Promise<IViewing[]> => {
-  const viewings = await getViewings();
-  const now = new Date();
-  return viewings
-    .filter((v) => new Date(v.scheduledAt) <= now)
-    .sort(
-      (a, b) =>
-        new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
-    );
 };
 
 // ============================================================================
@@ -172,14 +97,10 @@ export const getPastViewings = async (): Promise<IViewing[]> => {
 
 export const viewingsApi = {
   getViewings,
-  getViewingById,
-  createViewing,
-  confirmViewing,
-  cancelViewing,
-  rescheduleViewing,
-  updateViewingStatus,
   getUpcomingViewings,
-  getPastViewings,
+  getViewingById,
+  requestViewing,
+  updateViewingStatus,
 };
 
 export default viewingsApi;

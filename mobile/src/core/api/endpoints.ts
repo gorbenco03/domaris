@@ -66,14 +66,17 @@ export const API_ENDPOINTS = {
     CHECK: (propertyId: string) => `/favorites/check/${propertyId}`,
   },
 
-  // Messages
-  MESSAGES: {
-    CONVERSATIONS: '/messages/conversations',
-    CONVERSATION: (id: string) => `/messages/conversations/${id}`,
-    SEND: '/messages/send',
-    MESSAGES: (conversationId: string) => `/messages/conversations/${conversationId}/messages`,
-    READ: (conversationId: string) => `/messages/conversations/${conversationId}/read`,
-    ARCHIVE: (conversationId: string) => `/messages/conversations/${conversationId}/archive`,
+  // Conversations (Chat/Messaging)
+  CONVERSATIONS: {
+    LIST: '/conversations',
+    CREATE: '/conversations',
+    DETAIL: (id: string) => `/conversations/${id}`,
+    MESSAGES: (id: string) => `/conversations/${id}/messages`,
+    SEND_MESSAGE: (id: string) => `/conversations/${id}/messages`,
+    MARK_READ: (id: string) => `/conversations/${id}/read`,
+    ARCHIVE: (id: string) => `/conversations/${id}/archive`,
+    UNARCHIVE: (id: string) => `/conversations/${id}/unarchive`,
+    UNREAD_COUNT: '/conversations/unread-count',
   },
 
   // Viewings

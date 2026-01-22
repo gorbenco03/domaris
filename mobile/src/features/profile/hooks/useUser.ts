@@ -61,7 +61,7 @@ export const useUpdateProfile = () => {
 };
 
 /**
- * Upload avatar mutation 
+ * Upload avatar mutation
  */
 export const useUploadAvatar = () => {
   const queryClient = useQueryClient();
@@ -69,8 +69,8 @@ export const useUploadAvatar = () => {
 
   return useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await apiClient.post<{ avatarUrl: string }>(
-        API_ENDPOINTS.USERS.AVATAR, 
+      const response = await apiClient.patch<{ avatarUrl: string }>(
+        API_ENDPOINTS.USERS.UPLOAD_AVATAR,
         formData,
         {
             headers: { 'Content-Type': 'multipart/form-data' }
@@ -78,7 +78,8 @@ export const useUploadAvatar = () => {
       );
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+       // Update cache immediately with new avatar URL
        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_PROFILE, user?.id] });
     }
   });

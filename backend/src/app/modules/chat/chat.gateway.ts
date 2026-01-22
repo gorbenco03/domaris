@@ -178,7 +178,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * Join conversation - Alătură-te unei conversații pentru a primi mesaje
    */
-  @SubscribeMessage('join_conversation')
+  @SubscribeMessage('conversation:join')
   async handleJoinConversation(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: JoinConversationPayload,
@@ -218,7 +218,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * Leave conversation - Părăsește o conversație
    */
-  @SubscribeMessage('leave_conversation')
+  @SubscribeMessage('conversation:leave')
   async handleLeaveConversation(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: JoinConversationPayload,
@@ -246,7 +246,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * Send message - Trimite un mesaj în conversație
    */
-  @SubscribeMessage('send_message')
+  @SubscribeMessage('message:send')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: SendMessagePayload,
@@ -267,10 +267,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Broadcast către toți din conversație
       const roomName = `conversation:${payload.conversationId}`;
-      this.server.to(roomName).emit('new_message', message);
+      
+      // Emit 'message:new' instead of 'new_message' to match frontend listener
+      this.server.to(roomName).emit('message:new', message);
 
       // Confirmă sender-ului
-      client.emit('message_sent', {
+      client.emit('message:sent', {
         localId: payload.localId, // pentru matching pe client
         message,
       });
@@ -289,7 +291,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * Typing start - Notifică că utilizatorul scrie
    */
-  @SubscribeMessage('typing_start')
+  @SubscribeMessage('typing:start')
   async handleTypingStart(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: TypingPayload,
@@ -302,7 +304,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
     const roomName = `conversation:${payload.conversationId}`;
-    client.to(roomName).emit('user_typing', {
+    client.to(roomName).emit('user:typing', {
       conversationId: payload.conversationId,
       userId,
       userName: user?.firstName || 'User',
@@ -313,7 +315,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * Typing stop - Notifică că utilizatorul a terminat de scris
    */
-  @SubscribeMessage('typing_stop')
+  @SubscribeMessage('typing:stop')
   async handleTypingStop(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: TypingPayload,
@@ -322,7 +324,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!userId) return;
 
     const roomName = `conversation:${payload.conversationId}`;
-    client.to(roomName).emit('user_stopped_typing', {
+    client.to(roomName).emit('user:stopped:typing', {
       conversationId: payload.conversationId,
       userId,
     });
@@ -331,7 +333,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   /**
    * Mark read - Marchează mesajele ca citite
    */
-  @SubscribeMessage('mark_read')
+  @SubscribeMessage('message:read')
   async handleMarkRead(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: MarkReadPayload,
@@ -346,7 +348,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Notifică ceilalți din conversație
       const roomName = `conversation:${payload.conversationId}`;
-      client.to(roomName).emit('messages_read', {
+      client.to(roomName).emit('message:read_receipt', {
         conversationId: payload.conversationId,
         readBy: userId,
         readAt: new Date().toISOString(),

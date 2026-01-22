@@ -172,6 +172,7 @@ export class PushNotificationService {
     return this.sendToUser({
       userId: recipientId,
       type: NotificationTypes.NEW_MESSAGE,
+      saveToDatabase: true, // Persist in database so it shows in Notification Center history
       notification: {
         title: `Mesaj de la ${senderName}`,
         body: messagePreview.length > 100 ? messagePreview.substring(0, 97) + '...' : messagePreview,

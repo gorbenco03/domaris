@@ -42,6 +42,7 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import { useUserProfile } from '@/features/profile/hooks/useUser';
+import { useUnreadCount } from '@/features/messaging/hooks/useMessaging';
 import {
   Avatar,
   ProfileMenuItem,
@@ -63,22 +64,23 @@ const ProfileScreen: React.FC = () => {
 
   /* API Hooks */
   const { data: apiUser, isLoading } = useUserProfile();
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.count || 0;
 
   // Merge store user (auth context) with full profile details from API
   const user = {
     ...storeUser,
     ...apiUser,
-    // Fallbacks/Resets if fields depend on API specific structure not in auth token
-    location: {
-      city: (apiUser as any)?.city || 'București',
-      county: (apiUser as any)?.county || 'Sector 1',
-    },
-    // Stats (these might come from a separate dashboard endpoint or be part of user profile)
-    activeListings: (apiUser as any)?.metrics?.activeListings || 0,
-    monthlyViews: (apiUser as any)?.metrics?.monthlyViews || 0,
-    monthlyContacts: (apiUser as any)?.metrics?.monthlyContacts || 0,
-    reviewCount: (apiUser as any)?.metrics?.reviewCount || 0,
-    rating: (apiUser as any)?.metrics?.rating || 5.0,
+    // Fallbacks for optional fields
+    location: apiUser?.location || 'București, România',
+    bio: apiUser?.bio || '',
+    phone: apiUser?.phone || '',
+    // Stats (these come from the API user profile)
+    activeListings: apiUser?.activeListingsCount || 0,
+    monthlyViews: 0, // TODO: Get from analytics endpoint
+    monthlyContacts: 0, // TODO: Get from analytics endpoint
+    reviewCount: apiUser?.reviewsCount || 0,
+    rating: apiUser?.rating || 5.0,
     memberSince: apiUser?.createdAt ? new Date(apiUser.createdAt).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' }) : 'Recent',
   };
 
@@ -139,7 +141,29 @@ const ProfileScreen: React.FC = () => {
               },
             ]}
           >
-            <Bell size={22} color={theme.colors.textSecondary} />
+            <View>
+              <Bell size={22} color={theme.colors.textSecondary} />
+              {unreadCount > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    minWidth: 16,
+                    height: 16,
+                    backgroundColor: theme.colors.primary.main,
+                    borderRadius: 8,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 1.5,
+                    borderColor: theme.colors.surface,
+                  }}
+                >
+                   {/* Optional: <Text style={{ fontSize: 8, color: 'white', fontWeight: 'bold' }}>{unreadCount}</Text> */} 
+                   {/* Just a dot for bell, or number if space permits. The user asked for "apara in clopotel", implying an indicator. */}
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('Settings')}
@@ -198,7 +222,7 @@ const ProfileScreen: React.FC = () => {
 
             <View style={styles.profileInfo}>
               <Text style={styles.userName}>
-                {user.firstName} {user.lastName}
+                {user.firstName} {user.lastName || ''}
               </Text>
 
               {verificationBadge && (
@@ -223,7 +247,7 @@ const ProfileScreen: React.FC = () => {
               <View style={styles.locationRow}>
                 <MapPin size={14} color="rgba(255, 255, 255, 0.7)" />
                 <Text style={styles.locationText}>
-                  {user.location.city}, {user.location.county}
+                  {user.location}
                 </Text>
               </View>
 

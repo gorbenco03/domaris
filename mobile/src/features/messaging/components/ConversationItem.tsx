@@ -37,7 +37,8 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
   const hasUnread = conversation.unreadCount > 0;
   const avatarUrl = conversation.otherParticipant?.avatar;
-  const participantName = conversation.otherParticipant?.name || 'Utilizator';
+  const p = conversation.otherParticipant;
+  const participantName = p?.name || (p?.firstName ? `${p.firstName} ${p.lastName}` : 'Utilizator');
   const propertyTitle = conversation.property?.title || 'Proprietate';
   const lastMessageText = conversation.lastMessage?.content || '';
   const lastMessageTime = conversation.lastMessage?.createdAt 

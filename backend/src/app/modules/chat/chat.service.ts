@@ -11,6 +11,7 @@ import {
 import { Conversation } from '../../db/entities/conversation.entity';
 import { Message } from '../../db/entities/message.entity';
 import { Listing } from '../../db/entities/listing.entity';
+import { ListingImage } from '../../db/entities/listingImage.entity';
 import { User } from '../../db/entities/user.entity';
 import { Op } from 'sequelize';
 
@@ -32,7 +33,7 @@ export class ChatService {
   // ============================================================================
 
   async getUserConversations(userId: number, params: GetConversationsParams = {}) {
-    const { type = 'all', page = 1, limit = 20 } = params;
+    const { page = 1, limit = 20 } = params;
     const offset = (page - 1) * limit;
 
     const where: any = {
@@ -45,7 +46,11 @@ export class ChatService {
     const { rows, count } = await Conversation.findAndCountAll({
       where,
       include: [
-        { model: Listing, attributes: ['id', 'title', 'priceEur', 'images'] },
+        { 
+          model: Listing, 
+          attributes: ['id', 'title', 'priceEur'],
+          include: [{ model: ListingImage, as: 'images', attributes: ['url'], limit: 1 }]
+        },
         { model: User, as: 'participant1', attributes: ['id', 'firstName', 'lastName', 'avatar'] },
         { model: User, as: 'participant2', attributes: ['id', 'firstName', 'lastName', 'avatar'] },
         { model: Message, limit: 1, order: [['createdAt', 'DESC']] },
@@ -67,15 +72,42 @@ export class ChatService {
   }
 
   async getUnreadCount(userId: number) {
-    // TODO: Implement unread count with proper unread tracking
-    // For now, return mock
-    return { count: 0 };
+    // Determine all conversations user is part of
+    const conversations = await Conversation.findAll({
+      attributes: ['id'],
+      where: {
+        [Op.or]: [{ participant1Id: userId }, { participant2Id: userId }],
+      },
+    });
+
+    const conversationIds = conversations.map(c => c.id);
+
+    if (conversationIds.length === 0) {
+      return { count: 0 };
+    }
+
+    // Count messages in these conversations:
+    // - where sender is NOT the current user
+    // - readAt is null
+    const count = await Message.count({
+      where: {
+        conversationId: { [Op.in]: conversationIds },
+        senderId: { [Op.ne]: userId },
+        readAt: null,
+      },
+    });
+
+    return { count };
   }
 
   async getConversation(userId: number, conversationId: number) {
     const conversation = await Conversation.findByPk(conversationId, {
       include: [
-        { model: Listing, attributes: ['id', 'title', 'priceEur', 'images', 'ownerId'] },
+        { 
+          model: Listing, 
+          attributes: ['id', 'title', 'priceEur', 'ownerId'],
+          include: [{ model: ListingImage, as: 'images', attributes: ['url'], limit: 1 }]
+        },
         { model: User, as: 'participant1', attributes: ['id', 'firstName', 'lastName', 'avatar', 'verificationLevel'] },
         { model: User, as: 'participant2', attributes: ['id', 'firstName', 'lastName', 'avatar', 'verificationLevel'] },
       ],
@@ -214,8 +246,20 @@ export class ChatService {
       throw new ForbiddenException('Acces interzis');
     }
 
-    // TODO: Implement proper read tracking
-    // For now, just return success
+    // Update all messages in this conversation where:
+    // - sender is NOT current user
+    // - readAt is null
+    await Message.update(
+      { readAt: new Date() },
+      {
+        where: {
+          conversationId,
+          senderId: { [Op.ne]: userId },
+          readAt: null,
+        },
+      },
+    );
+
     return { success: true };
   }
 
@@ -253,8 +297,9 @@ export class ChatService {
 
   private formatConversation(conversation: any, userId: number) {
     // Determină celălalt participant (nu userId)
+    // Use loose comparison or strict with Number() casting to be safe
     const otherParticipant =
-      conversation.participant1Id === userId 
+      Number(conversation.participant1Id) === Number(userId)
         ? conversation.participant2 
         : conversation.participant1;
 
@@ -265,7 +310,8 @@ export class ChatService {
             id: conversation.listing.id,
             title: conversation.listing.title,
             price: conversation.listing.priceEur,
-            image: conversation.listing.images?.[0],
+            // Safe access to nested images array
+            image: conversation.listing.images?.[0]?.url,
           }
         : null,
       otherParticipant: otherParticipant

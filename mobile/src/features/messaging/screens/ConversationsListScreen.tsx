@@ -3,7 +3,7 @@
  * Main messaging screen showing all conversations
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,86 +21,14 @@ import { Search, X } from 'lucide-react-native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { MessagesStackParamList } from '@/app/navigation/types';
-import { Conversation, ConversationFilter } from '../types';
+import { ConversationFilter } from '../types';
 import {
   ConversationItem,
   FilterTabs,
   EmptyConversations,
 } from '../components';
-
-// ============================================
-// MOCK DATA
-// ============================================
-
-const MOCK_CONVERSATIONS: Conversation[] = [
-  {
-    id: '1',
-    propertyId: 'prop-1',
-    participants: [
-      { userId: 'u1', role: 'OWNER' },
-      { userId: 'u2', role: 'INQUIRER' }
-    ],
-    lastMessage: {
-      id: 'msg-1',
-      conversationId: '1',
-      senderId: 'u1',
-      type: 'text',
-      content: 'Când putem programa o vizionare pentru apartament?',
-      status: 'delivered',
-      createdAt: new Date(Date.now() - 15 * 60 * 1000),
-    },
-    unreadCount: 2,
-    status: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    property: {
-      id: 'prop-1',
-      title: 'Apartament 3 camere Drumul Taberei',
-      price: 95000,
-      currency: 'EUR',
-      type: 'sale',
-    },
-    otherParticipant: {
-      id: 'u1',
-      name: 'Ion Popescu',
-      isOnline: true,
-    },
-  },
-  {
-    id: '2',
-    propertyId: 'prop-2',
-    participants: [
-      { userId: 'u3', role: 'OWNER' },
-      { userId: 'u2', role: 'INQUIRER' }
-    ],
-    lastMessage: {
-      id: 'msg-2',
-      conversationId: '2',
-      senderId: 'u2',
-      type: 'text',
-      content: 'Da, prețul e negociabil. Putem discuta.',
-      status: 'read',
-      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    },
-    unreadCount: 0,
-    status: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    property: {
-      id: 'prop-2',
-      title: 'Casă cu 4 camere în Pipera',
-      price: 285000,
-      currency: 'EUR',
-      type: 'sale',
-    },
-    otherParticipant: {
-      id: 'u3',
-      name: 'Maria Ionescu',
-      isOnline: false,
-    },
-  },
-];
-
+import { useConversations } from '../hooks/useMessaging';
+import type { IConversationListItem } from '@domaris/types';
 
 // ============================================
 // COMPONENT
@@ -114,52 +43,59 @@ const ConversationsListScreen: React.FC = () => {
   const [filter, setFilter] = useState<ConversationFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
-  // Filter conversations
-  const filteredConversations = MOCK_CONVERSATIONS.filter((conv) => {
-    // Apply filter
-    if (filter === 'unread' && conv.unreadCount === 0) return false;
-    if (filter === 'archived' && conv.status !== 'archived') return false;
-    if (filter === 'all' && conv.status === 'archived') return false;
-
-    // Apply search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchName = conv.otherParticipant?.name.toLowerCase().includes(query);
-      const matchProperty = conv.property?.title.toLowerCase().includes(query);
-      if (!matchName && !matchProperty) return false;
-    }
-
-    return true;
+  // Fetch conversations based on filter
+  const {
+    data: conversations = [],
+    isLoading,
+    refetch,
+    isFetching,
+  } = useConversations({
+    type: filter,
   });
 
-  const unreadCount = MOCK_CONVERSATIONS.reduce(
-    (acc, conv) => acc + conv.unreadCount,
-    0
-  );
+  // Filter by search query locally
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery) return conversations;
+
+    const query = searchQuery.toLowerCase();
+    return conversations.filter((conv) => {
+      const matchName = `${conv.otherParticipant.firstName} ${conv.otherParticipant.lastName}`
+        .toLowerCase()
+        .includes(query);
+      const matchProperty = conv.property.title.toLowerCase().includes(query);
+      return matchName || matchProperty;
+    });
+  }, [conversations, searchQuery]);
+
+  // Calculate unread count
+  const unreadCount = useMemo(() => {
+    return conversations.reduce((acc, conv) => acc + conv.unreadCount, 0);
+  }, [conversations]);
 
   const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    refetch();
+  }, [refetch]);
 
   const handleConversationPress = (conversationId: string) => {
-    const conversation = MOCK_CONVERSATIONS.find((c) => c.id === conversationId);
+    const conversation = conversations.find((c) => c.id === conversationId);
     navigation.navigate('Chat', {
       conversationId,
-      propertyId: conversation?.propertyId,
-      recipientName: conversation?.otherParticipant?.name,
+      propertyId: conversation?.property?.id,
+      recipientName: conversation?.otherParticipant
+        ? `${conversation.otherParticipant.firstName} ${conversation.otherParticipant.lastName}`
+        : 'Utilizator',
     });
   };
 
   const handleSearchProperties = () => {
     // Navigate to search
+    // navigation.navigate('Search');
   };
 
-  const renderItem = ({ item }: { item: Conversation }) => (
+  const renderItem = ({ item }: { item: IConversationListItem }) => (
     <ConversationItem
-      conversation={item}
+      conversation={item as any}
       onPress={handleConversationPress}
     />
   );
@@ -228,29 +164,41 @@ const ConversationsListScreen: React.FC = () => {
         unreadCount={unreadCount}
       />
 
+      {/* Loading State */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+            Se încarcă conversațiile...
+          </Text>
+        </View>
+      )}
+
       {/* Conversations List */}
-      <FlatList
-        data={filteredConversations}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={
-          filteredConversations.length === 0 ? styles.emptyContent : undefined
-        }
-        ListEmptyComponent={
-          <EmptyConversations
-            filter={filter}
-            onSearchProperties={handleSearchProperties}
-          />
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.colors.primary.main}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      {!isLoading && (
+        <FlatList
+          data={filteredConversations}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={
+            filteredConversations.length === 0 ? styles.emptyContent : undefined
+          }
+          ListEmptyComponent={
+            <EmptyConversations
+              filter={filter}
+              onSearchProperties={handleSearchProperties}
+            />
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary.main}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -310,6 +258,15 @@ const styles = StyleSheet.create({
   },
   emptyContent: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
   },
 });
 

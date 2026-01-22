@@ -173,7 +173,7 @@ export class EmailService {
 
     await sgMail.default.send({
       to: options.to,
-      from: options.from || this.fromEmail,
+      from: options.from || this.fromEmail || '',
       subject: options.subject,
       text: options.text,
       html: options.html,

@@ -10,6 +10,8 @@
 export interface Participant {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   avatar?: string;
   isOnline?: boolean;
   lastSeen?: Date;
