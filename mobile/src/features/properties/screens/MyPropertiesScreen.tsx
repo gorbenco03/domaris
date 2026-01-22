@@ -13,6 +13,7 @@ import {
   RefreshControl,
   Dimensions,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -39,6 +40,13 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import Button from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { 
+  useMyProperties, 
+  useDeleteProperty, 
+  useUpdatePropertyStatus 
+} from '@/features/properties/hooks/useProperties';
+import { ActivityIndicator } from 'react-native';
+import { IPropertyListing } from '@/core/api/types';
 
 // ============================================
 // TYPES
@@ -46,102 +54,7 @@ import { EmptyState } from '@/shared/components/EmptyState';
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
 
-type PropertyStatus = 'active' | 'draft' | 'pending' | 'expired' | 'rejected';
-
-interface MyProperty {
-  id: string;
-  title: string;
-  transactionType: 'SALE' | 'RENT';
-  price: number;
-  currency: 'EUR' | 'RON';
-  location: {
-    city: string;
-    neighborhood?: string;
-  };
-  image: string;
-  status: PropertyStatus;
-  createdAt: string;
-  expiresAt?: string;
-  stats: {
-    views: number;
-    contacts: number;
-    favorites: number;
-  };
-  isBoosted?: boolean;
-}
-
 type FilterTab = 'all' | 'active' | 'draft' | 'expired';
-
-// ============================================
-// MOCK DATA
-// ============================================
-
-const MOCK_PROPERTIES: MyProperty[] = [
-  {
-    id: 'prop-1',
-    title: 'Apartament 3 camere, Drumul Taberei',
-    transactionType: 'SALE',
-    price: 120000,
-    currency: 'EUR',
-    location: { city: 'București', neighborhood: 'Drumul Taberei' },
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400',
-    status: 'active',
-    createdAt: '2026-01-10',
-    expiresAt: '2026-02-10',
-    stats: { views: 234, contacts: 12, favorites: 45 },
-    isBoosted: true,
-  },
-  {
-    id: 'prop-2',
-    title: 'Casă 4 camere cu grădină',
-    transactionType: 'SALE',
-    price: 250000,
-    currency: 'EUR',
-    location: { city: 'București', neighborhood: 'Pipera' },
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400',
-    status: 'active',
-    createdAt: '2026-01-05',
-    expiresAt: '2026-02-05',
-    stats: { views: 156, contacts: 8, favorites: 23 },
-  },
-  {
-    id: 'prop-3',
-    title: 'Garsonieră modernă, zona centrală',
-    transactionType: 'RENT',
-    price: 450,
-    currency: 'EUR',
-    location: { city: 'București', neighborhood: 'Universitate' },
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400',
-    status: 'draft',
-    createdAt: '2026-01-15',
-    stats: { views: 0, contacts: 0, favorites: 0 },
-  },
-  {
-    id: 'prop-4',
-    title: 'Apartament 2 camere, Militari',
-    transactionType: 'RENT',
-    price: 350,
-    currency: 'EUR',
-    location: { city: 'București', neighborhood: 'Militari' },
-    image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400',
-    status: 'expired',
-    createdAt: '2025-12-01',
-    expiresAt: '2026-01-01',
-    stats: { views: 89, contacts: 3, favorites: 11 },
-  },
-  {
-    id: 'prop-5',
-    title: 'Spațiu comercial, Piața Victoriei',
-    transactionType: 'RENT',
-    price: 1200,
-    currency: 'EUR',
-    location: { city: 'București', neighborhood: 'Piața Victoriei' },
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400',
-    status: 'pending',
-    createdAt: '2026-01-18',
-    stats: { views: 0, contacts: 0, favorites: 0 },
-  },
-];
 
 const FILTER_TABS: { id: FilterTab; label: string }[] = [
   { id: 'all', label: 'Toate' },
@@ -155,7 +68,7 @@ const FILTER_TABS: { id: FilterTab; label: string }[] = [
 // ============================================
 
 interface PropertyListItemProps {
-  property: MyProperty;
+  property: IPropertyListing;
   onPress: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -174,18 +87,21 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
   const { theme } = useTheme();
   const [showActions, setShowActions] = useState(false);
 
-  const getStatusConfig = (status: PropertyStatus) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'active':
+      case 'ACTIVE':
         return { label: 'Activ', color: theme.colors.accent.main, icon: CheckCircle };
-      case 'draft':
+      case 'DRAFT':
         return { label: 'Ciornă', color: theme.colors.textTertiary, icon: FileText };
-      case 'pending':
+      case 'PENDING':
         return { label: 'În verificare', color: theme.colors.secondary.warning, icon: Clock };
-      case 'expired':
+      case 'EXPIRED':
         return { label: 'Expirat', color: theme.colors.secondary.error, icon: AlertCircle };
-      case 'rejected':
+      case 'REJECTED':
         return { label: 'Respins', color: theme.colors.secondary.error, icon: AlertCircle };
+      case 'SOLD':
+      case 'RENTED':
+        return { label: status === 'SOLD' ? 'Vândut' : 'Închiriat', color: theme.colors.primary.main, icon: CheckCircle };
       default:
         return { label: 'Necunoscut', color: theme.colors.textTertiary, icon: FileText };
     }
@@ -219,10 +135,8 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
           colors={['transparent', 'rgba(0,0,0,0.6)']}
           style={styles.cardImageOverlay}
         />
-        {property.image ? (
-          <View style={[styles.cardImage, { backgroundColor: theme.colors.border }]}>
-            <Home size={40} color={theme.colors.textTertiary} />
-          </View>
+        {property.photos && property.photos.length > 0 ? (
+          <Image source={{ uri: property.photos[0].url }} style={styles.cardImage} />
         ) : (
           <View style={[styles.cardImage, { backgroundColor: theme.colors.border }]}>
             <Home size={40} color={theme.colors.textTertiary} />
@@ -265,9 +179,7 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
         </Text>
 
         <Text style={[styles.cardLocation, { color: theme.colors.textSecondary }]}>
-          {property.location.neighborhood
-            ? `${property.location.neighborhood}, ${property.location.city}`
-            : property.location.city}
+          {property.neighborhood ? `${property.neighborhood}, ${property.city}` : property.city}
         </Text>
 
         {/* Stats Row */}
@@ -275,7 +187,7 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
           <View style={styles.statItem}>
             <Eye size={14} color={theme.colors.textTertiary} />
             <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
-              {property.stats.views}
+              {property.viewsCount || 0}
             </Text>
           </View>
           <View style={styles.statItem}>
@@ -283,7 +195,7 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
           </View>
           <View style={styles.statItem}>
             <Text style={[styles.statText, { color: theme.colors.textSecondary }]}>
-              {property.stats.contacts} contacte
+              {property.leadsCount || 0} contacte
             </Text>
           </View>
         </View>
@@ -304,7 +216,7 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
             <BarChart2 size={16} color={theme.colors.secondary.info} />
           </TouchableOpacity>
 
-          {property.status === 'active' && !property.isBoosted && (
+          {property.status === 'ACTIVE' && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: theme.colors.secondary.warning + '15' }]}
               onPress={onBoost}
@@ -335,26 +247,29 @@ const MyPropertiesScreen: React.FC = () => {
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [refreshing, setRefreshing] = useState(false);
-  const [properties, setProperties] = useState<MyProperty[]>(MOCK_PROPERTIES);
+
+  // Real data fetching
+  const { data: properties = [], isLoading, refetch } = useMyProperties();
+  const deleteMutation = useDeleteProperty();
 
   const filteredProperties = properties.filter((p) => {
+    const status = p.status.toUpperCase();
     if (activeFilter === 'all') return true;
-    if (activeFilter === 'active') return p.status === 'active' || p.status === 'pending';
-    if (activeFilter === 'draft') return p.status === 'draft';
-    if (activeFilter === 'expired') return p.status === 'expired' || p.status === 'rejected';
+    if (activeFilter === 'active') return status === 'ACTIVE' || status === 'PENDING';
+    if (activeFilter === 'draft') return status === 'DRAFT';
+    if (activeFilter === 'expired') return status === 'EXPIRED' || status === 'REJECTED';
     return true;
   });
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
-  }, []);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+
+
 
   const handlePropertyPress = (propertyId: string) => {
-    // Navigate to property detail or edit
     navigation.navigate('EditProperty', { propertyId });
   };
 
@@ -371,8 +286,12 @@ const MyPropertiesScreen: React.FC = () => {
         {
           text: 'Șterge',
           style: 'destructive',
-          onPress: () => {
-            setProperties((prev) => prev.filter((p) => p.id !== propertyId));
+          onPress: async () => {
+            try {
+              await deleteMutation.mutateAsync(propertyId);
+            } catch (error) {
+              Alert.alert('Eroare', 'Nu s-a putut șterge anunțul.');
+            }
           },
         },
       ]
@@ -393,9 +312,9 @@ const MyPropertiesScreen: React.FC = () => {
 
   const stats = {
     total: properties.length,
-    active: properties.filter((p) => p.status === 'active').length,
-    drafts: properties.filter((p) => p.status === 'draft').length,
-    expired: properties.filter((p) => p.status === 'expired').length,
+    active: properties.filter((p) => p.status === 'ACTIVE').length,
+    drafts: properties.filter((p) => p.status === 'DRAFT').length,
+    expired: properties.filter((p) => p.status === 'EXPIRED').length,
   };
 
   return (
@@ -498,17 +417,21 @@ const MyPropertiesScreen: React.FC = () => {
         </View>
 
         {/* Properties List */}
-        {filteredProperties.length > 0 ? (
+        {isLoading ? (
+          <View style={{ paddingVertical: 40 }}>
+            <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          </View>
+        ) : filteredProperties.length > 0 ? (
           <View style={styles.propertiesList}>
             {filteredProperties.map((property) => (
               <PropertyListItem
                 key={property.id}
                 property={property}
-                onPress={() => handlePropertyPress(property.id)}
-                onEdit={() => handleEdit(property.id)}
-                onDelete={() => handleDelete(property.id)}
-                onStats={() => handleStats(property.id)}
-                onBoost={() => handleBoost(property.id)}
+                onPress={() => handlePropertyPress(String(property.id))}
+                onEdit={() => handleEdit(String(property.id))}
+                onDelete={() => handleDelete(String(property.id))}
+                onStats={() => handleStats(String(property.id))}
+                onBoost={() => handleBoost(String(property.id))}
               />
             ))}
           </View>

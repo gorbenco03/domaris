@@ -28,6 +28,12 @@ import { SearchBar } from '@/features/search/components/SearchBar';
 import { FilterChips } from '@/features/search/components/FilterChips';
 import { PropertyCard } from '@/features/properties/components/PropertyCard';
 import { IconButton } from '@/shared/components/IconButton';
+import { useSearch } from '@/features/search/hooks/useSearch';
+import { SearchStackParamList } from '@/app/navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { IPropertyListing } from '@/core/api/types';
+
+type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
 // ============================================
 // MOCK DATA
@@ -135,32 +141,43 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 const SearchResultsScreen: React.FC = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation();
-  const route = useRoute();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<any>();
 
-  const [searchText, setSearchText] = useState('București');
+  // Extract initial filters from route params
+  const initialFilters = route.params?.filters || {};
+  const [searchText, setSearchText] = useState(initialFilters.query || initialFilters.city || '');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   const [showSortModal, setShowSortModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({
-    transactionType: 'SALE' as 'SALE' | 'RENT' | null,
-    propertyType: null,
-    priceRange: null,
-    rooms: null,
-    area: null,
+  const [filters, setFilters] = useState<any>({
+    ...initialFilters,
+    transactionType: initialFilters.transactionType || 'SALE',
   });
 
-  const onRefresh = useCallback(() => {
+  // Real data fetching
+  const { 
+    data: searchResponse, 
+    isLoading, 
+    refetch,
+  } = useSearch({
+    ...filters,
+    query: searchText,
+    sortBy: sortBy === 'date_newest' ? 'date_desc' : sortBy as any,
+  });
+
+  const results = searchResponse?.data || [];
+  const totalCount = searchResponse?.total || 0;
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
-  }, []);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const handlePropertyPress = (propertyId: string) => {
-    navigation.navigate('PropertyDetail', { propertyId } as never);
+    navigation.navigate('PropertyDetail', { propertyId });
   };
 
   const handleFilterPress = (filterType: string) => {
@@ -212,7 +229,7 @@ const SearchResultsScreen: React.FC = () => {
       {/* Results Header */}
       <View style={styles.resultsHeader}>
         <Text style={[styles.resultsCount, { color: theme.colors.textSecondary }]}>
-          {MOCK_RESULTS.length} rezultate
+          {totalCount} rezultate
         </Text>
         <View style={styles.resultsActions}>
           {/* Sort Button */}
@@ -300,11 +317,11 @@ const SearchResultsScreen: React.FC = () => {
     </View>
   );
 
-  const renderProperty = ({ item }: { item: typeof MOCK_RESULTS[0] }) => (
+  const renderProperty = ({ item }: { item: IPropertyListing }) => (
     <View style={styles.propertyCard}>
       <PropertyCard
         {...item}
-        onPress={() => handlePropertyPress(item.id)}
+        onPress={() => handlePropertyPress(String(item.id))}
         onFavoritePress={() => {}}
       />
     </View>
@@ -340,13 +357,7 @@ const SearchResultsScreen: React.FC = () => {
   );
 
   const renderFooter = () => {
-    if (!loading) return null;
-    
-    return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator color={theme.colors.primary.main} />
-      </View>
-    );
+    return null;
   };
 
   return (
@@ -355,9 +366,9 @@ const SearchResultsScreen: React.FC = () => {
       edges={['top']}
     >
       <FlatList
-        data={MOCK_RESULTS}
+        data={results}
         renderItem={renderProperty}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
@@ -371,10 +382,15 @@ const SearchResultsScreen: React.FC = () => {
           />
         }
         onEndReached={() => {
-          // Load more
+          // Load more (to be implemented with infinite query)
         }}
         onEndReachedThreshold={0.5}
       />
+      {isLoading && results.length === 0 && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -503,6 +519,12 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: 20,
     alignItems: 'center',
+  },
+  loadingContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
 });
 

@@ -10,6 +10,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { authApi } from '@/features/auth/api';
 import { Button, Input, PasswordStrength } from '@/shared/components';
 import { ArrowLeft, Lock, Shield, Check } from 'lucide-react-native';
 
@@ -21,7 +22,7 @@ const ResetPasswordScreen: React.FC = () => {
   const route = useRoute<RoutePropType>();
   const { theme } = useTheme();
 
-  const { token } = route.params;
+  const { email, code } = route.params;
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -52,16 +53,29 @@ const ResetPasswordScreen: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    // TODO: Implement actual password reset
-    console.log('Reset password with token:', token);
-    setTimeout(() => {
-      setIsLoading(false);
+    setErrors({});
+
+    try {
+      await authApi.resetPassword({
+        email,
+        code,
+        newPassword: password,
+      });
+      console.log('Password reset successful for:', email);
       setIsSuccess(true);
-    }, 1500);
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      const apiError = error?.response?.data;
+      setErrors({ 
+        password: apiError?.message || 'A apărut o eroare. Codul poate fi expirat.' 
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoToLogin = () => {

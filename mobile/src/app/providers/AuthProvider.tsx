@@ -20,6 +20,7 @@ interface AuthContextValue {
   isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  verifyPhoneOtp: (phone: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -113,6 +114,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
+   * Verify phone OTP (real backend call)
+   */
+  const verifyPhoneOtp = async (phone: string, code: string): Promise<void> => {
+    store.setLoading(true);
+
+    try {
+      const response = await authApi.verifyPhoneOtp({ phone, code });
+
+      await store.login(
+        response.user,
+        response.accessToken,
+        response.refreshToken
+      );
+    } catch (error) {
+      store.setLoading(false);
+      throw error;
+    }
+  };
+
+  /**
    * Logout (real backend call)
    */
   const logout = async (): Promise<void> => {
@@ -150,6 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isInitialized: store.isInitialized,
     login,
     register,
+    verifyPhoneOtp,
     logout,
     refreshUser,
   };

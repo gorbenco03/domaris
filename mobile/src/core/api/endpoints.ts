@@ -12,7 +12,7 @@ export const API_ENDPOINTS = {
     REFRESH: '/auth/refresh',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
-    VERIFY_OTP: '/auth/verify-otp',
+    VERIFY_OTP: '/auth/verify-phone-otp',
     RESEND_OTP: '/auth/resend-otp',
     ME: '/auth/me',
   },

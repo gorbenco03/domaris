@@ -17,6 +17,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
+import { authApi } from '@/features/auth/api';
 import { Button, OTPInput } from '@/shared/components';
 import { ArrowLeft, Mail, Phone, RefreshCw, Check } from 'lucide-react-native';
 
@@ -29,8 +31,9 @@ const OTPVerificationScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RoutePropType>();
   const { theme } = useTheme();
+  const { verifyPhoneOtp } = useAuth();
 
-  const { email, phone, type } = route.params;
+  const { email = '', phone = '', type, purpose } = route.params;
   const destination = type === 'email' ? email : phone;
 
   const [otp, setOtp] = useState('');
@@ -58,25 +61,63 @@ const OTPVerificationScreen: React.FC = () => {
     setIsVerifying(true);
     setError('');
 
-    setTimeout(() => {
-      if (code === '123456') {
-        setVerified(true);
-        setTimeout(() => navigation.navigate('UserTypeSelection'), 1500);
-      } else {
-        setAttempts((prev) => prev - 1);
-        setError(attempts <= 1 
-          ? 'Prea multe încercări. Te rugăm să soliciți un cod nou.'
-          : `Cod incorect. Mai ai ${attempts - 1} încercări.`);
+    try {
+      if (purpose === 'reset-password') {
+        navigation.navigate('ResetPassword', { email: destination, code });
+        return;
       }
-      setIsVerifying(false);
-    }, 1500);
-  }, [navigation, attempts]);
 
-  const handleResend = () => {
+      await verifyPhoneOtp(destination, code);
+      setVerified(true);
+      console.log('OTP verified successfully');
+      // No need to navigate manually, RootNavigator will switch to MainNavigator
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      const apiError = error?.response?.data;
+      
+      setAttempts((prev) => prev - 1);
+      if (apiError?.code === 'OTP_INVALID') {
+        setError(attempts <= 1 
+          ? 'Cod invalid. Te rugăm să soliciți un cod nou.'
+          : `Cod incorect. Mai ai ${attempts - 1} încercări.`);
+      } else if (apiError?.code === 'OTP_TOO_MANY_ATTEMPTS') {
+        setError('Prea multe încercări. Te rugăm să soliciți un cod nou.');
+      } else {
+        setError(apiError?.message || 'Eroare la verificare. Încearcă din nou.');
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [destination, verifyPhoneOtp, attempts]);
+
+  const handleResend = async () => {
     setError('');
-    setOtp('');
-    setAttempts(3);
-    setResendCooldown(RESEND_COOLDOWN);
+    setIsVerifying(true);
+
+    try {
+      if (type === 'phone') {
+        if (purpose === 'register') {
+          // Note: for resend during register, we lose firstName/lastName if we don't pass them back.
+          // But usually we don't need them for resending the OTP code itself if it's already in pending register.
+          await authApi.registerWithPhone({ phone: destination });
+        } else if (purpose === 'login') {
+          await authApi.loginWithPhone({ phone: destination });
+        }
+      } else {
+        // Handle email resend
+        await authApi.sendEmailVerification(destination);
+      }
+      
+      setOtp('');
+      setAttempts(3);
+      setResendCooldown(RESEND_COOLDOWN);
+      console.log('OTP resent successfully');
+    } catch (error: any) {
+      console.error('OTP resend error:', error);
+      setError('Eroare la retrimiterea codului. Încearcă din nou.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (

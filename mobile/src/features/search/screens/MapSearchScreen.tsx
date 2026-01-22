@@ -22,34 +22,15 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton } from '@/shared/components';
-import { PropertyCard } from '@/features/properties/components';
+import { PropertyCard } from '@/features/properties/components/PropertyCard';
 import { useNavigation } from '@react-navigation/native';
+import { useMapData, useSearch } from '@/features/search/hooks/useSearch';
+import { ActivityIndicator } from 'react-native';
+import type { IPropertyListing } from '@/core/api/types';
 
 const { width } = Dimensions.get('window');
 
-// ============================================
-// MOCK DATA
-// ============================================
 
-const MOCK_MARKERS = [
-  { id: '1', price: '95k', type: 'APARTMENT', latitude: 44.4268, longitude: 26.1025 },
-  { id: '2', price: '120k', type: 'HOUSE', latitude: 44.4350, longitude: 26.1150 },
-  { id: '3', price: '85k', type: 'STUDIO', latitude: 44.4420, longitude: 26.0950 },
-  { id: '4', price: '150k', type: 'APARTMENT', latitude: 44.4150, longitude: 26.0850 },
-];
-
-const MOCK_PROPERTIES = [
-  {
-    id: '1',
-    title: 'Apartament 3 camere, Metrou Dristor',
-    price: 95000,
-    currency: 'EUR' as const,
-    transactionType: 'SALE' as const,
-    location: { city: 'București', neighborhood: 'Dristor' },
-    characteristics: { rooms: 3, bedrooms: 2, totalArea: 75 },
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267',
-  }
-];
 
 // ============================================
 // COMPONENT
@@ -57,30 +38,51 @@ const MOCK_PROPERTIES = [
 
 const MapSearchScreen: React.FC = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation();
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const navigation = useNavigation<any>();
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+  const [filters, setFilters] = useState<any>({ city: 'București' });
 
-  const renderMarker = (marker: any) => {
-    const isSelected = selectedPropertyId === marker.id;
+  // Real data fetching
+  const { data: mapData, isLoading: mapLoading } = useMapData(filters);
+  const { data: propertyData } = useSearch({ 
+    ...filters, 
+    limit: 10 // For preview cards
+  });
+
+  const markers = mapData?.features || [];
+  const selectedProperty = propertyData?.data.find(p => p.id === selectedPropertyId);
+
+  const formatPriceShort = (price: number) => {
+    if (price >= 1000000) return `${(price / 1000000).toFixed(1)}M`;
+    if (price >= 1000) return `${(price / 1000).toFixed(0)}k`;
+    return `${price}`;
+  };
+
+  const renderMarker = (feature: any) => {
+    const { id, price } = feature.properties;
+    const [longitude, latitude] = feature.geometry.coordinates;
+    const isSelected = selectedPropertyId === id;
+    
     return (
       <TouchableOpacity
-        key={marker.id}
+        key={id}
         style={[
           styles.marker,
           { 
             backgroundColor: isSelected ? theme.colors.primary.main : theme.colors.surface,
             borderColor: isSelected ? '#ffffff' : theme.colors.primary.main,
-            top: 200 + (marker.latitude - 44.4) * 5000,
-            left: 100 + (marker.longitude - 26.0) * 2000,
+            // Mock transformation for visualization without real Google Maps
+            top: 400 + (latitude - 44.4) * 8000,
+            left: 200 + (longitude - 26.1) * 4000,
           }
         ]}
-        onPress={() => setSelectedPropertyId(marker.id)}
+        onPress={() => setSelectedPropertyId(id)}
       >
         <Text style={[
           styles.markerText, 
           { color: isSelected ? '#ffffff' : theme.colors.primary.main }
         ]}>
-          {marker.price}
+          {formatPriceShort(price)}
         </Text>
       </TouchableOpacity>
     );
@@ -120,7 +122,13 @@ const MapSearchScreen: React.FC = () => {
         <View style={styles.gridLineV} />
         
         {/* Markers */}
-        {MOCK_MARKERS.map(renderMarker)}
+        {mapLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          </View>
+        ) : (
+          markers.map(renderMarker)
+        )}
       </View>
 
       {/* Action Buttons */}
@@ -141,19 +149,11 @@ const MapSearchScreen: React.FC = () => {
       </View>
 
       {/* Property Preview Carousel */}
-      {selectedPropertyId && (
+      {selectedProperty && (
         <View style={styles.previewContainer}>
           <PropertyCard
-            id={MOCK_PROPERTIES[0].id}
-            title={MOCK_PROPERTIES[0].title}
-            transactionType={MOCK_PROPERTIES[0].transactionType}
-            price={MOCK_PROPERTIES[0].price}
-            currency={MOCK_PROPERTIES[0].currency}
-            location={MOCK_PROPERTIES[0].location}
-            characteristics={MOCK_PROPERTIES[0].characteristics}
-            image={MOCK_PROPERTIES[0].image}
-            onPress={() => {}}
-            variant="list"
+            {...selectedProperty}
+            onPress={() => navigation.navigate('PropertyDetail', { propertyId: String(selectedProperty.id) })}
           />
           <IconButton
             icon={<X size={20} color="#ffffff" />}
@@ -274,6 +274,11 @@ const styles = StyleSheet.create({
     top: -10,
     right: -10,
     zIndex: 30,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

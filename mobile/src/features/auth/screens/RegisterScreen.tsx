@@ -19,6 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
+import { authApi } from '@/features/auth/api';
 import {
   Button,
   Input,
@@ -36,6 +38,7 @@ type RegisterMethod = 'email' | 'phone';
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
+  const { register } = useAuth();
 
   // Auth method
   const [method, setMethod] = useState<RegisterMethod>('email');
@@ -117,18 +120,47 @@ const RegisterScreen: React.FC = () => {
     if (!isValid) return;
 
     setIsLoading(true);
+    setErrors({});
 
-    // TODO: Implement actual registration
-    setTimeout(() => {
-      setIsLoading(false);
-      if (method === 'phone') {
-        navigation.navigate('OTPVerification', { phone, type: 'phone' });
+    const nameParts = name.trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ');
+
+    try {
+      if (method === 'email') {
+        await register({
+          email,
+          password,
+          firstName,
+          lastName,
+        });
+        // Success - AuthProvider will handle navigation via state change
+        console.log('Registered successfully with email');
       } else {
-        // Based on Unified Account Model, we go directly to Home or OTP
-        // AuthProvider will update state and MainNavigator will show up
-        console.log('Registered successfully - Unified Account');
+        await authApi.registerWithPhone({
+          phone,
+          firstName,
+          lastName,
+        });
+        console.log('OTP sent for phone registration');
+        navigation.navigate('OTPVerification', { phone, type: 'phone', purpose: 'register' });
       }
-    }, 1500);
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      const apiError = error?.response?.data;
+      
+      if (apiError?.code === 'EMAIL_ALREADY_EXISTS') {
+        setErrors({ email: 'Acest email este deja utilizat' });
+      } else if (apiError?.code === 'PHONE_ALREADY_EXISTS') {
+        setErrors({ phone: 'Acest număr de telefon este deja utilizat' });
+      } else {
+        setErrors({ 
+          general: apiError?.message || 'A apărut o eroare la înregistrare. Încearcă din nou.' 
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {

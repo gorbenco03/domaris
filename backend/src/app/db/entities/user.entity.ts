@@ -27,9 +27,9 @@ export class User extends ExtModel {
   @Column({
     type: DataType.STRING,
     unique: true,
-    allowNull: false,
+    allowNull: true,
   })
-  email!: string;
+  email?: string | null;
 
   @Column({
     type: DataType.STRING,

@@ -17,11 +17,12 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
-  ResetPassword: { token: string };
+  ResetPassword: { email: string; code: string };
   OTPVerification: {
     email?: string;
     phone?: string;
     type: 'email' | 'phone';
+    purpose: 'register' | 'login' | 'reset-password' | 'verify';
   };
   UserTypeSelection: undefined;
 };

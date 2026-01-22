@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { authApi } from '@/features/auth/api';
 import { Button, Input } from '@/shared/components';
 import { ArrowLeft, Mail, Send, Check } from 'lucide-react-native';
 
@@ -36,16 +37,26 @@ const ForgotPasswordScreen: React.FC = () => {
     return true;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
     if (!validateEmail()) return;
 
     setIsLoading(true);
-    // TODO: Implement actual password reset request
-    setTimeout(() => {
+    try {
+      await authApi.forgotPassword({ email });
+      console.log('Password reset code sent to:', email);
+      navigation.navigate('OTPVerification', { 
+        email, 
+        type: 'email', 
+        purpose: 'reset-password' 
+      });
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      const apiError = error?.response?.data;
+      setError(apiError?.message || 'A apărut o eroare. Te rugăm să încerci din nou.');
+    } finally {
       setIsLoading(false);
-      setEmailSent(true);
-    }, 1500);
+    }
   };
 
   const handleBackToLogin = () => {

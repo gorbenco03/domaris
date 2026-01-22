@@ -39,6 +39,9 @@ import {
   Button, 
   Divider 
 } from '@/shared/components';
+import { usePropertyDetail } from '@/features/properties/hooks/useProperties';
+import { useAuth } from '@/app/providers/AuthProvider';
+import { ActivityIndicator, Linking } from 'react-native';
 import { useNavigation, useRoute, CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -61,48 +64,16 @@ const IMAGE_HEIGHT = 400;
 const PropertyDetailScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<PropertyDetailNavigationProp>();
-  const route = useRoute();
+  const route = useRoute<any>();
+  const { propertyId } = route.params;
+  const { user } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
 
-  // Mock property data
-  const property = {
-    title: 'Apartament 3 camere, Metrou Dristor, Renovat Premium',
-    price: 98500,
-    currency: 'EUR',
-    location: {
-      address: 'Strada Râmnicu Vâlcea, nr. 12',
-      city: 'București',
-      neighborhood: 'Dristor',
-    },
-    characteristics: {
-      rooms: 3,
-      bedrooms: 2,
-      bathrooms: 2,
-      totalArea: 78,
-      usableArea: 72,
-      floor: 4,
-      totalFloors: 10,
-      yearBuilt: 1982,
-      comfort: '1',
-    },
-    amenities: ['Centrală proprie', 'Aer condiționat', 'Mobilat', 'Utilat', 'Boxă', 'Balcon închis'],
-    description: 'Vă propunem spre vânzare un apartament cu 3 camere situat în zona Dristor, la doar 5 minute de gura de metrou. Apartamentul a fost renovat complet în 2023, fiind schimbate inclusiv instalațiile electrice și sanitare.\n\nFinisaje premium: gresie PORCELANOSA, parchet din lemn stratificat, baterii GROHE.',
-    ownerId: 'owner-123',
-    owner: {
-      id: 'owner-123',
-      name: 'Andrei Popescu',
-      isVerified: true,
-      memberSince: '2021',
-      photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688',
-      'https://images.unsplash.com/photo-1484154218962-a197022b5858',
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af',
-    ]
-  };
+  // Real data fetching
+  const { data: property, isLoading, error } = usePropertyDetail(propertyId);
 
   const handleShare = async () => {
+    if (!property) return;
     try {
       await Share.share({
         message: `Vezi acest apartament pe IMOBI: ${property.title} - ${property.price}€`,
@@ -111,6 +82,38 @@ const PropertyDetailScreen: React.FC = () => {
       console.log(error);
     }
   };
+
+  const handleCall = () => {
+    if (property?.user?.phone) {
+      Linking.openURL(`tel:${property.user.phone}`);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+      </View>
+    );
+  }
+
+  if (error || !property) {
+    return (
+      <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>
+          Proprietatea nu a putut fi găsită.
+        </Text>
+        <Button title="Înapoi" onPress={() => navigation.goBack()} />
+      </View>
+    );
+  }
+
+  // Map amenities (amenities usually come as a JSON or separate table, backend IPropertyListing might have them)
+  const amenities = property.amenities || [];
+  const images = property.photos && property.photos.length > 0 
+    ? property.photos.map((p: any) => p.url) 
+    : ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800']; // Default placeholder if no photos
+
 
   const InfoItem = ({ icon: Icon, value, label }: any) => (
     <View style={styles.infoItem}>
@@ -125,7 +128,7 @@ const PropertyDetailScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Photo Gallery Header */}
         <View style={styles.galleryContainer}>
-          <Image source={{ uri: property.images[0] }} style={styles.mainImage} />
+          <Image source={{ uri: images[0] }} style={styles.mainImage} />
           
           <LinearGradient
             colors={['rgba(0,0,0,0.5)', 'transparent']}
@@ -157,7 +160,7 @@ const PropertyDetailScreen: React.FC = () => {
           </SafeAreaView>
 
           <View style={styles.imageCountBadge}>
-            <Text style={styles.imageCountText}>1 / {property.images.length}</Text>
+            <Text style={styles.imageCountText}>1 / {images.length}</Text>
           </View>
         </View>
 
@@ -175,7 +178,7 @@ const PropertyDetailScreen: React.FC = () => {
           <View style={styles.locationRow}>
             <MapPin size={18} color={theme.colors.accent.main} />
             <Text style={[styles.locationText, { color: theme.colors.textSecondary }]}>
-              {property.location.neighborhood}, {property.location.city}
+              {property.neighborhood}, {property.city}
             </Text>
           </View>
 
@@ -187,10 +190,10 @@ const PropertyDetailScreen: React.FC = () => {
 
           {/* Key Characteristics */}
           <View style={[styles.characteristicsCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.divider }]}>
-             <InfoItem icon={Bed} value={property.characteristics.rooms} label="Camere" />
-             <InfoItem icon={Maximize2} value={`${property.characteristics.totalArea} m²`} label="Suprafață" />
-             <InfoItem icon={Layers} value={`${property.characteristics.floor}/${property.characteristics.totalFloors}`} label="Etaj" />
-             <InfoItem icon={Calendar} value={property.characteristics.yearBuilt} label="An constr." />
+             <InfoItem icon={Bed} value={property.rooms} label="Camere" />
+             <InfoItem icon={Maximize2} value={`${property.surface} m²`} label="Suprafață" />
+             <InfoItem icon={Layers} value={`${property.floor || '-'}/${property.totalFloors || '-'}`} label="Etaj" />
+             <InfoItem icon={Calendar} value={property.yearBuilt || '-'} label="An constr." />
           </View>
 
           {/* AI Assistant Banner */}
@@ -233,16 +236,18 @@ const PropertyDetailScreen: React.FC = () => {
                 // Navigate to public profile - cross-tab navigation
                 navigation.navigate('ProfileTab', {
                   screen: 'PublicProfile',
-                  params: { userId: property.ownerId }
+                  params: { userId: property.userId }
                 } as any);
               }}
             >
               <View style={styles.ownerInfo}>
-                <Image source={{ uri: property.owner.photo }} style={styles.ownerPhoto} />
+                <Image source={{ uri: property.user?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e' }} style={styles.ownerPhoto} />
                 <View>
                   <View style={styles.ownerNameRow}>
-                    <Text style={[styles.ownerName, { color: theme.colors.textPrimary }]}>{property.owner.name}</Text>
-                    {property.owner.isVerified && <ShieldCheck size={16} color={theme.colors.accent.main} />}
+                    <Text style={[styles.ownerName, { color: theme.colors.textPrimary }]}>
+                      {property.user?.firstName} {property.user?.lastName}
+                    </Text>
+                    {property.user?.verificationLevel >= 2 && <ShieldCheck size={16} color={theme.colors.accent.main} />}
                   </View>
                   <Text style={[styles.ownerMeta, { color: theme.colors.textTertiary }]}>Proprietar · Vezi profil</Text>
                 </View>
@@ -266,8 +271,8 @@ const PropertyDetailScreen: React.FC = () => {
                 screen: 'Chat',
                 params: { 
                   conversationId: 'new',
-                  propertyId: '1', // Mock ID
-                  recipientName: property.owner.name 
+                  propertyId: String(property.id),
+                  recipientName: `${property.user?.firstName} ${property.user?.lastName}`
                 }
               });
             }}
@@ -277,9 +282,10 @@ const PropertyDetailScreen: React.FC = () => {
           <Button
             title="Sunați"
             icon={<Phone size={20} color="#ffffff" />}
-            onPress={() => {}}
+            onPress={handleCall}
             variant="primary"
             style={{ flex: 1, height: 56, borderRadius: 16 }}
+            disabled={!property.user?.phone}
           />
         </View>
       </SafeAreaView>
@@ -481,6 +487,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     gap: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
 

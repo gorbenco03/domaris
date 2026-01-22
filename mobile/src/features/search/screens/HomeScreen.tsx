@@ -34,6 +34,13 @@ import { QuickFilters } from '@/features/search/components/QuickFilters';
 import { PropertyCard } from '@/features/properties/components/PropertyCard';
 import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
+import { useProperties } from '@/features/properties/hooks/useProperties';
+import { useSearchFacets, useSearch } from '@/features/search/hooks/useSearch';
+import { ActivityIndicator } from 'react-native';
+import { SearchStackParamList } from '@/app/navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -106,7 +113,7 @@ const QUICK_CATEGORIES = [
 
 const HomeScreen: React.FC = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const [searchText, setSearchText] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [quickFilters, setQuickFilters] = useState<string[]>([]);
@@ -121,21 +128,6 @@ const HomeScreen: React.FC = () => {
   useTutorialTarget('home-categories', categoriesRef);
   useTutorialTarget('home-ai-banner', aiBannerRef);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
-  }, []);
-
-  const handleSearch = () => {
-    navigation.navigate('SearchResults' as never);
-  };
-
-  const handlePropertyPress = (propertyId: string) => {
-    navigation.navigate('PropertyDetail', { propertyId } as never);
-  };
-
   const handleQuickFilterToggle = (filterId: string) => {
     setQuickFilters((prev) =>
       prev.includes(filterId)
@@ -143,6 +135,46 @@ const HomeScreen: React.FC = () => {
         : [...prev, filterId]
     );
   };
+
+  // Real data fetching
+  const { 
+    data: propertiesData, 
+    isLoading: propertiesLoading, 
+    refetch: refetchProperties 
+  } = useProperties({ 
+    limit: 6,
+    sortBy: 'postedAt' as any,
+    sortOrder: 'DESC'
+  });
+
+  const {
+    data: facetsData,
+    isLoading: facetsLoading,
+    refetch: refetchFacets
+  } = useSearchFacets();
+
+  const properties = propertiesData?.data || [];
+  const popularLocations = (facetsData?.cities || []).slice(0, 4).map((f, i) => ({
+    id: String(i),
+    name: f.city,
+    count: f.count
+  }));
+
+  const handleSearch = (city?: string) => {
+    navigation.navigate('SearchResults', { 
+      filters: city ? { city } : { query: searchText } 
+    });
+  };
+
+  const handlePropertyPress = (propertyId: string) => {
+    navigation.navigate('PropertyDetail', { propertyId });
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchProperties(), refetchFacets()]);
+    setRefreshing(false);
+  }, [refetchProperties, refetchFacets]);
 
   return (
     <SafeAreaView 
@@ -293,31 +325,36 @@ const HomeScreen: React.FC = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.locationsContainer}
           >
-            {POPULAR_LOCATIONS.map((location) => (
-              <TouchableOpacity
-                key={location.id}
-                style={[
-                  styles.locationCard,
-                  { 
-                    backgroundColor: theme.colors.surface,
-                    borderColor: theme.colors.border,
-                  }
-                ]}
-                activeOpacity={0.8}
-              >
-                <MapPin size={16} color={theme.colors.accent.main} />
-                <Text 
-                  style={[styles.locationName, { color: theme.colors.textPrimary }]}
+            {facetsLoading ? (
+              <ActivityIndicator color={theme.colors.primary.main} />
+            ) : (
+              popularLocations.map((location) => (
+                <TouchableOpacity
+                  key={location.id}
+                  style={[
+                    styles.locationCard,
+                    { 
+                      backgroundColor: theme.colors.surface,
+                      borderColor: theme.colors.border,
+                    }
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => handleSearch(location.name)}
                 >
-                  {location.name}
-                </Text>
-                <Text 
-                  style={[styles.locationCount, { color: theme.colors.textTertiary }]}
-                >
-                  {location.count} anunțuri
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <MapPin size={16} color={theme.colors.accent.main} />
+                  <Text 
+                    style={[styles.locationName, { color: theme.colors.textPrimary }]}
+                  >
+                    {location.name}
+                  </Text>
+                  <Text 
+                    style={[styles.locationCount, { color: theme.colors.textTertiary }]}
+                  >
+                    {location.count} anunțuri
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
           </ScrollView>
         </View>
 
@@ -334,14 +371,22 @@ const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
           <View style={styles.propertiesContainer}>
-            {MOCK_PROPERTIES.map((property) => (
-              <PropertyCard
-                key={property.id}
-                {...property}
-                onPress={() => handlePropertyPress(property.id)}
-                onFavoritePress={() => {}}
-              />
-            ))}
+            {propertiesLoading ? (
+              <ActivityIndicator color={theme.colors.primary.main} />
+            ) : properties.length > 0 ? (
+              properties.map((property) => (
+                <PropertyCard
+                  key={property.id}
+                  {...property}
+                  onPress={() => handlePropertyPress(String(property.id))}
+                  onFavoritePress={() => {}}
+                />
+              ))
+            ) : (
+              <Text style={{ textAlign: 'center', color: theme.colors.textSecondary }}>
+                Momentan nu există anunțuri noi
+              </Text>
+            )}
           </View>
         </View>
 
