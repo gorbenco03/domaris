@@ -46,7 +46,7 @@ import {
   useUpdatePropertyStatus 
 } from '@/features/properties/hooks/useProperties';
 import { ActivityIndicator } from 'react-native';
-import { IPropertyListing } from '@/core/api/types';
+import { IPropertyListItem } from '@/core/api/types';
 
 // ============================================
 // TYPES
@@ -67,8 +67,17 @@ const FILTER_TABS: { id: FilterTab; label: string }[] = [
 // PROPERTY CARD COMPONENT
 // ============================================
 
+interface ExtendedPropertyListItem extends IPropertyListItem {
+  priceEur?: number;
+  images?: any[]; // Backend sends images
+  photos?: any[]; // Legacy fallback
+  isBoosted?: boolean;
+  viewsCount?: number;
+  leadsCount?: number;
+}
+
 interface PropertyListItemProps {
-  property: IPropertyListing;
+  property: ExtendedPropertyListItem;
   onPress: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -135,8 +144,8 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
           colors={['transparent', 'rgba(0,0,0,0.6)']}
           style={styles.cardImageOverlay}
         />
-        {property.photos && property.photos.length > 0 ? (
-          <Image source={{ uri: property.photos[0].url }} style={styles.cardImage} />
+        {((property.images && property.images.length > 0) || (property.photos && property.photos.length > 0)) ? (
+          <Image source={{ uri: (property.images?.[0]?.url || property.photos?.[0]?.url) }} style={styles.cardImage} />
         ) : (
           <View style={[styles.cardImage, { backgroundColor: theme.colors.border }]}>
             <Home size={40} color={theme.colors.textTertiary} />
@@ -175,7 +184,7 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
         </Text>
 
         <Text style={[styles.cardPrice, { color: theme.colors.primary.main }]}>
-          {formatPrice(property.price, property.currency, property.transactionType)}
+          {formatPrice(property.priceEur || property.price || 0, property.currency, property.transactionType)}
         </Text>
 
         <Text style={[styles.cardLocation, { color: theme.colors.textSecondary }]}>
@@ -249,17 +258,26 @@ const MyPropertiesScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Real data fetching
-  const { data: properties = [], isLoading, refetch } = useMyProperties();
+  const { data: properties = [], isLoading, refetch, error } = useMyProperties();
   const deleteMutation = useDeleteProperty();
 
+  console.log('[MyPropertiesScreen] Properties fetched:', JSON.stringify(properties, null, 2));
+  console.log('[MyPropertiesScreen] Is loading:', isLoading);
+  if (error) console.error('[MyPropertiesScreen] Fetch error:', error);
+
   const filteredProperties = properties.filter((p) => {
+    if (!p.status) return true; // Safety
     const status = p.status.toUpperCase();
+    console.log(`[MyPropertiesScreen] Filtering property ${p.id}, status: ${status}, activeFilter: ${activeFilter}`);
     if (activeFilter === 'all') return true;
-    if (activeFilter === 'active') return status === 'ACTIVE' || status === 'PENDING';
+    if (activeFilter === 'active') return status === 'ACTIVE' || status === 'PENDING' || status === 'NEW'; // Added NEW
     if (activeFilter === 'draft') return status === 'DRAFT';
     if (activeFilter === 'expired') return status === 'EXPIRED' || status === 'REJECTED';
     return true;
   });
+
+  console.log('[MyPropertiesScreen] Filtered properties count:', filteredProperties.length);
+
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

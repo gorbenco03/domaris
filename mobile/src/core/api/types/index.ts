@@ -24,9 +24,10 @@ export type {
 // PROPERTY TYPES
 // ============================================
 export type {
-  IPropertyListing,
+  IProperty,
+  IPropertyListItem,
   IPropertySearchParams,
-  IPropertyFilters,
+  IPropertySearchResult,
 } from '@domaris/types';
 
 // ============================================
@@ -34,7 +35,6 @@ export type {
 // ============================================
 export type {
   ISavedSearch,
-  ISearchResult,
 } from '@domaris/types';
 
 // ============================================
@@ -42,7 +42,7 @@ export type {
 // ============================================
 export type {
   INotification,
-  INotificationSettings,
+  INotificationPreferences,
 } from '@domaris/types';
 
 // ============================================
@@ -50,10 +50,10 @@ export type {
 // ============================================
 export type {
   IUser,
-  IAuthResponse,
-  ILoginRequest,
-  IRegisterRequest,
+  IUserSession,
 } from '@domaris/types';
+
+import type { IUserSession } from '@domaris/types';
 
 // Additional auth types based on backend DTOs
 export interface ILoginEmailRequest {
@@ -114,6 +114,11 @@ export interface IVerifyEmailRequest {
   code: string;
 }
 
+export interface IVerifyEmailOtpRequest {
+  email: string;
+  code: string;
+}
+
 export interface IVerifyPhoneRequest {
   phone: string;
   code: string;
@@ -135,19 +140,6 @@ export interface IAuthResponseData {
   user: IUserSession;
 }
 
-export interface IUserSession {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  avatar?: string;
-  verificationLevel: number; // 0-3
-  isAdmin: boolean;
-  emailVerified: boolean;
-  phoneVerified: boolean;
-  hasActiveSubscription: boolean;
-}
-
 export interface IOtpSentResponse {
   success: boolean;
   message: string;
@@ -167,7 +159,6 @@ export type {
 // ============================================
 export type {
   IViewing,
-  IViewingRequest,
 } from '@domaris/types';
 
 // ============================================
@@ -176,6 +167,9 @@ export type {
 export type {
   IMessage,
   IConversation,
+  IConversationListItem,
+  ISendMessageDto,
+  ICreateConversationDto,
 } from '@domaris/types';
 
 // ============================================
@@ -185,3 +179,4 @@ export type {
   IPaginatedResponse,
   IApiError,
 } from '@domaris/types';
+

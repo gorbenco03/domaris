@@ -35,11 +35,14 @@ const MOCK_CONVERSATIONS: Conversation[] = [
   {
     id: '1',
     propertyId: 'prop-1',
-    participants: { ownerId: 'owner-1', seekerId: 'seeker-1' },
+    participants: [
+      { userId: 'u1', role: 'OWNER' },
+      { userId: 'u2', role: 'INQUIRER' }
+    ],
     lastMessage: {
       id: 'msg-1',
       conversationId: '1',
-      senderId: 'owner-1',
+      senderId: 'u1',
       type: 'text',
       content: 'Când putem programa o vizionare pentru apartament?',
       status: 'delivered',
@@ -57,7 +60,7 @@ const MOCK_CONVERSATIONS: Conversation[] = [
       type: 'sale',
     },
     otherParticipant: {
-      id: 'owner-1',
+      id: 'u1',
       name: 'Ion Popescu',
       isOnline: true,
     },
@@ -65,11 +68,14 @@ const MOCK_CONVERSATIONS: Conversation[] = [
   {
     id: '2',
     propertyId: 'prop-2',
-    participants: { ownerId: 'owner-2', seekerId: 'seeker-1' },
+    participants: [
+      { userId: 'u3', role: 'OWNER' },
+      { userId: 'u2', role: 'INQUIRER' }
+    ],
     lastMessage: {
       id: 'msg-2',
       conversationId: '2',
-      senderId: 'seeker-1',
+      senderId: 'u2',
       type: 'text',
       content: 'Da, prețul e negociabil. Putem discuta.',
       status: 'read',
@@ -87,42 +93,13 @@ const MOCK_CONVERSATIONS: Conversation[] = [
       type: 'sale',
     },
     otherParticipant: {
-      id: 'owner-2',
+      id: 'u3',
       name: 'Maria Ionescu',
       isOnline: false,
     },
   },
-  {
-    id: '3',
-    propertyId: 'prop-3',
-    participants: { ownerId: 'owner-3', seekerId: 'seeker-1' },
-    lastMessage: {
-      id: 'msg-3',
-      conversationId: '3',
-      senderId: 'owner-3',
-      type: 'text',
-      content: 'Mulțumesc pentru informații!',
-      status: 'read',
-      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    },
-    unreadCount: 0,
-    status: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    property: {
-      id: 'prop-3',
-      title: 'Garsonieră Titan',
-      price: 52000,
-      currency: 'EUR',
-      type: 'sale',
-    },
-    otherParticipant: {
-      id: 'owner-3',
-      name: 'Alexandru Stan',
-      isOnline: false,
-    },
-  },
 ];
+
 
 // ============================================
 // COMPONENT

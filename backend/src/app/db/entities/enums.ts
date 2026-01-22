@@ -1,33 +1,9 @@
 // src/db/enums.ts
-export enum UserRole {
-  TENANT = 'tenant',
-  LANDLORD = 'landlord',
-  ADMIN = 'admin',
-}
 
-export enum PropertyStatus {
-  AVAILABLE = 'available',
-  RENTED = 'rented',
-  UNDER_MAINTENANCE = 'under_maintenance',
-  UNKNOWN = 'unknown',
-}
+// ============================================================================
+// PROPERTY ENUMS
+// ============================================================================
 
-export enum PropertyType {
-  STUDIO = 'studio',
-  ONE_BED = 'one_bed',
-  TWO_BED = 'two_bed',
-  THREE_PLUS = 'three_plus',
-  HOUSE = 'house',
-  OTHER = 'other',
-}
-
-export enum ListingSourceType {
-  FACEBOOK = 'facebook',
-  OLX = 'olx',
-  IMOBILIARE = 'imobiliare',
-  MANUAL = 'manual',
-  OTHER = 'other',
-}
 
 export enum NotificationChannel {
   EMAIL = 'email',

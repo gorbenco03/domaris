@@ -27,40 +27,14 @@ export class Listing extends ExtModel {
   owner?: User;
 
   // ----------------- SOURCE METADATA -----------------
+  // Simplified - only track if manually created or imported
 
   @Column({
-    type: DataType.ENUM('facebook', 'manual', 'other'),
+    type: DataType.ENUM('manual', 'imported'),
     allowNull: false,
-    defaultValue: 'facebook',
+    defaultValue: 'manual',
   })
-  sourceType!: 'facebook' | 'manual' | 'other';
-
-  @Column(DataType.STRING)
-  externalPostId?: string;
-
-  @Column(DataType.STRING)
-  externalGroupId?: string;
-
-  @Column(DataType.STRING)
-  sourceUrl?: string;
-
-  // 👇 NOI — din scraper
-  @Column(DataType.STRING)
-  parsedOwnerName?: string;
-
-  @Column(DataType.STRING)
-  parsedOwnerProfileUrl?: string;
-
-  // ----------------- SOCIAL METRICS (FB) -----------------
-
-  @Column(DataType.INTEGER)
-  reactionCount?: number;
-
-  @Column(DataType.INTEGER)
-  shareCount?: number;
-
-  @Column(DataType.INTEGER)
-  commentCount?: number;
+  sourceType!: 'manual' | 'imported';
 
   // ----------------- LISTING BASIC DATA -----------------
 
@@ -105,6 +79,18 @@ export class Listing extends ExtModel {
   @ApiProperty({ required: false })
   @Column(DataType.STRING)
   buildingType?: string; // bloc vechi / bloc nou / casa
+
+  @ApiProperty({ required: false })
+  @Column({ field: 'total_floors', type: DataType.INTEGER })
+  totalFloors?: number;
+
+  @ApiProperty({ required: false })
+  @Column({ field: 'year_built', type: DataType.INTEGER })
+  yearBuilt?: number;
+
+  @ApiProperty({ required: false })
+  @Column(DataType.JSONB)
+  amenities?: string[];
 
   @ApiProperty({ example: 500 })
   @Column({
@@ -180,9 +166,7 @@ export class Listing extends ExtModel {
   @Column(DataType.DATE)
   postedAt!: Date;
 
-  @ApiProperty({ required: false })
-  @Column(DataType.DATE)
-  scrapedAt!: Date;
+
 
   // 👇 NOU — apare des în postările FB
   @ApiProperty({ required: false })
@@ -210,10 +194,7 @@ export class Listing extends ExtModel {
   })
   publicFrom!: Date;
 
-  // ----------------- RAW SOURCE (FB JSON) -----------------
 
-  @Column(DataType.JSONB)
-  rawSource!: any;
 
   // ----------------- RELATIONS -----------------
 

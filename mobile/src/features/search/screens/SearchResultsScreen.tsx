@@ -31,7 +31,7 @@ import { IconButton } from '@/shared/components/IconButton';
 import { useSearch } from '@/features/search/hooks/useSearch';
 import { SearchStackParamList } from '@/app/navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { IPropertyListing } from '@/core/api/types';
+import type { IPropertyListItem } from '@/core/api/types';
 
 type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
@@ -39,92 +39,7 @@ type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 // MOCK DATA
 // ============================================
 
-const MOCK_RESULTS = [
-  {
-    id: '1',
-    title: 'Apartament 3 camere renovat complet',
-    transactionType: 'SALE' as const,
-    price: 95000,
-    currency: 'EUR' as const,
-    location: {
-      neighborhood: 'Drumul Taberei',
-      city: 'București',
-    },
-    characteristics: {
-      bedrooms: 2,
-      bathrooms: 1,
-      totalArea: 75,
-      floor: 4,
-      totalFloors: 10,
-    },
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-    isNew: true,
-    isVerified: true,
-    stats: { views: 234, favorites: 12 },
-  },
-  {
-    id: '2',
-    title: 'Apartament 2 camere modern Militari',
-    transactionType: 'SALE' as const,
-    price: 72000,
-    currency: 'EUR' as const,
-    location: {
-      neighborhood: 'Militari',
-      city: 'București',
-    },
-    characteristics: {
-      bedrooms: 1,
-      bathrooms: 1,
-      totalArea: 52,
-      floor: 2,
-      totalFloors: 8,
-    },
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-    isVerified: true,
-    priceReduced: true,
-    stats: { views: 156, favorites: 8 },
-  },
-  {
-    id: '3',
-    title: 'Garsonieră ultramodernă Titan',
-    transactionType: 'RENT' as const,
-    price: 450,
-    currency: 'EUR' as const,
-    location: {
-      neighborhood: 'Titan',
-      city: 'București',
-    },
-    characteristics: {
-      bedrooms: 0,
-      bathrooms: 1,
-      totalArea: 38,
-      floor: 6,
-      totalFloors: 12,
-    },
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-    isNew: true,
-    stats: { views: 89, favorites: 5 },
-  },
-  {
-    id: '4',
-    title: 'Casă cu curte mare în Pipera',
-    transactionType: 'SALE' as const,
-    price: 285000,
-    currency: 'EUR' as const,
-    location: {
-      neighborhood: 'Pipera',
-      city: 'București',
-    },
-    characteristics: {
-      bedrooms: 4,
-      bathrooms: 3,
-      totalArea: 220,
-    },
-    image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
-    isVerified: true,
-    stats: { views: 312, favorites: 28 },
-  },
-];
+// MOCK DATA REMOVED
 
 type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'date_newest';
 
@@ -147,7 +62,7 @@ const SearchResultsScreen: React.FC = () => {
   // Extract initial filters from route params
   const initialFilters = route.params?.filters || {};
   const [searchText, setSearchText] = useState(initialFilters.query || initialFilters.city || '');
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  // const [viewMode, setViewMode] = useState<'list' | 'map'>('list'); // Removed viewMode state
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   const [showSortModal, setShowSortModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -181,13 +96,13 @@ const SearchResultsScreen: React.FC = () => {
   };
 
   const handleFilterPress = (filterType: string) => {
-    // Open filter modal for specific filter
-    console.log('Open filter:', filterType);
+    // Open full filters modal for now, focusing logic can be added later
+    (navigation.navigate as any)('SearchFilters', { filters });
   };
 
   const handleFiltersPress = () => {
-    // Open full filters modal
-    console.log('Open all filters');
+    // Open full filters modal passing current filters
+    (navigation.navigate as any)('SearchFilters', { filters });
   };
 
   const getActiveFiltersCount = () => {
@@ -202,12 +117,14 @@ const SearchResultsScreen: React.FC = () => {
     <View style={styles.headerContainer}>
       {/* Search Bar Row */}
       <View style={styles.searchRow}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: theme.colors.surface }]}
-          onPress={() => navigation.goBack()}
-        >
-          <ArrowLeft size={22} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+        {navigation.canGoBack() && (
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: theme.colors.surface }]}
+            onPress={() => navigation.goBack()}
+          >
+            <ArrowLeft size={22} color={theme.colors.textPrimary} />
+          </TouchableOpacity>
+        )}
         <View style={styles.searchBarContainer}>
           <SearchBar
             value={searchText}
@@ -249,26 +166,21 @@ const SearchResultsScreen: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.viewToggleButton,
-                viewMode === 'list' && { backgroundColor: theme.colors.primary.main },
+                { backgroundColor: theme.colors.primary.main }, // Always active here
               ]}
-              onPress={() => setViewMode('list')}
+              onPress={() => {}} // Already on list
+              activeOpacity={1}
             >
-              <List 
-                size={18} 
-                color={viewMode === 'list' ? '#ffffff' : theme.colors.textSecondary} 
-              />
+              <List size={18} color="#ffffff" />
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.viewToggleButton,
-                viewMode === 'map' && { backgroundColor: theme.colors.primary.main },
+                // Inactive style
               ]}
-              onPress={() => setViewMode('map')}
+              onPress={() => (navigation.navigate as any)('MapSearch')}
             >
-              <Map 
-                size={18} 
-                color={viewMode === 'map' ? '#ffffff' : theme.colors.textSecondary} 
-              />
+              <Map size={18} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -317,15 +229,32 @@ const SearchResultsScreen: React.FC = () => {
     </View>
   );
 
-  const renderProperty = ({ item }: { item: IPropertyListing }) => (
-    <View style={styles.propertyCard}>
-      <PropertyCard
-        {...item}
-        onPress={() => handlePropertyPress(String(item.id))}
-        onFavoritePress={() => {}}
-      />
-    </View>
-  );
+  const renderProperty = ({ item }: { item: IPropertyListItem }) => {
+    // Map API item to PropertyCard props
+    const anyItem = item as any;
+    const mappedProps = {
+      ...anyItem,
+      id: String(anyItem.id),
+      location: anyItem.neighborhood ? `${anyItem.neighborhood}, ${anyItem.city}` : anyItem.city,
+      characteristics: [
+        anyItem.rooms ? `${anyItem.rooms} camere` : '',
+        anyItem.surfaceSqm ? `${anyItem.surfaceSqm} mp` : '',
+      ].filter(Boolean),
+      image: anyItem.images?.[0]?.url || 'https://via.placeholder.com/300',
+      price: anyItem.priceEur || 0,
+      currency: (anyItem.currency === 'RON' ? 'RON' : 'EUR') as 'EUR' | 'RON',
+    };
+
+    return (
+      <View style={styles.propertyCard}>
+        <PropertyCard
+          {...mappedProps}
+          onPress={() => handlePropertyPress(String(item.id))}
+          onFavoritePress={() => {}}
+        />
+      </View>
+    );
+  };
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>

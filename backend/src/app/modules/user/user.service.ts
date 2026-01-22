@@ -29,7 +29,7 @@ export class UserService {
     const activeListingsCount = await Listing.count({
       where: {
         ownerId: userId,
-        status: { [Op.in]: ['ACTIVE', 'public', 'early_access'] }, // Support both old and new status
+        status: { [Op.in]: ['public', 'early_access'] }, // Only valid enums
       },
     });
 
@@ -143,7 +143,7 @@ export class UserService {
     const activeListingsCount = await Listing.count({
       where: {
         ownerId: Number(id),
-        status: { [Op.in]: ['ACTIVE', 'public', 'early_access'] },
+        status: { [Op.in]: ['public', 'early_access'] },
       },
     });
 

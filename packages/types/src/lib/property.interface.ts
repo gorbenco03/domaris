@@ -206,7 +206,7 @@ export interface IPropertyVideo {
  * Sursa proprietate
  */
 export interface IPropertySource {
-  type: 'MANUAL' | 'FACEBOOK' | 'OTHER';
+  type: 'MANUAL' | 'IMPORTED';
   externalId?: string;
   externalUrl?: string;
   importedAt?: Date | string;

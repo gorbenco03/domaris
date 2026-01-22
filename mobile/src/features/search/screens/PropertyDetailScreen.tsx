@@ -31,6 +31,24 @@ import {
   ShieldCheck,
   CheckCircle2,
   ChevronRight,
+  Wind,
+  Flame,
+  Car,
+  Wifi,
+  Tv,
+  ArrowUpCircle,
+  Sofa,
+  Refrigerator,
+  Sun,
+  Video,
+  Smartphone,
+  Monitor,
+  Globe,
+  Waves,
+  Utensils,
+  Droplets,
+  Thermometer,
+  Dumbbell,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { 
@@ -56,6 +74,37 @@ type PropertyDetailNavigationProp = CompositeNavigationProp<
 
 const { width } = Dimensions.get('window');
 const IMAGE_HEIGHT = 400;
+
+const AMENITIES_MAP: Record<string, { label: string; icon: any }> = {
+  AIR_CONDITIONING: { label: 'Aer condiționat', icon: Wind },
+  CENTRAL_HEATING: { label: 'Centrală proprie', icon: Flame },
+  PARKING: { label: 'Parcare', icon: Car },
+  ELEVATOR: { label: 'Lift', icon: ArrowUpCircle },
+  BALCONY: { label: 'Balcon', icon: Maximize2 },
+  FURNISHED: { label: 'Mobilat', icon: Sofa },
+  WIFI: { label: 'Wi-Fi', icon: Wifi },
+  TV: { label: 'TV', icon: Tv },
+  SECURITY: { label: 'Pază', icon: ShieldCheck },
+  
+  // New mappings from screenshot
+  KITCHEN_APPLIANCES: { label: 'Electrocasnice', icon: Refrigerator },
+  DRYER: { label: 'Uscător', icon: Waves },
+  TERRACE: { label: 'Terasă', icon: Sun },
+  SECURITY_SYSTEM: { label: 'Sistem Securitate', icon: Video },
+  SMART_HOME: { label: 'Smart Home', icon: Smartphone },
+  CABLE_TV: { label: 'Cablu TV', icon: Monitor },
+  FIBER_INTERNET: { label: 'Internet Fibră', icon: Globe },
+  
+  // More mappings
+  DISHWASHER: { label: 'Mașină de spălat vase', icon: Utensils },
+  WASHER: { label: 'Mașină de spălat rufe', icon: Droplets },
+  SEMI_FURNISHED: { label: 'Semi-mobilat', icon: Sofa },
+  UNDERFLOOR_HEATING: { label: 'Încălzire în pardoseală', icon: Thermometer },
+  FIREPLACE: { label: 'Șemineu', icon: Flame },
+  SAUNA: { label: 'Saună', icon: Thermometer }, // sau Waves
+  GYM: { label: 'Sală de sport', icon: Dumbbell },
+  VIDEO_INTERCOM: { label: 'Videointerfon', icon: Video },
+};
 
 // ============================================
 // COMPONENT
@@ -84,8 +133,9 @@ const PropertyDetailScreen: React.FC = () => {
   };
 
   const handleCall = () => {
-    if (property?.user?.phone) {
-      Linking.openURL(`tel:${property.user.phone}`);
+    const owner = (property as any)?.owner || property?.user;
+    if (owner?.phone) {
+      Linking.openURL(`tel:${owner.phone}`);
     }
   };
 
@@ -108,11 +158,15 @@ const PropertyDetailScreen: React.FC = () => {
     );
   }
 
-  // Map amenities (amenities usually come as a JSON or separate table, backend IPropertyListing might have them)
+  // Map amenities
   const amenities = property.amenities || [];
-  const images = property.photos && property.photos.length > 0 
-    ? property.photos.map((p: any) => p.url) 
-    : ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800']; // Default placeholder if no photos
+  const propertyImages = property.images || property.photos || [];
+  const images = propertyImages.length > 0 
+    ? propertyImages.map((p: any) => p.url) 
+    : ['https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'];
+
+  // Get owner data (backend returns 'owner', frontend type might expect 'user')
+  const owner = (property as any).owner || property.user;
 
 
   const InfoItem = ({ icon: Icon, value, label }: any) => (
@@ -178,21 +232,21 @@ const PropertyDetailScreen: React.FC = () => {
           <View style={styles.locationRow}>
             <MapPin size={18} color={theme.colors.accent.main} />
             <Text style={[styles.locationText, { color: theme.colors.textSecondary }]}>
-              {property.neighborhood}, {property.city}
+              {[property.addressText, property.neighborhood, property.city].filter(Boolean).join(', ')}
             </Text>
           </View>
 
           <View style={styles.priceRow}>
             <Text style={[styles.price, { color: theme.colors.primary.main }]}>
-              {property.price.toLocaleString('ro-RO')} €
+              {(property.priceEur || property.price || 0).toLocaleString('ro-RO')} €
             </Text>
           </View>
 
           {/* Key Characteristics */}
           <View style={[styles.characteristicsCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.divider }]}>
              <InfoItem icon={Bed} value={property.rooms} label="Camere" />
-             <InfoItem icon={Maximize2} value={`${property.surface} m²`} label="Suprafață" />
-             <InfoItem icon={Layers} value={`${property.floor || '-'}/${property.totalFloors || '-'}`} label="Etaj" />
+             <InfoItem icon={Maximize2} value={`${property.surfaceSqm || property.surface || 0} m²`} label="Suprafață" />
+             <InfoItem icon={Layers} value={`${property.floor ?? '-'}/${property.totalFloors ?? '-'}`} label="Etaj" />
              <InfoItem icon={Calendar} value={property.yearBuilt || '-'} label="An constr." />
           </View>
 
@@ -216,6 +270,25 @@ const PropertyDetailScreen: React.FC = () => {
             <ChevronRight size={20} color={theme.colors.primary.main} />
           </TouchableOpacity>
 
+          {/* Amenities Section */}
+          {amenities && amenities.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Facilități</Text>
+              <View style={styles.amenitiesGrid}>
+                {amenities.map((amenity: string, index: number) => {
+                  const config = AMENITIES_MAP[amenity] || { label: amenity, icon: CheckCircle2 };
+                  const Icon = config.icon;
+                  return (
+                    <View key={index} style={[styles.amenityItem, { backgroundColor: theme.colors.background }]}>
+                      <Icon size={20} color={theme.colors.textSecondary} />
+                      <Text style={[styles.amenityText, { color: theme.colors.textPrimary }]}>{config.label}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {/* Description */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Descriere</Text>
@@ -236,18 +309,20 @@ const PropertyDetailScreen: React.FC = () => {
                 // Navigate to public profile - cross-tab navigation
                 navigation.navigate('ProfileTab', {
                   screen: 'PublicProfile',
-                  params: { userId: property.userId }
+                  params: { userId: owner?.id }
                 } as any);
               }}
             >
               <View style={styles.ownerInfo}>
-                <Image source={{ uri: property.user?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e' }} style={styles.ownerPhoto} />
+                <Image source={{ uri: owner?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e' }} style={styles.ownerPhoto} />
                 <View>
                   <View style={styles.ownerNameRow}>
                     <Text style={[styles.ownerName, { color: theme.colors.textPrimary }]}>
-                      {property.user?.firstName} {property.user?.lastName}
+                      {owner?.firstName 
+                        ? `${owner.firstName} ${owner.lastName || ''}`
+                        : 'Utilizator Imobi'}
                     </Text>
-                    {property.user?.verificationLevel >= 2 && <ShieldCheck size={16} color={theme.colors.accent.main} />}
+                    {owner?.verificationLevel >= 2 && <ShieldCheck size={16} color={theme.colors.accent.main} />}
                   </View>
                   <Text style={[styles.ownerMeta, { color: theme.colors.textTertiary }]}>Proprietar · Vezi profil</Text>
                 </View>
@@ -272,7 +347,7 @@ const PropertyDetailScreen: React.FC = () => {
                 params: { 
                   conversationId: 'new',
                   propertyId: String(property.id),
-                  recipientName: `${property.user?.firstName} ${property.user?.lastName}`
+                  recipientName: `${owner?.firstName} ${owner?.lastName}`
                 }
               });
             }}
@@ -285,7 +360,7 @@ const PropertyDetailScreen: React.FC = () => {
             onPress={handleCall}
             variant="primary"
             style={{ flex: 1, height: 56, borderRadius: 16 }}
-            disabled={!property.user?.phone}
+            disabled={!owner?.phone}
           />
         </View>
       </SafeAreaView>
@@ -503,6 +578,23 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  amenitiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  amenityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  amenityText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
   },
 });
 

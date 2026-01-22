@@ -1,6 +1,6 @@
 /**
  * IMOBI - Social Login Button Component
- * Google, Apple, Facebook login buttons with official brand icons
+ * Google and Apple login buttons with official brand icons
  */
 
 import React from 'react';
@@ -8,7 +8,7 @@ import { TouchableOpacity, Text, StyleSheet, View, ViewStyle, Platform } from 'r
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { FontAwesome } from '@expo/vector-icons';
 
-type SocialProvider = 'google' | 'apple' | 'facebook';
+type SocialProvider = 'google' | 'apple';
 
 interface SocialButtonProps {
   provider: SocialProvider;
@@ -46,15 +46,6 @@ const SocialButton: React.FC<SocialButtonProps> = ({
           iconName: 'apple' as const,
           iconColor: '#FFFFFF',
           defaultTitle: 'Continuă cu Apple',
-        };
-      case 'facebook':
-        return {
-          backgroundColor: '#1877F2',
-          textColor: '#FFFFFF',
-          borderColor: '#1877F2',
-          iconName: 'facebook' as const,
-          iconColor: '#FFFFFF',
-          defaultTitle: 'Continuă cu Facebook',
         };
     }
   };

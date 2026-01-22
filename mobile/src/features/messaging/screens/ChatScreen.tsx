@@ -16,9 +16,11 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MoreVertical } from 'lucide-react-native';
+import { MoreVertical, ArrowLeft } from 'lucide-react-native';
+import { useMessages, useSendMessage } from '@/features/messaging/hooks/useMessaging';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
 import { MessagesStackParamList } from '@/app/navigation/types';
 import { Message, Participant, PropertyPreview } from '../types';
 import {
@@ -36,10 +38,8 @@ import { getMessageDateLabel } from '@/shared/utils/dateUtils';
 // MOCK DATA
 // ============================================
 
-const CURRENT_USER_ID = 'seeker-1';
-
 const MOCK_PARTICIPANT: Participant = {
-  id: 'owner-1',
+  id: 'u1',
   name: 'Ion Popescu',
   isOnline: true,
 };
@@ -50,65 +50,6 @@ const MOCK_PROPERTY: PropertyPreview = {
   price: 95000,
   currency: 'EUR',
   type: 'sale',
-};
-
-const generateMockMessages = (): Message[] => {
-  const now = Date.now();
-  return [
-    {
-      id: '1',
-      conversationId: '1',
-      senderId: 'seeker-1',
-      type: 'text' as const,
-      content: 'Bună ziua! Mă interesează apartamentul. Este încă disponibil?',
-      status: 'read' as const,
-      createdAt: new Date(now - 3 * 60 * 60 * 1000),
-    },
-    {
-      id: '2',
-      conversationId: '1',
-      senderId: 'owner-1',
-      type: 'text' as const,
-      content: 'Da, este disponibil! Când ați dori să veniți la vizionare?',
-      status: 'read' as const,
-      createdAt: new Date(now - 2.9 * 60 * 60 * 1000),
-    },
-    {
-      id: '3',
-      conversationId: '1',
-      senderId: 'seeker-1',
-      type: 'text' as const,
-      content: 'Poate sâmbătă dimineața?',
-      status: 'read' as const,
-      createdAt: new Date(now - 2.8 * 60 * 60 * 1000),
-    },
-    {
-      id: '4',
-      conversationId: '1',
-      senderId: 'owner-1',
-      type: 'viewing_request' as const,
-      content: 'Sâmbătă, 25 Ian 2026 la ora 10:00',
-      metadata: {
-        viewingRequest: {
-          id: 'vr-1',
-          date: new Date(2026, 0, 25, 10, 0),
-          time: '10:00',
-          status: 'pending' as const,
-        },
-      },
-      status: 'read' as const,
-      createdAt: new Date(now - 2.7 * 60 * 60 * 1000),
-    },
-    {
-      id: '5',
-      conversationId: '1',
-      senderId: 'seeker-1',
-      type: 'text' as const,
-      content: 'Perfect, vă mulțumesc! Ne vedem sâmbătă.',
-      status: 'delivered' as const,
-      createdAt: new Date(now - 15 * 60 * 1000),
-    },
-  ].reverse();
 };
 
 // ============================================
@@ -146,102 +87,82 @@ const DateSeparator: React.FC<DateSeparatorProps> = ({ date }) => {
 
 const ChatScreen: React.FC = () => {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation<ChatNavigationProp>();
   const route = useRoute<ChatRouteProp>();
+  
   const flatListRef = useRef<FlatList>(null);
   const chatInputRef = useRef<ChatInputRef>(null);
 
-  const [messages, setMessages] = useState<Message[]>(generateMockMessages());
+  const conversationId = route.params.conversationId;
+  const { data: messagesData, isLoading } = useMessages(conversationId);
+  const sendMessageMutation = useSendMessage();
+
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
-  // Simulate typing indicator
   useEffect(() => {
-    const timer = setInterval(() => {
-      setIsTyping((prev) => !prev);
-    }, 5000);
+    if (messagesData) {
+      const mapped: Message[] = messagesData.map((m: any) => ({
+        id: String(m.id),
+        conversationId: String(m.conversationId),
+        senderId: String(m.senderId),
+        type: 'text' as const,
+        content: m.content,
+        status: (m.isRead ? 'read' : 'delivered') as any,
+        createdAt: new Date(m.createdAt),
+      })).reverse();
+      
+      setMessages(mapped);
+    }
+  }, [messagesData]);
 
-    return () => clearInterval(timer);
-  }, []);
+  const handleSendMessage = useCallback(async (content: string) => {
+    if (!user) return;
+    try {
+      const tempId = `temp-${Date.now()}`;
+      const tempMessage: Message = {
+        id: tempId,
+        conversationId: conversationId,
+        senderId: user.id,
+        type: 'text',
+        content,
+        status: 'sending',
+        createdAt: new Date(),
+      };
+      
+      setMessages(prev => [tempMessage, ...prev]);
 
-  const handleSendMessage = useCallback((content: string) => {
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      conversationId: route.params.conversationId,
-      senderId: CURRENT_USER_ID,
-      type: 'text' as const,
-      content,
-      status: 'sending' as const,
-      createdAt: new Date(),
-    };
+      await sendMessageMutation.mutateAsync({
+        conversationId: Number(conversationId),
+        receiverId: 0, // In an existing conversation, backend knows the receiver
+        content
+      });
+    } catch (error) {
+      console.error('Send message failed', error);
+      Alert.alert('Eroare', 'Mesajul nu a putut fi trimis');
+    }
+  }, [conversationId, sendMessageMutation, user]);
 
-    setMessages((prev) => [newMessage, ...prev]);
-
-    // Simulate status update
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === newMessage.id ? { ...msg, status: 'sent' as const } : msg
-        )
-      );
-    }, 500);
-
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === newMessage.id ? { ...msg, status: 'delivered' as const } : msg
-        )
-      );
-    }, 1500);
-  }, [route.params.conversationId]);
-
-  const handleAttachPress = () => {
-    Alert.alert('Atașament', 'Funcționalitate în curs de implementare');
-  };
-
-  const handleCameraPress = () => {
-    Alert.alert('Cameră', 'Funcționalitate în curs de implementare');
-  };
-
-  const handleCallPress = () => {
-    Alert.alert('Apel', 'Funcționalitate în curs de implementare');
-  };
+  const handleAttachPress = () => Alert.alert('Atașament', 'În curând');
+  const handleCameraPress = () => Alert.alert('Cameră', 'În curând');
+  const handleCallPress = () => Alert.alert('Apel', 'În curând');
 
   const handleMenuPress = () => {
-    Alert.alert(
-      'Opțiuni Conversație',
-      'Ce acțiune doriți să efectuați?',
-      [
-        { text: 'Anulează', style: 'cancel' },
-        { 
-          text: 'Raportează Utilizator', 
-          style: 'destructive',
-          onPress: () => navigation.navigate('Report', {
-            conversationId: route.params.conversationId,
-            userId: MOCK_PARTICIPANT.id,
-            userName: MOCK_PARTICIPANT.name,
-          }) 
-        },
-        { text: 'Arhivează Conversația', onPress: () => Alert.alert('Arhivat', 'Conversația a fost mutată în arhivă.') },
-      ]
-    );
-  };
-
-  const handleScheduleViewing = () => {
-    Alert.alert('Vizionare', 'Se deschide programatorul de vizionări...');
-  };
-
-  const handleAskLocation = () => {
-    handleSendMessage('Bună ziua! Ați putea să îmi spuneți adresa exactă a proprietății?');
-  };
-
-  const handleAskPrice = () => {
-    handleSendMessage('Este negociabil prețul? Care ar fi marja de negociere?');
-  };
-
-  const handleUseTemplate = () => {
-    setShowQuickActions(false);
-    navigation.navigate('Templates');
+    Alert.alert('Opțiuni', 'Ce acțiune doriți?', [
+      { text: 'Anulează', style: 'cancel' },
+      { 
+        text: 'Raportează', 
+        style: 'destructive',
+        onPress: () => navigation.navigate('Report', {
+          conversationId: route.params.conversationId,
+          userId: MOCK_PARTICIPANT.id,
+          userName: MOCK_PARTICIPANT.name,
+        }) 
+      },
+      { text: 'Arhivează', onPress: () => Alert.alert('Ok', 'Arhivat.') },
+    ]);
   };
 
   const handleAISuggestion = (suggestion: string) => {
@@ -249,19 +170,9 @@ const ChatScreen: React.FC = () => {
     chatInputRef.current?.focus();
   };
 
-  const handleImagePress = (imageUrl: string) => {
-    // Navigate to image viewer
-  };
-
-  const handleViewingRequestPress = (requestId: string) => {
-    Alert.alert('Vizionare', `Detalii vizionare: ${requestId}`);
-  };
-
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isOwn = item.senderId === CURRENT_USER_ID;
+    const isOwn = item.senderId === user?.id;
     const nextMessage = messages[index + 1];
-    
-    // Check if we need date separator
     const showDateSeparator = !nextMessage || 
       getMessageDateLabel(item.createdAt) !== getMessageDateLabel(nextMessage.createdAt);
 
@@ -270,8 +181,8 @@ const ChatScreen: React.FC = () => {
         <MessageBubble
           message={item}
           isOwn={isOwn}
-          onImagePress={handleImagePress}
-          onViewingRequestPress={handleViewingRequestPress}
+          onImagePress={() => {}}
+          onViewingRequestPress={() => {}}
         />
         {showDateSeparator && <DateSeparator date={item.createdAt} />}
       </>
@@ -280,7 +191,6 @@ const ChatScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
       <ChatHeader
         participant={MOCK_PARTICIPANT}
         property={MOCK_PROPERTY}
@@ -290,14 +200,12 @@ const ChatScreen: React.FC = () => {
         onPropertyPress={() => setShowQuickActions(true)}
       />
 
-      {/* AI Analysis Floating Widget */}
       <AIChatAnalysis onSuggestResponse={handleAISuggestion} />
 
-      {/* Messages */}
       <KeyboardAvoidingView
         style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <FlatList
           ref={flatListRef}
@@ -309,10 +217,8 @@ const ChatScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* Typing indicator */}
         <TypingIndicator visible={isTyping} />
 
-        {/* Input */}
         <ChatInput
           ref={chatInputRef}
           onSend={handleSendMessage}
@@ -321,14 +227,16 @@ const ChatScreen: React.FC = () => {
         />
       </KeyboardAvoidingView>
 
-      {/* Quick Actions Menu */}
       <QuickActionsMenu
         visible={showQuickActions}
         onClose={() => setShowQuickActions(false)}
-        onScheduleViewing={handleScheduleViewing}
-        onAskLocation={handleAskLocation}
-        onAskPrice={handleAskPrice}
-        onUseTemplate={handleUseTemplate}
+        onScheduleViewing={() => {}}
+        onAskLocation={() => handleSendMessage('Unde se află?')}
+        onAskPrice={() => handleSendMessage('Este negociabil?')}
+        onUseTemplate={() => {
+          setShowQuickActions(false);
+          navigation.navigate('Templates');
+        }}
         onCall={handleCallPress}
         phoneAvailable={true}
       />
@@ -336,35 +244,13 @@ const ChatScreen: React.FC = () => {
   );
 };
 
-// ============================================
-// STYLES
-// ============================================
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  messagesList: {
-    paddingVertical: 8,
-  },
-  dateSeparator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  dateLine: {
-    flex: 1,
-    height: 1,
-  },
-  dateText: {
-    fontSize: 12,
-    fontWeight: '500',
-    paddingHorizontal: 12,
-  },
+  container: { flex: 1 },
+  content: { flex: 1 },
+  messagesList: { paddingVertical: 8 },
+  dateSeparator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16 },
+  dateLine: { flex: 1, height: 1 },
+  dateText: { fontSize: 12, fontWeight: '500', paddingHorizontal: 12 },
 });
 
 export default ChatScreen;

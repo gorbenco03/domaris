@@ -50,6 +50,13 @@ export class ListingImage
   declare listing: Listing;
 
   @Column({
+    type: DataType.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  })
+  declare order: number;
+
+  @Column({
     type: DataType.TEXT,
     allowNull: false,
   })

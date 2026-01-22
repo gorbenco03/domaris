@@ -23,10 +23,10 @@ import {
 // ============================================================================
 
 /**
- * Înregistrare cu email și parolă
+ * Înregistrare cu email - Pas 1 (trimite OTP)
  * NOTE: Nu mai există userType/role conform ADR-001
  */
-export class RegisterDto {
+export class RegisterEmailDto {
   @ApiProperty({ example: 'user@example.com' })
   @IsEmail({}, { message: 'Email invalid' })
   email!: string;
@@ -49,6 +49,22 @@ export class RegisterDto {
   @IsOptional()
   lastName?: string;
 }
+
+/**
+ * Înregistrare cu email - Pas 2 (verificare OTP)
+ */
+export class VerifyEmailOtpDto {
+  @ApiProperty({ example: 'user@example.com' })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @MinLength(6)
+  @MaxLength(6)
+  code!: string;
+}
+
 
 /**
  * Înregistrare cu telefon (trimite OTP)

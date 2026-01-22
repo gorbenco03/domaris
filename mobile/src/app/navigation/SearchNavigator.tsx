@@ -25,9 +25,9 @@ const SearchNavigator: React.FC = () => {
         animation: 'slide_from_right',
       }}
     >
+      <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
       <Stack.Screen name="MapSearch" component={MapSearchScreen} />
       <Stack.Screen name="Search" component={HomeScreen} />
-      <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
       <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
       <Stack.Screen 
         name="SearchFilters" 

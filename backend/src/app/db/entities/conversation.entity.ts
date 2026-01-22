@@ -5,13 +5,21 @@ import {
     BelongsTo,
     HasMany,
     ForeignKey,
-    BelongsToMany,
 } from 'sequelize-typescript';
 import { ExtModel } from './extend.model';
 import { User } from './user.entity';
 import { Listing } from './listing.entity';
 import { Message } from './message.entity';
 
+/**
+ * 💬 Conversation Entity - Conform ADR-001: Model Unificat
+ * 
+ * Conversație între doi utilizatori despre o proprietate.
+ * Nu mai folosim "tenant/landlord" - orice utilizator poate fi în orice rol.
+ * 
+ * participant1 = utilizatorul care a inițiat conversația (de obicei cel interesat)
+ * participant2 = celălalt participant (de obicei owner-ul proprietății)
+ */
 @Table({
     tableName: 'conversations',
     underscored: true,
@@ -26,26 +34,23 @@ export class Conversation extends ExtModel {
     @BelongsTo(() => Listing)
     property!: Listing;
 
-    // Simple implementation: participant1 and participant2 instead of ManyToMany join table for simplicity?
-    // Or stick to ManyToMany if more users allowed. Guide implies 1 on 1 mostly (seeker + owner).
-    // Let's use two foreign keys for 1-1 chat simplicity: senderId, receiverId?
-    // But standard is participants. Let's use two columns for simplicity:
-    // tenantId, landlordId
-
+    // Participant 1 (de obicei cel care inițiază conversația)
     @ForeignKey(() => User)
     @Column(DataType.BIGINT)
-    tenantId!: number;
+    participant1Id!: number;
 
-    @BelongsTo(() => User, 'tenantId')
-    tenant!: User;
+    @BelongsTo(() => User, 'participant1Id')
+    participant1!: User;
 
+    // Participant 2 (de obicei owner-ul proprietății)
     @ForeignKey(() => User)
     @Column(DataType.BIGINT)
-    landlordId!: number;
+    participant2Id!: number;
 
-    @BelongsTo(() => User, 'landlordId')
-    landlord!: User;
+    @BelongsTo(() => User, 'participant2Id')
+    participant2!: User;
 
     @HasMany(() => Message)
     messages!: Message[];
 }
+

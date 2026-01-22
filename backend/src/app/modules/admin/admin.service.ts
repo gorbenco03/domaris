@@ -29,10 +29,26 @@ export class AdminService {
         await user.destroy(); // Soft delete if paranoid: true
     }
 
-    async updateUserRole(userId: number, role: 'tenant' | 'landlord' | 'admin') {
+    /**
+     * Actualizează nivelul de verificare al utilizatorului
+     * Conform ADR-001: Model Unificat
+     */
+    async updateVerificationLevel(userId: number, level: 0 | 1 | 2 | 3) {
         const user = await User.findByPk(userId);
         if (!user) throw new NotFoundException('User not found');
-        user.role = role;
+        user.verificationLevel = level;
+        await user.save();
+        return user;
+    }
+
+    /**
+     * Setează sau elimină statusul de admin
+     * Conform ADR-001: Model Unificat
+     */
+    async setAdminStatus(userId: number, isAdmin: boolean) {
+        const user = await User.findByPk(userId);
+        if (!user) throw new NotFoundException('User not found');
+        user.isAdmin = isAdmin;
         await user.save();
         return user;
     }

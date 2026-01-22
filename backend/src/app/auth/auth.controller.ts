@@ -36,7 +36,8 @@ import {
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import {
-  RegisterDto,
+  RegisterEmailDto,
+  VerifyEmailOtpDto,
   RegisterPhoneDto,
   LoginDto,
   LoginPhoneDto,
@@ -69,12 +70,24 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Register with email and password' })
-  @ApiResponse({ status: 201, description: 'User created', type: AuthResponseDto })
+  @ApiOperation({ summary: 'Register with email (sends OTP)' })
+  @ApiResponse({ status: 200, description: 'OTP sent', type: OtpSentResponseDto })
   @ApiResponse({ status: 400, description: 'Email already exists' })
-  async register(@Body() body: RegisterDto) {
-    return this.authService.register(body);
+  @HttpCode(HttpStatus.OK)
+  async register(@Body() body: RegisterEmailDto) {
+    return this.authService.registerEmail(body);
   }
+
+  @Public()
+  @Post('verify-email-otp')
+  @ApiOperation({ summary: 'Verify email OTP (completes register)' })
+  @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
+  @HttpCode(HttpStatus.OK)
+  async verifyEmailOtp(@Body() body: VerifyEmailOtpDto) {
+    return this.authService.verifyEmailOtp(body);
+  }
+
 
   @Public()
   @Post('register/phone')

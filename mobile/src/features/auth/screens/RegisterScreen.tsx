@@ -134,8 +134,8 @@ const RegisterScreen: React.FC = () => {
           firstName,
           lastName,
         });
-        // Success - AuthProvider will handle navigation via state change
-        console.log('Registered successfully with email');
+        console.log('OTP sent for email registration');
+        navigation.navigate('OTPVerification', { email, type: 'email', purpose: 'register' });
       } else {
         await authApi.registerWithPhone({
           phone,

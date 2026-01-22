@@ -22,6 +22,12 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { ProgressBar } from '@/shared/components/ProgressBar';
 import Button from '@/shared/components/Button';
 import { ProfileStackParamList } from '@/app/navigation/types';
+import { 
+  usePropertyDetail, 
+  useUpdateProperty, 
+  useUploadPropertyPhotos 
+} from '@/features/properties/hooks/useProperties';
+import { IPropertyListing } from '@/core/api/types';
 
 // Import Steps
 import PropertyTypeStep from './steps/PropertyTypeStep';
@@ -49,63 +55,6 @@ const STEP_TITLES = [
   'Previzualizare',
 ];
 
-// Mock function to fetch property data
-const fetchPropertyData = async (propertyId: string): Promise<PropertyFormData> => {
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  // Return mock data
-  return {
-    transactionType: 'SALE',
-    propertyType: 'APARTMENT',
-    location: {
-      country: 'România',
-      county: 'București',
-      city: 'București',
-      neighborhood: 'Drumul Taberei',
-      street: 'Strada Brasov',
-      streetNumber: '15',
-      building: 'A',
-      floor: 3,
-      apartment: '12',
-      coordinates: {
-        latitude: 44.4268,
-        longitude: 26.1025,
-      },
-    },
-    characteristics: {
-      totalArea: 75,
-      usableArea: 68,
-      rooms: 3,
-      bedrooms: 2,
-      bathrooms: 1,
-      balconies: 1,
-      yearBuilt: 2015,
-      floor: 3,
-      totalFloors: 10,
-      orientation: ['SUD', 'EST'],
-      amenities: ['aer_conditionat', 'centrala_termica', 'parcare'],
-      utilities: ['curent', 'apa', 'gaz', 'canalizare'],
-      comfort: 'clasa_1',
-      parking: {
-        type: 'subteran',
-        spots: 1,
-      },
-    },
-    photos: [
-      { id: '1', uri: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400', isPrimary: true, caption: 'Living' },
-      { id: '2', uri: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400', isPrimary: false, caption: 'Dormitor' },
-      { id: '3', uri: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400', isPrimary: false, caption: 'Bucatarie' },
-    ],
-    pricing: {
-      price: 120000,
-      currency: 'EUR',
-      negotiable: true,
-    },
-    title: 'Apartament 3 camere, Drumul Taberei - renovat complet',
-    description: 'Apartament spațios cu 3 camere, complet renovat în 2023. Situat la etajul 3 din 10, cu vedere panoramică spre parc. Include loc de parcare subteran și boxă.',
-  };
-};
 
 // ============================================
 // COMPONENT
@@ -119,7 +68,10 @@ const EditPropertyScreen: React.FC = () => {
 
   const { propertyId } = route.params;
 
-  const [isLoading, setIsLoading] = useState(true);
+  // API Hooks
+  const { data: property, isLoading: isQueryLoading } = usePropertyDetail(propertyId);
+  const updatePropertyMutation = useUpdateProperty();
+
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<PropertyFormData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,22 +79,59 @@ const EditPropertyScreen: React.FC = () => {
 
   const totalSteps = 6;
 
+  // Populate form data when property is loaded
   useEffect(() => {
-    loadPropertyData();
-  }, [propertyId]);
-
-  const loadPropertyData = async () => {
-    try {
-      setIsLoading(true);
-      const data = await fetchPropertyData(propertyId);
-      setFormData(data);
-    } catch (error) {
-      Alert.alert('Eroare', 'Nu am putut încărca datele proprietății.');
-      navigation.goBack();
-    } finally {
-      setIsLoading(false);
+    if (property && !formData) {
+      setFormData({
+        transactionType: property.transactionType as any,
+        propertyType: property.propertyType || 'APARTMENT', 
+        location: {
+          country: 'România', // Default
+          county: property.city, // Assuming city acts as main location for now
+          city: property.city,
+          neighborhood: property.neighborhood,
+          street: property.address?.street,
+          streetNumber: property.address?.number,
+          building: property.address?.building,
+          floor: property.floor,
+          apartment: property.address?.apartment,
+          coordinates: property.coordinates,
+        },
+        characteristics: {
+          totalArea: property.surface,
+          usableArea: property.surface, // fallback
+          rooms: property.rooms,
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          balconies: property.balconies,
+          yearBuilt: property.yearBuilt,
+          floor: property.floor,
+          totalFloors: property.totalFloors,
+          orientation: [], // Not always in listing
+          amenities: property.amenities || [],
+          utilities: [], // Not always in listing
+          comfort: '',
+          parking: {
+            type: property.parkingType || 'none',
+            spots: property.parkingSpots,
+          },
+        },
+        photos: (property.photos || []).map((p: any) => ({
+          id: String(p.id),
+          uri: p.url,
+          isPrimary: p.isPrimary,
+          caption: p.caption
+        })),
+        pricing: {
+          price: property.price,
+          currency: property.currency as any,
+          negotiable: property.isNegotiable,
+        },
+        title: property.title,
+        description: property.description,
+      });
     }
-  };
+  }, [property]);
 
   const handleBack = () => {
     if (currentStep > 1) {
@@ -184,36 +173,48 @@ const EditPropertyScreen: React.FC = () => {
   };
 
   const handleSaveAndExit = async () => {
-    setIsSubmitting(true);
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      Alert.alert('Succes!', 'Modificările au fost salvate.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } catch (error) {
-      Alert.alert('Eroare', 'Nu am putut salva modificările. Încearcă din nou.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await handleSubmit(true);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (exitAfter = false) => {
+    if (!formData) return;
+    
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Map to API DTO
+      const apiData = {
+        title: formData.title,
+        description: formData.description,
+        price: Number(formData.pricing?.price),
+        currency: formData.pricing?.currency,
+        city: formData.location?.city,
+        neighborhood: formData.location?.neighborhood,
+        rooms: Number(formData.characteristics?.rooms || 0),
+        surface: Number(formData.characteristics?.totalArea || 0),
+        transactionType: formData.transactionType || 'SALE',
+        propertyType: formData.propertyType || 'APARTMENT',
+        // Optional params
+        floor: formData.location?.floor,
+        totalFloors: formData.characteristics?.totalFloors,
+        yearBuilt: formData.characteristics?.yearBuilt,
+        amenities: formData.characteristics?.amenities,
+      };
+
+      await updatePropertyMutation.mutateAsync({
+        id: propertyId,
+        data: apiData
+      });
+
+      // Photos management would go here (add new ones, remove deleted ones)
+      // For now we just update text data
+
       Alert.alert(
-        'Succes',
-        'Anunțul tău a fost actualizat și va fi vizibil după verificare.',
-        [
-          {
-            text: 'Super!',
-            onPress: () => navigation.goBack(),
-          },
-        ]
+        'Succes', 
+        'Anunțul a fost actualizat.', 
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
+      console.error(error);
       Alert.alert('Eroare', 'Nu am putut actualiza anunțul. Încearcă din nou.');
     } finally {
       setIsSubmitting(false);
@@ -299,7 +300,7 @@ const EditPropertyScreen: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (isQueryLoading && !formData) {
     return (
       <SafeAreaView
         style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}
@@ -313,9 +314,16 @@ const EditPropertyScreen: React.FC = () => {
     );
   }
 
-  if (!formData) {
-    return null;
+  if (!property && !isQueryLoading) {
+    return (
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <Text>Proprietatea nu a fost găsită.</Text>
+            <Button title="Înapoi" onPress={() => navigation.goBack()} />
+        </View>
+    );
   }
+
+  if (!formData) return null;
 
   return (
     <SafeAreaView
@@ -408,7 +416,7 @@ const EditPropertyScreen: React.FC = () => {
         ) : (
           <Button
             title="Actualizează anunțul"
-            onPress={handleSubmit}
+            onPress={() => handleSubmit(true)}
             loading={isSubmitting}
             style={styles.footerButtonPrimary}
           />

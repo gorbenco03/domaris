@@ -56,6 +56,7 @@ export const QUERY_KEYS = {
   
   // Profile
   PROFILE: 'profile',
+  USER_PROFILE: 'user-profile',
   
   // Notifications
   NOTIFICATIONS: 'notifications',

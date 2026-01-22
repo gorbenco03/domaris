@@ -24,19 +24,23 @@ export interface PropertyPreview {
   type: 'sale' | 'rent';
 }
 
+export interface ConversationParticipant {
+  userId: string;
+  role: 'OWNER' | 'INQUIRER';
+  name?: string;
+  avatar?: string;
+}
+
 export interface Conversation {
   id: string;
   propertyId: string;
-  participants: {
-    ownerId: string;
-    seekerId: string;
-  };
+  participants: ConversationParticipant[];
   lastMessage?: Message;
   unreadCount: number;
   status: 'active' | 'archived' | 'blocked';
   createdAt: Date;
   updatedAt: Date;
-  // Populated
+  // Populated for UI
   property?: PropertyPreview;
   otherParticipant?: Participant;
 }

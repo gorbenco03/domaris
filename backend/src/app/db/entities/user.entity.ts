@@ -197,21 +197,7 @@ export class User extends ExtModel {
   })
   activeListingsCount!: number;
 
-  // ============================================================================
-  // LEGACY FIELD - TO BE REMOVED AFTER MIGRATION
-  // ============================================================================
 
-  /**
-   * @deprecated Folosește verificationLevel și isAdmin în loc
-   * Păstrat temporar pentru compatibilitate backwards
-   * Va fi eliminat după migrarea completă
-   */
-  @Column({
-    type: DataType.ENUM('tenant', 'landlord', 'admin'),
-    defaultValue: 'tenant',
-    allowNull: true, // Making nullable for gradual migration
-  })
-  role?: 'tenant' | 'landlord' | 'admin' | null;
 
   // ============================================================================
   // HOOKS

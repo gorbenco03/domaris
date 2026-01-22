@@ -23,9 +23,9 @@ import { jwtVerify, SignJWT } from 'jose';
 import { User } from '../db/entities/user.entity.js';
 import { type AuthModuleOptions } from './auth.module.js';
 import {
-  RegisterDto,
+  RegisterEmailDto,
+  VerifyEmailOtpDto,
   RegisterPhoneDto,
-  LoginDto,
   LoginPhoneDto,
   VerifyPhoneOtpDto,
   AppleAuthDto,
@@ -62,52 +62,102 @@ export class AuthService {
   // ============================================================================
 
   /**
-   * Înregistrare cu email și parolă
-   * ADR-001: Nu mai setăm role, verificationLevel începe de la 0
+   * Înregistrare cu email - Pas 1 (trimite OTP)
+   * Salvează datele în Redis și trimite codul pe email
    */
-  async register(data: RegisterDto) {
-    try {
-      console.log('📝 Register attempt for:', data.email);
+  async registerEmail(data: RegisterEmailDto) {
+    const existingUser = await User.findOne({ where: { email: data.email } });
+    if (existingUser) {
+      throw new BadRequestException({
+        code: 'EMAIL_ALREADY_EXISTS',
+        message: 'Un cont cu acest email există deja',
+      });
+    }
 
-      const existingUser = await User.findOne({ where: { email: data.email } });
-      if (existingUser) {
-        throw new BadRequestException({
-          code: 'EMAIL_ALREADY_EXISTS',
-          message: 'Un cont cu acest email există deja',
-        });
-      }
-
-      console.log('✅ Email not taken, creating user...');
-
-      const hashedPassword = await bcrypt.hash(data.password, 10);
-
-      const user = await User.create({
+    // Salvăm datele în Redis pentru a le recupera la pasul de verificare
+    const pendingKey = `pending_register:email:${data.email}`;
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    
+    await this.redisClient.setex(
+      pendingKey,
+      OTP_EXPIRY_SECONDS,
+      JSON.stringify({
         email: data.email,
         password: hashedPassword,
         firstName: data.firstName,
         lastName: data.lastName,
-        verificationLevel: 0,
-        emailVerified: false,
-        phoneVerified: false,
-        isAdmin: false,
-      });
+      }),
+    );
 
-      console.log('✅ User created with ID:', user.id);
-
-      // Send verification email (async)
-      this.sendEmailVerificationCode(data.email).catch(console.error);
-
-      // Auto-login after register
-      console.log('🔐 Generating auth response...');
-      const response = await this.createAuthResponse(user);
-      console.log('✅ Auth response generated successfully');
-
-      return response;
-    } catch (error) {
-      console.error('❌ Register error:', error);
-      throw error;
-    }
+    return this.sendEmailRegistrationOtp(data.email, data.firstName);
   }
+
+  /**
+   * Verificare OTP Email - Pas 2 (finalizare înregistrare)
+   */
+  async verifyEmailOtp(data: VerifyEmailOtpDto) {
+    const isValid = await this.verifyOtp(`register:email:${data.email}`, data.code);
+    if (!isValid) {
+      throw new BadRequestException({
+        code: 'OTP_INVALID',
+        message: 'Cod invalid sau expirat',
+      });
+    }
+
+    const pendingKey = `pending_register:email:${data.email}`;
+    const pendingData = await this.redisClient.get(pendingKey);
+
+    if (!pendingData) {
+      throw new BadRequestException({
+        code: 'REGISTRATION_EXPIRED',
+        message: 'Sesiunea de înregistrare a expirat. Reîncepe procesul.',
+      });
+    }
+
+    const { email, password, firstName, lastName } = JSON.parse(pendingData);
+
+    // Verificăm din nou dacă între timp s-a creat contul
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      await this.redisClient.del(pendingKey);
+      throw new BadRequestException('Contul a fost deja creat');
+    }
+
+    const user = await User.create({
+      email,
+      password,
+      firstName,
+      lastName,
+      verificationLevel: 1, // Email verificat = level 1
+      emailVerified: true,
+      phoneVerified: false,
+      isAdmin: false,
+    });
+
+    // Cleanup
+    await this.redisClient.del(pendingKey);
+    await this.redisClient.del(`otp:register:email:${data.email}`);
+
+    return this.createAuthResponse(user);
+  }
+
+  /**
+   * Helper pentru trimitere OTP înregistrare email
+   */
+  private async sendEmailRegistrationOtp(email: string, firstName?: string) {
+    const code = await this.generateAndStoreOtp(`register:email:${email}`);
+    
+    await this.emailService.sendVerificationCode(email, code, firstName);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    return {
+      success: true,
+      message: 'Cod de verificare trimis pe email',
+      expiresIn: OTP_EXPIRY_SECONDS,
+      ...(isDev && { code }),
+    };
+  }
+
 
   /**
    * Validare credențiale
@@ -148,7 +198,7 @@ export class AuthService {
     }
 
     // Store pending registration data
-    const pendingKey = `pending_register:${data.phone}`;
+    const pendingKey = `pending_register:phone:${data.phone}`;
     await this.redisClient.setex(
       pendingKey,
       OTP_EXPIRY_SECONDS,
@@ -159,8 +209,18 @@ export class AuthService {
       }),
     );
 
-    return this.sendPhoneOtp(data.phone);
+    const code = await this.generateAndStoreOtp(`register:phone:${data.phone}`);
+    await this.smsService.sendOtpCode(data.phone, code);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    return {
+      success: true,
+      message: 'Cod de înregistrare trimis',
+      expiresIn: OTP_EXPIRY_SECONDS,
+      ...(isDev && { code }),
+    };
   }
+
 
   /**
    * Login cu telefon (trimite OTP)
@@ -174,54 +234,71 @@ export class AuthService {
       });
     }
 
-    return this.sendPhoneOtp(data.phone);
+    const code = await this.generateAndStoreOtp(`login:phone:${data.phone}`);
+    await this.smsService.sendOtpCode(data.phone, code);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+    return {
+      success: true,
+      message: 'Cod de autentificare trimis',
+      expiresIn: OTP_EXPIRY_SECONDS,
+      ...(isDev && { code }),
+    };
   }
+
 
   /**
    * Verificare OTP telefon (finalizare login/register)
    */
   async verifyPhoneOtp(data: VerifyPhoneOtpDto) {
-    const isValid = await this.verifyOtp(`phone:${data.phone}`, data.code);
-    if (!isValid) {
+    // Încercăm ambele prefixe (login sau register) pentru a fi siguri
+    const isRegister = await this.verifyOtp(`register:phone:${data.phone}`, data.code);
+    const isLogin = !isRegister && await this.verifyOtp(`login:phone:${data.phone}`, data.code);
+
+    if (!isRegister && !isLogin) {
       throw new BadRequestException({
         code: 'OTP_INVALID',
         message: 'Cod invalid sau expirat',
       });
     }
 
-    // Check if this is a registration or login
-    const pendingKey = `pending_register:${data.phone}`;
-    const pendingData = await this.redisClient.get(pendingKey);
-
     let user: User;
 
-    if (pendingData) {
-      // This is a registration
-      const { firstName, lastName } = JSON.parse(pendingData);
+    if (isRegister) {
+      // Flow de înregistrare
+      const pendingKey = `pending_register:phone:${data.phone}`;
+      const pendingData = await this.redisClient.get(pendingKey);
 
-      user = await User.create({
-        phone: data.phone,
-        firstName,
-        lastName,
-        verificationLevel: 1, // ADR-001: Phone verified = level 1
-        phoneVerified: true,
-        emailVerified: false,
-        isAdmin: false,
-      });
-
-      // Clean up pending data
-      await this.redisClient.del(pendingKey);
-    } else {
-      // This is a login
-      const existingUser = await User.findOne({ where: { phone: data.phone } });
-      if (!existingUser) {
-        throw new NotFoundException({
-          code: 'USER_NOT_FOUND',
-          message: 'Utilizator negăsit',
-        });
+      if (!pendingData) {
+        throw new BadRequestException('Sesiunea de înregistrare a expirat');
       }
 
-      // Ensure phone is verified
+      const { firstName, lastName } = JSON.parse(pendingData);
+
+      // Verificăm dacă nu cumva s-a creat între timp
+      const existing = await User.findOne({ where: { phone: data.phone } });
+      if (existing) {
+        user = existing;
+      } else {
+        user = await User.create({
+          phone: data.phone,
+          firstName,
+          lastName,
+          verificationLevel: 1,
+          phoneVerified: true,
+          emailVerified: false,
+          isAdmin: false,
+        });
+      }
+      
+      await this.redisClient.del(pendingKey);
+    } else {
+      // Flow de Login
+      const existingUser = await User.findOne({ where: { phone: data.phone } });
+      if (!existingUser) {
+        throw new NotFoundException('Utilizator negăsit');
+      }
+
       if (!existingUser.phoneVerified) {
         existingUser.phoneVerified = true;
         if (existingUser.verificationLevel < 1) {
@@ -229,7 +306,6 @@ export class AuthService {
         }
         await existingUser.save();
       }
-
       user = existingUser;
     }
 
@@ -238,6 +314,7 @@ export class AuthService {
 
     return this.createAuthResponse(user);
   }
+
 
   // ============================================================================
   // OAUTH

@@ -28,6 +28,7 @@ import {
   UploadedFiles,
   UseInterceptors,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -58,6 +59,28 @@ export class ListingController {
     private readonly listingService: ListingService,
     private readonly analyticsService: AnalyticsService,
   ) {}
+
+  // ============================================================================
+  // AUTHENTICATED ENDPOINTS (MOVED UP to avoid conflict with /:id)
+  // ============================================================================
+
+  /**
+   * Get my properties
+   * ADR-001: Requires level 2+ to see "my listings"
+   * (Users without level 2 can't post, so they have no listings)
+   */
+  @UseGuards(AuthGuard, VerificationGuard)
+  @MinVerificationLevel(2)
+  @Get('my')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get my properties',
+    description: 'Requires identity verification (level 2)',
+  })
+  @ApiForbiddenResponse({ description: 'Identity verification required' })
+  async findMyProperties(@CurrentUserId() userId: number) {
+    return this.listingService.findMyListings(userId);
+  }
 
   // ============================================================================
   // PUBLIC ENDPOINTS (no auth required)
@@ -129,35 +152,23 @@ export class ListingController {
   @ApiResponse({ status: 200, description: 'Property details' })
   @ApiResponse({ status: 404, description: 'Property not found' })
   async findOne(@Param('id') id: string, @CurrentUser() user?: any) {
+    const numericId = parseInt(id, 10);
+    
+    if (isNaN(numericId)) {
+      throw new NotFoundException('Invalid property ID');
+    }
+
     // Track view asynchronously
     this.analyticsService
-      .trackView(Number(id), user?.id)
+      .trackView(numericId, user?.id)
       .catch((err) => console.error('View tracking failed', err));
 
-    return this.listingService.findOne(+id);
+    return this.listingService.findOne(numericId);
   }
 
   // ============================================================================
   // AUTHENTICATED ENDPOINTS - Require Level 2 (Identity Verified)
   // ============================================================================
-
-  /**
-   * Get my properties
-   * ADR-001: Requires level 2+ to see "my listings"
-   * (Users without level 2 can't post, so they have no listings)
-   */
-  @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(2)
-  @Get('me/all')
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Get my properties',
-    description: 'Requires identity verification (level 2)',
-  })
-  @ApiForbiddenResponse({ description: 'Identity verification required' })
-  async findMyProperties(@CurrentUserId() userId: number) {
-    return this.listingService.findMyListings(userId);
-  }
 
   /**
    * Create new property

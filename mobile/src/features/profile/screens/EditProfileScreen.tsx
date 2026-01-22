@@ -32,23 +32,29 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { Avatar } from '../components';
 import { Button, Input } from '@/shared/components';
 
-// Mock initial data
-const initialData = {
-  firstName: 'Ion',
-  lastName: 'Popescu',
-  avatar: undefined as string | undefined,
-  bio: 'Proprietar de apartamente în București. Caut să închiriez pe termen lung persoanelor serioase.',
-  email: 'ion.popescu@email.com',
-  phone: '+40 721 123 456',
-  city: 'București',
-  county: 'Sector 1',
-};
+import { useUpdateProfile, useUploadAvatar } from '@/features/profile/hooks/useUser';
+import { useAuth } from '@/app/providers/AuthProvider';
 
 const EditProfileScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
+  const { user } = useAuth();
+  
+  // Hooks
+  const updateProfileMutation = useUpdateProfile();
+  const uploadAvatarMutation = useUploadAvatar();
 
-  const [formData, setFormData] = useState(initialData);
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    avatar: user?.avatar,
+    bio: (user as any)?.bio || '',
+    email: user?.email || '',
+    phone: (user as any)?.phone || '',
+    city: (user as any)?.city || '',
+    county: (user as any)?.county || '',
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -69,30 +75,57 @@ const EditProfileScreen: React.FC = () => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'] as any, // Fix legacy enum issue
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
+      // Optimistic update locally
       setFormData((prev) => ({ ...prev, avatar: result.assets[0].uri }));
-      setHasChanges(true);
+      
+      // Upload immediately
+      try {
+        const localUri = result.assets[0].uri;
+        const filename = localUri.split('/').pop() || 'avatar.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+        
+        const formData = new FormData();
+        formData.append('avatar', { uri: localUri, name: filename, type } as any);
+        
+        await uploadAvatarMutation.mutateAsync(formData);
+        Alert.alert('Succes', 'Fotografia a fost actualizată.');
+      } catch (error) {
+        console.error('Avatar upload failed', error);
+        Alert.alert('Eroare', 'Nu am putut încărca fotografia.');
+      }
     }
   };
 
   const handleSave = async () => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    setIsLoading(false);
-    setHasChanges(false);
-    
-    Alert.alert('Succes', 'Profilul a fost actualizat cu succes!', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    try {
+      await updateProfileMutation.mutateAsync({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        bio: formData.bio,
+        phone: formData.phone,
+        city: formData.city,
+        county: formData.county,
+      });
+      
+      setHasChanges(false);
+      Alert.alert('Succes', 'Profilul a fost actualizat cu succes!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      console.error('Update profile error:', error);
+      Alert.alert('Eroare', 'Nu am putut actualiza profilul.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

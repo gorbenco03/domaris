@@ -34,21 +34,34 @@ const LoginScreen: React.FC = () => {
   const { theme } = useTheme();
   const { login } = useAuth();
   
+  /* State */
+  const [method, setMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; phone?: string; password?: string }>({});
 
   const validateForm = (): boolean => {
-    const newErrors: { email?: string; password?: string } = {};
-    if (!email.trim()) {
-      newErrors.email = 'Emailul este obligatoriu';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Format email invalid';
+    const newErrors: typeof errors = {};
+    
+    if (method === 'email') {
+      if (!email.trim()) {
+        newErrors.email = 'Emailul este obligatoriu';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.email = 'Format email invalid';
+      }
+      if (!password) {
+        newErrors.password = 'Parola este obligatorie';
+      }
+    } else {
+      if (!phone.trim()) {
+        newErrors.phone = 'Numărul de telefon este obligatoriu';
+      } else if (!/^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ''))) {
+        newErrors.phone = 'Format telefon invalid';
+      }
     }
-    if (!password) {
-      newErrors.password = 'Parola este obligatorie';
-    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -56,10 +69,32 @@ const LoginScreen: React.FC = () => {
   const handleLogin = async () => {
     if (!validateForm()) return;
     setIsLoading(true);
+    setErrors({});
+
     try {
-      await login(email, password);
-    } catch (error) {
-      setErrors({ password: 'Credențiale invalide' });
+      if (method === 'email') {
+        await login(email, password);
+      } else {
+        // Phone Login - Step 1: Send OTP
+        const response = await import('@/features/auth/api').then(m => m.authApi.loginWithPhone({ phone }));
+        console.log('Login OTP sent:', response);
+        
+        // Navigate to OTP Verification
+        navigation.navigate('OTPVerification', {
+          phone,
+          type: 'phone',
+          purpose: 'login'
+        });
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      const msg = error?.response?.data?.message || 'Eroare la autentificare';
+      
+      if (method === 'email') {
+        setErrors({ password: 'Email sau parolă incorectă' });
+      } else {
+        setErrors({ phone: msg });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -128,50 +163,89 @@ const LoginScreen: React.FC = () => {
           {/* Login Card */}
           <View style={[styles.card, { backgroundColor: theme.colors.surface, ...theme.shadows.xl }]}>
             {/* Social Login - First */}
+            {/* Social Login - First */}
             <View style={styles.socialSection}>
               <SocialButton provider="google" onPress={handleGoogleLogin} style={styles.socialBtn} />
               <SocialButton provider="apple" onPress={handleAppleLogin} style={styles.socialBtn} />
             </View>
 
-            <Divider text="sau cu email" style={styles.divider} />
+            <Divider text="sau cu" style={styles.divider} />
 
-            {/* Email & Password */}
-            <View style={styles.form}>
-              <Input
-                placeholder="Email"
-                value={email}
-                onChangeText={(t) => { setEmail(t); if (errors.email) setErrors({ ...errors, email: undefined }); }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                leftIcon={<Mail size={20} color={theme.colors.textTertiary} />}
-                error={errors.email}
-                containerStyle={styles.input}
-              />
-              <Input
-                placeholder="Parolă"
-                value={password}
-                onChangeText={(t) => { setPassword(t); if (errors.password) setErrors({ ...errors, password: undefined }); }}
-                secureTextEntry
-                autoComplete="password"
-                leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
-                error={errors.password}
-                containerStyle={styles.input}
-              />
-
-              {/* Forgot Password */}
-              <TouchableOpacity 
-                onPress={() => navigation.navigate('ForgotPassword')} 
-                style={styles.forgotBtn}
+            {/* Method Tabs */}
+            <View style={styles.tabsContainer}>
+              <TouchableOpacity
+                style={[styles.tab, method === 'email' && styles.activeTab, { borderColor: method === 'email' ? theme.colors.primary.main : theme.colors.border }]}
+                onPress={() => setMethod('email')}
               >
-                <Text style={[styles.forgotText, { color: theme.colors.accent.main }]}>
-                  Am uitat parola
-                </Text>
+                <Mail size={18} color={method === 'email' ? theme.colors.primary.main : theme.colors.textSecondary} />
+                <Text style={[styles.tabText, { color: method === 'email' ? theme.colors.primary.main : theme.colors.textSecondary }]}>Email</Text>
               </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.tab, method === 'phone' && styles.activeTab, { borderColor: method === 'phone' ? theme.colors.primary.main : theme.colors.border }]}
+                onPress={() => setMethod('phone')}
+              >
+                <View style={{ transform: [{ rotate: '0deg' }] }}>
+                  {/* Using a generic icon or Phone icon if imported */}
+                   <Text>📱</Text> 
+                </View>
+                <Text style={[styles.tabText, { color: method === 'phone' ? theme.colors.primary.main : theme.colors.textSecondary }]}>Telefon</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Form Fields */}
+            <View style={styles.form}>
+              {method === 'email' ? (
+                <>
+                  <Input
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={(t) => { setEmail(t); if (errors.email) setErrors({ ...errors, email: undefined }); }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    leftIcon={<Mail size={20} color={theme.colors.textTertiary} />}
+                    error={errors.email}
+                    containerStyle={styles.input}
+                  />
+                  <Input
+                    placeholder="Parolă"
+                    value={password}
+                    onChangeText={(t) => { setPassword(t); if (errors.password) setErrors({ ...errors, password: undefined }); }}
+                    secureTextEntry
+                    autoComplete="password"
+                    leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
+                    error={errors.password}
+                    containerStyle={styles.input}
+                  />
+
+                  {/* Forgot Password */}
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('ForgotPassword')} 
+                    style={styles.forgotBtn}
+                  >
+                    <Text style={[styles.forgotText, { color: theme.colors.accent.main }]}>
+                      Am uitat parola
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Input
+                  placeholder="Număr de telefon"
+                  value={phone}
+                  onChangeText={(t) => { setPhone(t); if (errors.phone) setErrors({ ...errors, phone: undefined }); }}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  // Using Mail icon temporarily or import Phone
+                  leftIcon={<Text>📱</Text>}
+                  error={errors.phone}
+                  containerStyle={styles.input}
+                />
+              )}
 
               {/* Login Button */}
               <Button
-                title="Autentificare"
+                title={method === 'email' ? "Autentificare" : "Trimite cod OTP"}
                 onPress={handleLogin}
                 loading={isLoading}
                 fullWidth
@@ -286,7 +360,30 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   divider: {
-    marginVertical: 24,
+    marginVertical: 20,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    gap: 8,
+  },
+  activeTab: {
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(124, 77, 255, 0.05)', // light accent
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   form: {},
   input: {

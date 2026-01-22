@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   RefreshControl,
   Dimensions,
-  Image,
 } from 'react-native';
 import { useTutorialTarget } from '@/features/tutorial';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,59 +46,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ============================================
 // MOCK DATA
 // ============================================
-
-const MOCK_PROPERTIES = [
-  {
-    id: '1',
-    title: 'Apartament 3 camere renovat complet',
-    transactionType: 'SALE' as const,
-    price: 95000,
-    currency: 'EUR' as const,
-    location: {
-      neighborhood: 'Drumul Taberei',
-      city: 'București',
-    },
-    characteristics: {
-      bedrooms: 2,
-      bathrooms: 1,
-      totalArea: 75,
-      floor: 4,
-      totalFloors: 10,
-    },
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-    isNew: true,
-    isVerified: true,
-    stats: { views: 234, favorites: 12 },
-  },
-  {
-    id: '2',
-    title: 'Apartament 2 camere modern Militari',
-    transactionType: 'SALE' as const,
-    price: 72000,
-    currency: 'EUR' as const,
-    location: {
-      neighborhood: 'Militari',
-      city: 'București',
-    },
-    characteristics: {
-      bedrooms: 1,
-      bathrooms: 1,
-      totalArea: 52,
-      floor: 2,
-      totalFloors: 8,
-    },
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-    isVerified: true,
-    stats: { views: 156, favorites: 8 },
-  },
-];
-
-const POPULAR_LOCATIONS = [
-  { id: '1', name: 'București Sector 1', count: 1234 },
-  { id: '2', name: 'Cluj-Napoca Centru', count: 856 },
-  { id: '3', name: 'Timișoara', count: 654 },
-  { id: '4', name: 'Brașov', count: 432 },
-];
 
 const QUICK_CATEGORIES = [
   { id: 'apartment', label: 'Apartamente', icon: Building2, color: '#6366f1' },

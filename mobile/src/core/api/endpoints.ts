@@ -13,18 +13,19 @@ export const API_ENDPOINTS = {
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
     VERIFY_OTP: '/auth/verify-phone-otp',
+    VERIFY_EMAIL_OTP: '/auth/verify-email-otp',
     RESEND_OTP: '/auth/resend-otp',
     ME: '/auth/me',
   },
 
   // Users
   USERS: {
-    PROFILE: '/users/profile',
-    UPDATE_PROFILE: '/users/profile',
-    UPLOAD_AVATAR: '/users/avatar',
-    CHANGE_PASSWORD: '/users/change-password',
-    DELETE_ACCOUNT: '/users/delete',
-    NOTIFICATIONS_SETTINGS: '/users/notifications-settings',
+    PROFILE: '/users/me',
+    UPDATE_PROFILE: '/users/me',
+    UPLOAD_AVATAR: '/users/me/avatar',
+    CHANGE_PASSWORD: '/auth/change-password', 
+    DELETE_ACCOUNT: '/users/me',
+    NOTIFICATIONS_SETTINGS: '/users/me/notifications',
   },
 
   // Properties

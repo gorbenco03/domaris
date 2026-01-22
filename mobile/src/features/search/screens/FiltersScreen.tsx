@@ -15,7 +15,7 @@ import {
 import { X, RotateCcw, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton, Button, Chip, Divider } from '@/shared/components';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 // ============================================
 // TYPES
@@ -46,15 +46,33 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, children }) => {
 // MAIN COMPONENT
 // ============================================
 
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
 const FiltersScreen: React.FC = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  
+  // Initial filters from navigation params
+  const initialFilters = route.params?.filters || {};
 
-  // State
-  const [propertyType, setPropertyType] = useState<string[]>(['APARTMENT']);
-  const [rooms, setRooms] = useState<string[]>([]);
-  const [comfort, setComfort] = useState<string | null>(null);
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  // State initialization from params
+  const [propertyType, setPropertyType] = useState<string[]>(
+    initialFilters.propertyType ? [initialFilters.propertyType] : []
+  );
+  const [rooms, setRooms] = useState<string[]>(
+    initialFilters.minRooms ? [String(initialFilters.minRooms)] : []
+  );
+  // Note: Backend might expect numbers, UI uses strings. We map loosely here.
+  
+  const [priceRange, setPriceRange] = useState({ 
+    min: initialFilters.minPrice ? String(initialFilters.minPrice) : '', 
+    max: initialFilters.maxPrice ? String(initialFilters.maxPrice) : '' 
+  });
+
+  const [comfort, setComfort] = useState<string | null>(null); // Not fully mapped to backend yet
 
   const resetFilters = () => {
     setPropertyType([]);
@@ -69,6 +87,22 @@ const FiltersScreen: React.FC = () => {
     } else {
       setter([...list, item]);
     }
+  };
+
+  const handleApply = () => {
+    // Map local state back to API filter params
+    const activeFilters: any = {
+      ...initialFilters,
+      propertyType: propertyType.length > 0 ? propertyType[0] : undefined, // Backend usually takes one type or array depending on impl
+      minRooms: rooms.length > 0 ? Math.min(...rooms.map(Number)) : undefined,
+      minPrice: priceRange.min ? Number(priceRange.min) : undefined,
+      maxPrice: priceRange.max ? Number(priceRange.max) : undefined,
+    };
+
+    // Clean undefined
+    Object.keys(activeFilters).forEach(key => activeFilters[key] === undefined && delete activeFilters[key]);
+
+    navigation.navigate('SearchResults', { filters: activeFilters });
   };
 
   return (
@@ -112,7 +146,7 @@ const FiltersScreen: React.FC = () => {
         {/* Rooms */}
         <FilterSection title="Număr camere">
           <View style={styles.chipsGrid}>
-            {['1', '2', '3', '4', '5+'].map((num) => (
+            {['1', '2', '3', '4'].map((num) => (
               <Chip
                 key={num}
                 label={num}
@@ -121,23 +155,12 @@ const FiltersScreen: React.FC = () => {
                 style={styles.circleChip}
               />
             ))}
-          </View>
-        </FilterSection>
-
-        <Divider />
-
-        {/* Comfort Level */}
-        <FilterSection title="Grad confort">
-          <View style={styles.chipsGrid}>
-            {['LUX', '1', '2', '3'].map((lvl) => (
-              <Chip
-                key={lvl}
-                label={lvl === 'LUX' ? 'Lux' : `Confort ${lvl}`}
-                selected={comfort === lvl}
-                onPress={() => setComfort(lvl === comfort ? null : lvl)}
-                style={styles.chip}
+             <Chip
+                label="5+"
+                selected={rooms.includes('5')}
+                onPress={() => toggleSelection(rooms, '5', setRooms)}
+                style={styles.circleChip}
               />
-            ))}
           </View>
         </FilterSection>
 
@@ -148,12 +171,13 @@ const FiltersScreen: React.FC = () => {
           <View style={styles.row}>
             <View style={[styles.priceInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
               <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Minim</Text>
-              <Text style={[styles.priceValue, { color: theme.colors.textPrimary }]}>0 €</Text>
+              {/* Simple Text Input would be better here, using Text for UI mockup */}
+              <Text style={[styles.priceValue, { color: theme.colors.textPrimary }]}>{priceRange.min || '0'} €</Text>
             </View>
             <View style={styles.priceSeparator} />
             <View style={[styles.priceInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
               <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Maxim</Text>
-              <Text style={[styles.priceValue, { color: theme.colors.textPrimary }]}>Nelimitat</Text>
+              <Text style={[styles.priceValue, { color: theme.colors.textPrimary }]}>{priceRange.max || 'Nelimitat'}</Text>
             </View>
           </View>
           {/* Slider placeholder */}
@@ -179,8 +203,8 @@ const FiltersScreen: React.FC = () => {
       {/* Footer Actions */}
       <View style={[styles.footer, { borderTopColor: theme.colors.divider }]}>
         <Button
-          title="Vezi 245 rezultate"
-          onPress={() => navigation.goBack()}
+          title="Vezi rezultate"
+          onPress={handleApply}
           variant="primary"
           size="lg"
           fullWidth

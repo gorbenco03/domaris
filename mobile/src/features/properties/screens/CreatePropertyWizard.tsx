@@ -20,6 +20,11 @@ import { ArrowLeft, X } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import ProgressBar from '@/shared/components/ProgressBar';
 import Button from '@/shared/components/Button';
+import { 
+  useCreateProperty, 
+  useUploadPropertyPhotos 
+} from '@/features/properties/hooks/useProperties';
+import { ICreatePropertyRequest } from '@/features/properties/api/propertiesApi';
 
 // Import Steps
 import PropertyTypeStep from './steps/PropertyTypeStep';
@@ -164,14 +169,69 @@ const CreatePropertyWizard: React.FC = () => {
     }
   };
 
+  /* API Hooks */
+  const createPropertyMutation = useCreateProperty();
+  const uploadPhotosMutation = useUploadPropertyPhotos();
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // 1. Map Form Data to API Request DTO
+      const apiData = {
+        title: formData.title,
+        description: formData.description,
+        price: Number(formData.pricing?.price),
+        currency: formData.pricing?.currency,
+        city: formData.location?.city,
+        neighborhood: formData.location?.neighborhood,
+        rooms: Number(formData.characteristics?.rooms || 0),
+        surface: Number(formData.characteristics?.totalArea || 0),
+        transactionType: formData.transactionType || 'SALE',
+        propertyType: formData.propertyType || 'APARTMENT',
+        // Optional fields mapping
+        floor: formData.characteristics?.floor, // Fix: read from characteristics
+        totalFloors: formData.characteristics?.totalFloors,
+        bathrooms: formData.characteristics?.bathrooms, // Added missing mapping
+        yearBuilt: formData.characteristics?.yearBuilt,
+        partitioning: formData.characteristics?.comfort, // mapping comfort to partitioning/structure if needed
+        amenities: formData.characteristics?.amenities,
+        utilities: formData.characteristics?.utilities,
+        street: formData.location?.street,
+        streetNumber: formData.location?.streetNumber,
+        building: formData.location?.building,
+      };
+
+      // 2. Create Property
+      console.log('[CreatePropertyWizard] API Data:', JSON.stringify(apiData, null, 2));
+      const newProperty = await createPropertyMutation.mutateAsync(apiData as any); 
+      console.log('[CreatePropertyWizard] New Property created:', JSON.stringify(newProperty, null, 2));
+      
+      // 3. Upload Photos if any
+      if (formData.photos.length > 0) {
+        const photoFormData = new FormData();
+        
+        formData.photos.forEach((photo) => {
+          // React Native FormData expects: { uri, name, type }
+          const filename = photo.uri.split('/').pop() || 'photo.jpg';
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : 'image/jpeg';
+          
+          photoFormData.append('photos', {
+            uri: photo.uri,
+            name: filename,
+            type,
+          } as any);
+        });
+
+        await uploadPhotosMutation.mutateAsync({
+          propertyId: newProperty.id,
+          formData: photoFormData,
+        });
+      }
+
       Alert.alert(
         'Succes',
-        'Anunțul tău a fost publicat și va fi vizibil după verificare.',
+        'Anunțul tău a fost publicat cu succes!',
         [
           {
             text: 'Super!',
@@ -180,7 +240,8 @@ const CreatePropertyWizard: React.FC = () => {
         ]
       );
     } catch (error) {
-      Alert.alert('Eroare', 'Nu am putut publica anunțul. Încearcă din nou.');
+      console.error('Create property error:', error);
+      Alert.alert('Eroare', 'Nu am putut publica anunțul. Verifică conexiunea și încearcă din nou.');
     } finally {
       setIsSubmitting(false);
     }

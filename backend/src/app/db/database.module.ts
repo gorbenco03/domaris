@@ -3,7 +3,7 @@ import { SequelizeModule } from '@nestjs/sequelize'
 import pg from 'pg'
 import { Listing } from './entities/listing.entity';
 import { GisNode } from './entities/gisNode.entity';
-import { GroupSource } from './entities/groupSource.entity';
+
 import { ListingImage } from './entities/listingImage.entity';
 import { User } from './entities/user.entity';
 import { UserOnboarding } from './entities/userOnboarding.entity';
@@ -37,7 +37,7 @@ pg.defaults.parseInt8 = true;
           models: [
             Listing,
             GisNode,
-            GroupSource,
+
             ListingImage,
             User,
             UserOnboarding,

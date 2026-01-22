@@ -11,6 +11,7 @@ import type {
   IRegisterPhoneRequest,
   ILoginPhoneRequest,
   IVerifyPhoneOtpRequest,
+  IVerifyEmailOtpRequest,
   IGoogleAuthRequest,
   IAppleAuthRequest,
   IForgotPasswordRequest,
@@ -29,17 +30,31 @@ import type {
 // ============================================================================
 
 /**
- * Register with email and password
+ * Register with email and password (sends OTP)
  */
 export const registerWithEmail = async (
   data: IRegisterEmailRequest
-): Promise<IAuthResponseData> => {
-  const response = await apiClient.post<IAuthResponseData>(
+): Promise<IOtpSentResponse> => {
+  const response = await apiClient.post<IOtpSentResponse>(
     API_ENDPOINTS.AUTH.REGISTER,
     data
   );
   return response.data;
 };
+
+/**
+ * Verify email OTP (completes registration)
+ */
+export const verifyEmailOtp = async (
+  data: IVerifyEmailOtpRequest
+): Promise<IAuthResponseData> => {
+  const response = await apiClient.post<IAuthResponseData>(
+    API_ENDPOINTS.AUTH.VERIFY_EMAIL_OTP,
+    data
+  );
+  return response.data;
+};
+
 
 /**
  * Register with phone (sends OTP)
@@ -271,12 +286,14 @@ export const getCurrentUser = async () => {
 export const authApi = {
   // Registration
   registerWithEmail,
+  verifyEmailOtp,
   registerWithPhone,
 
   // Login
   loginWithEmail,
   loginWithPhone,
   verifyPhoneOtp,
+
 
   // OAuth
   loginWithGoogle,

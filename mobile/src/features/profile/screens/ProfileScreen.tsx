@@ -41,6 +41,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
+import { useUserProfile } from '@/features/profile/hooks/useUser';
 import {
   Avatar,
   ProfileMenuItem,
@@ -50,34 +51,35 @@ import {
 } from '../components';
 import { OwnerDashboardWidget } from '@/features/analytics';
 
-// Initial dummy stats for the profile
-const DUMMY_STATS = {
-  activeListings: 5,
-  monthlyViews: 234,
-  monthlyContacts: 12,
-  verificationLevel: 2,
-  memberSince: 'Ianuarie 2026',
-  rating: 4.8,
-  reviewCount: 23,
-};
-
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
 
 const ProfileScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { user: storeUser, logout: authLogout } = useAuth();
-
+  
   // If user is null (shouldn't happen on this screen theoretically), use a fallback or return null
   if (!storeUser) return null;
 
+  /* API Hooks */
+  const { data: apiUser, isLoading } = useUserProfile();
+
+  // Merge store user (auth context) with full profile details from API
   const user = {
     ...storeUser,
-    ...DUMMY_STATS,
+    ...apiUser,
+    // Fallbacks/Resets if fields depend on API specific structure not in auth token
     location: {
-      city: 'Bucureşti',
-      county: 'Sector 1',
+      city: (apiUser as any)?.city || 'București',
+      county: (apiUser as any)?.county || 'Sector 1',
     },
+    // Stats (these might come from a separate dashboard endpoint or be part of user profile)
+    activeListings: (apiUser as any)?.metrics?.activeListings || 0,
+    monthlyViews: (apiUser as any)?.metrics?.monthlyViews || 0,
+    monthlyContacts: (apiUser as any)?.metrics?.monthlyContacts || 0,
+    reviewCount: (apiUser as any)?.metrics?.reviewCount || 0,
+    rating: (apiUser as any)?.metrics?.rating || 5.0,
+    memberSince: apiUser?.createdAt ? new Date(apiUser.createdAt).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' }) : 'Recent',
   };
 
   const getVerificationBadge = () => {

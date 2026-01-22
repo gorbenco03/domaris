@@ -19,10 +19,12 @@ interface AuthContextValue {
   isLoading: boolean;
   isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  register: (data: RegisterData) => Promise<any>;
+  verifyEmailOtp: (email: string, code: string) => Promise<void>;
   verifyPhoneOtp: (phone: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateUser: (userData: any) => Promise<void>; // Direct update for client changes
 }
 
 /**
@@ -94,13 +96,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Register with email and password (real backend call)
+   * Register with email and password (sends OTP)
    */
-  const register = async (data: RegisterData): Promise<void> => {
+  const register = async (data: RegisterData): Promise<any> => {
     store.setLoading(true);
 
     try {
       const response = await authApi.registerWithEmail(data);
+      store.setLoading(false);
+      return response;
+    } catch (error) {
+      store.setLoading(false);
+      throw error;
+    }
+  };
+
+  /**
+   * Verify email OTP (Pas 2: Finalizează înregistrarea)
+   */
+  const verifyEmailOtp = async (email: string, code: string): Promise<void> => {
+    store.setLoading(true);
+
+    try {
+      const response = await authApi.verifyEmailOtp({ email, code });
 
       await store.login(
         response.user,
@@ -112,6 +130,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   };
+
 
   /**
    * Verify phone OTP (real backend call)
@@ -164,6 +183,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  /**
+   * Directly update user in store (e.g. after profile edit)
+   */
+  const updateUser = async (userData: any): Promise<void> => {
+    store.setUser({ ...store.user, ...userData });
+  };
+
   const value: AuthContextValue = {
     user: store.user,
     isAuthenticated: store.isAuthenticated,
@@ -171,9 +197,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isInitialized: store.isInitialized,
     login,
     register,
+    verifyEmailOtp,
     verifyPhoneOtp,
     logout,
     refreshUser,
+    updateUser,
   };
 
   return (

@@ -141,19 +141,6 @@ export class UserController {
   }
 
   // ============================================================================
-  // PUBLIC PROFILE
-  // ============================================================================
-
-  @Public()
-  @Get(':id')
-  @ApiOperation({ summary: 'Get public user profile' })
-  @ApiResponse({ status: 200, description: 'Public profile' })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  async getPublicProfile(@Param('id') id: string) {
-    return this.userService.getPublicProfile(id);
-  }
-
-  // ============================================================================
   // ADMIN ENDPOINTS
   // ============================================================================
 
@@ -228,5 +215,18 @@ export class UserController {
     @Body('isAdmin') isAdmin: boolean,
   ) {
     return this.userService.toggleAdminStatus(userId, isAdmin);
+  }
+
+  // ============================================================================
+  // PUBLIC PROFILE
+  // ============================================================================
+
+  @Public()
+  @Get(':id')
+  @ApiOperation({ summary: 'Get public user profile' })
+  @ApiResponse({ status: 200, description: 'Public profile' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getPublicProfile(@Param('id') id: string) {
+    return this.userService.getPublicProfile(id);
   }
 }

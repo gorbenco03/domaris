@@ -29,10 +29,22 @@ export class AdminController {
         return { success: true };
     }
 
-    @Patch('users/:id/role')
-    @ApiOperation({ summary: 'Update user role (Admin)' })
-    async updateUserRole(@Param('id') id: number, @Body('role') role: 'tenant' | 'landlord' | 'admin') {
-        return this.adminService.updateUserRole(id, role);
+    @Patch('users/:id/verification-level')
+    @ApiOperation({ summary: 'Update user verification level (Admin)' })
+    async updateVerificationLevel(
+        @Param('id') id: number, 
+        @Body('level') level: 0 | 1 | 2 | 3
+    ) {
+        return this.adminService.updateVerificationLevel(id, level);
+    }
+
+    @Patch('users/:id/admin-status')
+    @ApiOperation({ summary: 'Set user admin status (Admin)' })
+    async setAdminStatus(
+        @Param('id') id: number, 
+        @Body('isAdmin') isAdmin: boolean
+    ) {
+        return this.adminService.setAdminStatus(id, isAdmin);
     }
 
     @Get('listings')

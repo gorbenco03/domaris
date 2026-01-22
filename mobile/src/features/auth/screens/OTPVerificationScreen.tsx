@@ -31,7 +31,7 @@ const OTPVerificationScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RoutePropType>();
   const { theme } = useTheme();
-  const { verifyPhoneOtp } = useAuth();
+  const { verifyPhoneOtp, verifyEmailOtp } = useAuth();
 
   const { email = '', phone = '', type, purpose } = route.params;
   const destination = type === 'email' ? email : phone;
@@ -67,7 +67,12 @@ const OTPVerificationScreen: React.FC = () => {
         return;
       }
 
-      await verifyPhoneOtp(destination, code);
+      if (type === 'email') {
+        await verifyEmailOtp(destination, code);
+      } else {
+        await verifyPhoneOtp(destination, code);
+      }
+
       setVerified(true);
       console.log('OTP verified successfully');
       // No need to navigate manually, RootNavigator will switch to MainNavigator

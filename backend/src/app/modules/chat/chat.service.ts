@@ -1,5 +1,6 @@
 /**
  * 💬 CHAT SERVICE - Messaging/Conversations
+ * Conform ADR-001: Model Unificat (participant1/participant2)
  */
 
 import {
@@ -35,7 +36,7 @@ export class ChatService {
     const offset = (page - 1) * limit;
 
     const where: any = {
-      [Op.or]: [{ tenantId: userId }, { landlordId: userId }],
+      [Op.or]: [{ participant1Id: userId }, { participant2Id: userId }],
     };
 
     // Note: archived/unread would need additional columns in Conversation entity
@@ -45,8 +46,8 @@ export class ChatService {
       where,
       include: [
         { model: Listing, attributes: ['id', 'title', 'priceEur', 'images'] },
-        { model: User, as: 'tenant', attributes: ['id', 'firstName', 'lastName', 'avatar'] },
-        { model: User, as: 'landlord', attributes: ['id', 'firstName', 'lastName', 'avatar'] },
+        { model: User, as: 'participant1', attributes: ['id', 'firstName', 'lastName', 'avatar'] },
+        { model: User, as: 'participant2', attributes: ['id', 'firstName', 'lastName', 'avatar'] },
         { model: Message, limit: 1, order: [['createdAt', 'DESC']] },
       ],
       order: [['updatedAt', 'DESC']],
@@ -75,8 +76,8 @@ export class ChatService {
     const conversation = await Conversation.findByPk(conversationId, {
       include: [
         { model: Listing, attributes: ['id', 'title', 'priceEur', 'images', 'ownerId'] },
-        { model: User, as: 'tenant', attributes: ['id', 'firstName', 'lastName', 'avatar', 'verificationLevel'] },
-        { model: User, as: 'landlord', attributes: ['id', 'firstName', 'lastName', 'avatar', 'verificationLevel'] },
+        { model: User, as: 'participant1', attributes: ['id', 'firstName', 'lastName', 'avatar', 'verificationLevel'] },
+        { model: User, as: 'participant2', attributes: ['id', 'firstName', 'lastName', 'avatar', 'verificationLevel'] },
       ],
     });
 
@@ -84,7 +85,7 @@ export class ChatService {
       throw new NotFoundException('Conversație negăsită');
     }
 
-    if (conversation.tenantId !== userId && conversation.landlordId !== userId) {
+    if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
       throw new ForbiddenException('Acces interzis');
     }
 
@@ -97,29 +98,32 @@ export class ChatService {
       throw new NotFoundException('Proprietate negăsită');
     }
 
-    const landlordId = listing.ownerId;
-    if (!landlordId) {
+    const ownerId = listing.ownerId;
+    if (!ownerId) {
       throw new NotFoundException('Proprietarul nu a fost găsit');
     }
 
-    if (landlordId === userId) {
+    if (ownerId === userId) {
       throw new ForbiddenException('Nu poți contacta propria proprietate');
     }
 
-    // Check if conversation exists
+    // Check if conversation exists (either direction)
     let conversation = await Conversation.findOne({
       where: {
         propertyId,
-        tenantId: userId,
-        landlordId,
+        [Op.or]: [
+          { participant1Id: userId, participant2Id: ownerId },
+          { participant1Id: ownerId, participant2Id: userId },
+        ],
       },
     });
 
     if (!conversation) {
+      // Create new conversation: userId is participant1 (initiator), ownerId is participant2
       conversation = await Conversation.create({
         propertyId,
-        tenantId: userId,
-        landlordId,
+        participant1Id: userId,
+        participant2Id: ownerId,
       });
     }
 
@@ -142,7 +146,7 @@ export class ChatService {
       throw new NotFoundException('Conversație negăsită');
     }
 
-    if (conversation.tenantId !== userId && conversation.landlordId !== userId) {
+    if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
       throw new ForbiddenException('Acces interzis');
     }
 
@@ -178,7 +182,7 @@ export class ChatService {
       throw new NotFoundException('Conversație negăsită');
     }
 
-    if (conversation.tenantId !== senderId && conversation.landlordId !== senderId) {
+    if (conversation.participant1Id !== senderId && conversation.participant2Id !== senderId) {
       throw new ForbiddenException('Acces interzis');
     }
 
@@ -206,7 +210,7 @@ export class ChatService {
       throw new NotFoundException('Conversație negăsită');
     }
 
-    if (conversation.tenantId !== userId && conversation.landlordId !== userId) {
+    if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
       throw new ForbiddenException('Acces interzis');
     }
 
@@ -221,7 +225,7 @@ export class ChatService {
       throw new NotFoundException('Conversație negăsită');
     }
 
-    if (conversation.tenantId !== userId && conversation.landlordId !== userId) {
+    if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
       throw new ForbiddenException('Acces interzis');
     }
 
@@ -235,7 +239,7 @@ export class ChatService {
       throw new NotFoundException('Conversație negăsită');
     }
 
-    if (conversation.tenantId !== userId && conversation.landlordId !== userId) {
+    if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
       throw new ForbiddenException('Acces interzis');
     }
 
@@ -248,8 +252,11 @@ export class ChatService {
   // ============================================================================
 
   private formatConversation(conversation: any, userId: number) {
+    // Determină celălalt participant (nu userId)
     const otherParticipant =
-      conversation.tenantId === userId ? conversation.landlord : conversation.tenant;
+      conversation.participant1Id === userId 
+        ? conversation.participant2 
+        : conversation.participant1;
 
     return {
       id: conversation.id,

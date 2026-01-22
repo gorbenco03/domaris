@@ -1,6 +1,6 @@
 // src/db/entities/gis-node.entity.ts
 import { Table, Column, DataType, Model, HasMany } from 'sequelize-typescript';
-import { GroupSource } from './groupSource.entity';
+
 
 @Table({
   tableName: 'gis_nodes',
@@ -34,6 +34,5 @@ export class GisNode extends Model<GisNode> {
   @Column({ type: DataType.DOUBLE, allowNull: false, defaultValue: 0 })
   declare radiusKm: number;
 
-  @HasMany(() => GroupSource)
-  declare groupSources: GroupSource[];
+
 }
