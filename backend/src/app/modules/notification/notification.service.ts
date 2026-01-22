@@ -1,10 +1,41 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { Notification } from '../../db/entities/notification.entity.js';
 import { Device } from '../../db/entities/device.entity.js';
 import { User } from '../../db/entities/user.entity.js';
 
 @Injectable()
 export class NotificationService {
+    private readonly logger = new Logger(NotificationService.name);
+
+    /**
+     * Creează o notificare nouă
+     */
+    async create(userId: number, data: {
+        type: string;
+        title: string;
+        body: string;
+        data?: Record<string, any>;
+    }) {
+        const notification = await Notification.create({
+            userId,
+            type: data.type,
+            title: data.title,
+            body: data.body,
+            data: data.data,
+            isRead: false,
+        });
+
+        this.logger.log(`📬 Notification created for user ${userId}: ${data.title}`);
+
+        // TODO: Trigger push notification to devices
+        // const devices = await Device.findAll({ where: { userId } });
+        // for (const device of devices) {
+        //   await this.pushService.send(device.token, data);
+        // }
+
+        return notification;
+    }
+
     async getNotifications(userId: number) {
         return Notification.findAll({
             where: { userId },
@@ -49,4 +80,23 @@ export class NotificationService {
         await user.save();
         return user.notificationPreferences;
     }
+
+    /**
+     * Obține numărul de notificări necitite
+     */
+    async getUnreadCount(userId: number): Promise<number> {
+        return Notification.count({
+            where: { userId, isRead: false },
+        });
+    }
+
+    /**
+     * Șterge o notificare
+     */
+    async delete(userId: number, id: number) {
+        const notification = await Notification.findOne({ where: { id, userId } });
+        if (!notification) throw new NotFoundException('Notification not found');
+        await notification.destroy();
+    }
 }
+

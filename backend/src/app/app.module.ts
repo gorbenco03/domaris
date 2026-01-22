@@ -32,6 +32,9 @@ import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { S3Module } from './s3/s3.module';
 import { UserModule } from './modules/user/user.module.js';
+import { SavedSearchModule } from './modules/saved-search/saved-search.module.js';
+import { AIModule } from './modules/ai/ai.module.js';
+import { CronModule } from './modules/cron/cron.module.js';
 
 @Module({
   imports: [
@@ -71,6 +74,9 @@ import { UserModule } from './modules/user/user.module.js';
     AnalyticsModule,
     AdminModule,
     S3Module,
+    SavedSearchModule,
+    AIModule,
+    CronModule,
   ],
   controllers: [AppController],
   providers: [

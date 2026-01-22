@@ -3,12 +3,22 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { CreateListingDto, UpdateListingDto } from './listing.dto.js';
 import { Listing } from '../../db/entities/listing.entity.js';
+import { ListingImage } from '../../db/entities/listingImage.entity.js';
+import { S3Service } from '../../s3/s3.service.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 @Injectable()
 export class ListingService {
+  private readonly logger = new Logger(ListingService.name);
+
+  constructor(private readonly s3Service: S3Service) {}
+
   /**
    * Creează un anunț nou pentru user-ul curent
    */
@@ -24,9 +34,6 @@ export class ListingService {
     return listing;
   }
 
-  /**
-   * Listare cu un minim de pagination / filtrare
-   */
   /**
    * Listare cu un minim de pagination / filtrare
    */
@@ -66,18 +73,15 @@ export class ListingService {
     } = params;
 
     const where: any = {};
-    const { Op } = require('sequelize'); // Import locally to avoid top-level import issues if not already present
+    const { Op } = require('sequelize');
 
     if (city) where.city = city;
-    // Map 'neighborhood' to 'area' field in DB if that's the convention, or use 'neighborhood' if column exists.
-    // DTO says 'area', implementation plan implies mapping.
-    // DTO uses 'area' for neighborhood/zone. Let's assume 'area' column.
-    if (neighborhood) where.area = neighborhood;
+    if (neighborhood) where.neighborhood = neighborhood;
 
     if (minPrice !== undefined || maxPrice !== undefined) {
-      where.price = {};
-      if (minPrice !== undefined) where.price[Op.gte] = minPrice;
-      if (maxPrice !== undefined) where.price[Op.lte] = maxPrice;
+      where.priceEur = {};
+      if (minPrice !== undefined) where.priceEur[Op.gte] = minPrice;
+      if (maxPrice !== undefined) where.priceEur[Op.lte] = maxPrice;
     }
 
     if (minRooms !== undefined || maxRooms !== undefined) {
@@ -87,17 +91,22 @@ export class ListingService {
     }
 
     if (minSurface !== undefined || maxSurface !== undefined) {
-      where.surface = {}; // Assuming 'surface' is the column name, DTO has 'surface', entity likely matches
-      if (minSurface !== undefined) where.surface[Op.gte] = minSurface;
-      if (maxSurface !== undefined) where.surface[Op.lte] = maxSurface;
+      where.surfaceSqm = {};
+      if (minSurface !== undefined) where.surfaceSqm[Op.gte] = minSurface;
+      if (maxSurface !== undefined) where.surfaceSqm[Op.lte] = maxSurface;
     }
 
     if (isFurnished !== undefined) where.isFurnished = isFurnished;
-    // Assuming hasCentralHeating col exists or not? Listing interface in api.ts has it. Let's check entity if possible, but assuming yes.
-    if (hasCentralHeating !== undefined) where.hasCentralHeating = hasCentralHeating; // Verify column name if possible
+    if (hasCentralHeating !== undefined) where.hasCentralHeating = hasCentralHeating;
     if (isAgency !== undefined) where.isAgency = isAgency;
 
-    const orderColumn = ['price', 'createdAt', 'postedAt'].includes(sortBy) ? sortBy : 'createdAt';
+    // Map 'price' to 'priceEur' for sorting
+    const sortColumnMap: Record<string, string> = {
+      price: 'priceEur',
+      createdAt: 'createdAt',
+      postedAt: 'postedAt',
+    };
+    const orderColumn = sortColumnMap[sortBy] || 'createdAt';
     const orderDirection = ['ASC', 'DESC'].includes(sortOrder) ? sortOrder : 'DESC';
 
     const { rows, count } = await Listing.findAndCountAll({
@@ -105,13 +114,16 @@ export class ListingService {
       limit,
       offset,
       order: [[orderColumn, orderDirection]],
+      include: [{ model: ListingImage, as: 'images' }],
     });
 
     return { items: rows, total: count };
   }
 
   async findOne(id: number | string): Promise<Listing> {
-    const listing = await Listing.findByPk(id);
+    const listing = await Listing.findByPk(id, {
+      include: [{ model: ListingImage, as: 'images' }],
+    });
     if (!listing) {
       throw new NotFoundException('Listing not found');
     }
@@ -141,21 +153,73 @@ export class ListingService {
     return Listing.findAll({
       where: { ownerId },
       order: [['createdAt', 'DESC']],
+      include: [{ model: ListingImage, as: 'images' }],
     });
   }
 
-  async uploadPhotos(id: string, ownerId: number | string, files: any[]) {
+  /**
+   * Upload photos to S3 and save to ListingImage
+   */
+  async uploadPhotos(id: string, ownerId: number | string, files: Express.Multer.File[]) {
     const listing = await Listing.findByPk(id);
     if (!listing) throw new NotFoundException('Listing not found');
     if (String(listing.ownerId) !== String(ownerId)) throw new ForbiddenException('Not owner');
 
-    // 1. Upload to S3 (mock)
-    const uploadedUrls = files.map((f, i) => `https://mock-s3.com/images/${id}_${Date.now()}_${i}.jpg`);
+    if (!files || files.length === 0) {
+      return { uploaded: [], message: 'No files provided' };
+    }
 
-    // 2. Save to DB (Assuming ListingImage entity or photos array)
-    // For now, let's treat it as if we are adding to a related table or JSON
-    // Mock return
-    return { uploaded: uploadedUrls };
+    const uploadedImages: { id: number; url: string; isPrimary: boolean }[] = [];
+
+    // Check if listing already has images
+    const existingImages = await ListingImage.count({ where: { listingId: Number(id) } });
+    const isFirstImage = existingImages === 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      try {
+        // Save buffer to temp file for S3 upload
+        const tempPath = path.join(os.tmpdir(), `${Date.now()}_${file.originalname}`);
+        fs.writeFileSync(tempPath, file.buffer);
+
+        // Upload to S3
+        const s3Key = `listings/${id}/${Date.now()}_${i}_${file.originalname}`;
+        await this.s3Service.uploadImage(tempPath, s3Key);
+
+        // Construct S3 URL
+        const bucket = process.env.AWS_S3_BUCKET || 'domaris-uploads';
+        const url = `https://${bucket}.s3.eu-central-1.amazonaws.com/${s3Key}`;
+
+        // Clean up temp file
+        fs.unlinkSync(tempPath);
+
+        // Save to database
+        const image = await ListingImage.create({
+          listingId: Number(id),
+          url,
+          isPrimary: isFirstImage && i === 0, // First image is primary
+          alt: listing.title,
+        });
+
+        uploadedImages.push({
+          id: image.id,
+          url: image.url,
+          isPrimary: image.isPrimary,
+        });
+
+        this.logger.log(`Uploaded image ${i + 1}/${files.length} for listing ${id}`);
+      } catch (error: any) {
+        this.logger.error(`Failed to upload image ${i + 1}: ${error.message}`);
+        // Continue with other images even if one fails
+      }
+    }
+
+    return {
+      uploaded: uploadedImages,
+      total: uploadedImages.length,
+      message: `Successfully uploaded ${uploadedImages.length} of ${files.length} images`,
+    };
   }
 
   async updateStatus(id: string, ownerId: number | string, status: string) {
@@ -163,8 +227,13 @@ export class ListingService {
     if (!listing) throw new NotFoundException('Listing not found');
     if (String(listing.ownerId) !== String(ownerId)) throw new ForbiddenException('Not owner');
 
-    // listing.status = status; // Assuming status enum match
-    // await listing.save();
+    // Validate status
+    const validStatuses = ['new', 'early_access', 'public', 'rented', 'hidden', 'expired'];
+    if (!validStatuses.includes(status)) {
+      throw new NotFoundException(`Invalid status. Valid: ${validStatuses.join(', ')}`);
+    }
+
+    await listing.update({ status: status as any });
     return { success: true, status };
   }
 
@@ -179,6 +248,10 @@ export class ListingService {
       throw new ForbiddenException('You are not the owner of this listing');
     }
 
+    // Delete associated images from DB (S3 cleanup could be added separately)
+    await ListingImage.destroy({ where: { listingId: Number(id) } });
+
     await listing.destroy();
   }
 }
+

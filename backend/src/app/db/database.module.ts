@@ -14,6 +14,7 @@ import { Favorite } from './entities/favorite.entity.js';
 import { Notification } from './entities/notification.entity.js';
 import { Device } from './entities/device.entity.js';
 import { ListingView } from './entities/listing-view.entity.js';
+import { SavedSearch } from './entities/saved-search.entity.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
@@ -47,6 +48,7 @@ pg.defaults.parseInt8 = true;
             Notification,
             Device,
             ListingView,
+            SavedSearch,
           ],
           synchronize: true,
           sync: { alter: true }, // Force alter to add missing columns

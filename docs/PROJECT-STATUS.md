@@ -1,7 +1,7 @@
 # 📊 DOMARIS/IMOBI - Project Status Report
 
-**Versiune:** 2.1.0  
-**Data Raportului:** 21 Ianuarie 2026  
+**Versiune:** 2.2.0  
+**Data Raportului:** 22 Ianuarie 2026  
 **Tip Proiect:** Monorepo - Platformă Imobiliară P2P
 
 ---
@@ -170,6 +170,27 @@ Level 3: Proprietar verificat
 | POST   | `/favorites/move`              | Move to another list  | Auth       |
 | POST   | `/favorites/compare`           | Compare properties    | Auth       |
 
+### Saved Searches (`/saved-searches`) - ✅ NOU
+
+| Method | Endpoint                     | Description            | Auth Level |
+| ------ | ---------------------------- | ---------------------- | ---------- |
+| GET    | `/saved-searches`            | Get all saved searches | Auth       |
+| GET    | `/saved-searches/:id`        | Get saved search by id | Auth       |
+| POST   | `/saved-searches`            | Create saved search    | Auth       |
+| PUT    | `/saved-searches/:id`        | Update saved search    | Auth       |
+| DELETE | `/saved-searches/:id`        | Delete saved search    | Auth       |
+| GET    | `/saved-searches/:id/run`    | Execute saved search   | Auth       |
+| PATCH  | `/saved-searches/:id/alerts` | Toggle alerts          | Auth       |
+
+### AI (`/ai`) - ✅ NOU - Diferențiator!
+
+| Method | Endpoint                   | Description                  | Auth Level |
+| ------ | -------------------------- | ---------------------------- | ---------- |
+| POST   | `/ai/chat`                 | Natural language search chat | Auth       |
+| POST   | `/ai/generate-description` | Generate property desc       | Level 2    |
+| GET    | `/ai/analyze/:propertyId`  | Analyze listing quality      | Level 2    |
+| POST   | `/ai/estimate-price`       | Estimate property price      | Public     |
+
 ---
 
 ## 📁 Fișiere Modificate în Acest Sprint
@@ -232,15 +253,15 @@ enums
 
 ### 🔴 Priorități P0 (Critice pentru MVP)
 
-- [ ] S3 Image Upload Real
-- [ ] AI Assistant Basic (diferențiator cheie!)
-- [ ] Cron Jobs pentru reminders
+- [x] S3 Image Upload Real - **IMPLEMENTAT**
+- [x] AI Assistant Basic (diferențiator cheie!) - **IMPLEMENTAT**
+- [x] Cron Jobs pentru reminders - **IMPLEMENTAT**
 
 ### 🟠 Priorități P1 (Importante)
 
-- [ ] Generare descriere AI
-- [ ] Sugestii preț AI
-- [ ] Salvare căutări + Alerte
+- [x] Generare descriere AI - **IMPLEMENTAT**
+- [x] Sugestii preț AI - **IMPLEMENTAT**
+- [x] Salvare căutări + Alerte - **IMPLEMENTAT**
 - [ ] Comparare proprietăți
 
 ### Mobile Integration
@@ -283,6 +304,6 @@ Document cu status exact per feature (ce e făcut, ce lipsește, procente).
 
 ---
 
-**Document actualizat:** 22 Ianuarie 2026, 01:15  
-**Sprint completat:** Backend Search & Documentation  
-**Build status:** ✅ Passing
+**Document actualizat:** 22 Ianuarie 2026, 13:15  
+**Sprint completat:** AI Module & Saved Searches  
+**Build status:** ✅ Pending verification

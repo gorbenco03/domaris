@@ -5,5 +5,7 @@ import { SearchService } from './search.service';
 @Module({
     controllers: [SearchController],
     providers: [SearchService],
+    exports: [SearchService], // Export pentru alte module (SavedSearch, AI, Cron)
 })
 export class SearchModule { }
+
