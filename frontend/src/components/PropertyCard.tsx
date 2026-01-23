@@ -1,128 +1,130 @@
 import Link from "next/link";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Bed, Bath, Square, Heart } from "lucide-react";
-import { useFavorites } from "@/contexts/FavoritesContext";
+import { Heart, MapPin, Bed, Maximize2, CheckCircle } from "lucide-react";
+import { useFavorites } from "@/contexts/FavoritesContext"; // Assuming this context exists or will be updated
 import { toast } from "sonner";
-import { type Listing, normalizeImageUrl } from "@/lib/api";
+import type { IPropertyListItem } from "@domaris/types";
+import { cn } from "@/lib/utils";
 
 interface PropertyCardProps {
-  listing: Listing;
+  property: IPropertyListItem;
+  variant?: 'list' | 'compact';
 }
 
-export const PropertyCard = ({ listing }: PropertyCardProps) => {
-  const { isFavorite, toggleFavorite } = useFavorites();
-  const favorited = isFavorite(listing.id);
-
-  // Get primary image or first image
-  const primaryImage = listing.images.find(img => img.isPrimary) || listing.images[0];
-  // Normalize image URL (handles both absolute and relative URLs)
-  const imageUrl = normalizeImageUrl(primaryImage?.url);
-
-  // Format location
-  const location = listing.addressText || `${listing.neighborhood}, ${listing.city}`;
-
-  // Format price
-  const price = `${listing.priceEur} ${listing.currency || 'EUR'}/mo`;
-
-  // Calculate bathrooms (assuming 1 bathroom per room or use rooms as approximation)
-  const bathrooms = Math.max(1, Math.floor(listing.rooms / 2));
-
-  // Convert surface from sqm to sqft (approximate)
-  const areaSqft = Math.round(listing.surfaceSqm * 10.764);
+export const PropertyCard = ({ property, variant = 'list' }: PropertyCardProps) => {
+  // Favorites logic - mock for now if context is not fully ready for IPropertyListItem
+  const { isFavorite, toggleFavorite } = useFavorites(); 
+  const favorited = isFavorite(property.id);
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     toggleFavorite({
-      id: listing.id,
-      image: imageUrl,
-      title: listing.title,
-      location,
-      price,
-      bedrooms: listing.rooms,
-      bathrooms,
-      area: areaSqft,
-      type: 'Apartment' // Default type, can be enhanced later
+        id: property.id,
+        image: property.mainImage || '/placeholder.svg',
+        title: property.title,
+        location: `${property.neighborhood ? property.neighborhood + ', ' : ''}${property.city}`,
+        price: property.displayPrice,
+        bedrooms: property.rooms, // Mapping rooms to bedrooms for compatibility if needed
+        bathrooms: 0, // Not in list item
+        area: property.totalArea,
+        type: property.propertyType
     });
     toast.success(favorited ? "Removed from favorites" : "Added to favorites");
   };
 
+  const isCompact = variant === 'compact';
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
-      <div className="relative overflow-hidden aspect-[4/3]">
-        <img
-          src={imageUrl}
-          alt={listing.title || 'Property image'}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          referrerPolicy="no-referrer"
-          loading="lazy"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            if (target.src !== '/placeholder.svg') {
-              target.src = '/placeholder.svg';
-            }
-          }}
-        />
-        {listing.isAgency && (
-          <Badge className="absolute top-4 left-4 bg-primary text-primary-foreground">
-            Agency
-          </Badge>
-        )}
-        {listing.isFurnished && (
-          <Badge className="absolute top-4 left-4 bg-secondary text-secondary-foreground" style={{ top: listing.isAgency ? '3.5rem' : '1rem' }}>
-            Furnished
-          </Badge>
-        )}
-        <Button
-          size="icon"
-          variant="secondary"
-          className="absolute top-4 right-4 h-9 w-9"
-          onClick={handleFavoriteClick}
-        >
-          <Heart className={`h-5 w-5 ${favorited ? "fill-primary text-primary" : ""}`} />
-        </Button>
-      </div>
+    <Link href={`/property/${property.slug || property.id}`}>
+        <Card className={cn(
+            "overflow-hidden hover:shadow-lg transition-all duration-300 group h-full flex flex-col border-border/50",
+            isCompact ? "w-[280px]" : "w-full"
+        )}>
+            {/* Image Section */}
+            <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                <img
+                    src={property.mainImage || '/placeholder.svg'}
+                    alt={property.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                />
+                
+                {/* Gradient Overlay */}
+                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
 
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-lg text-card-foreground line-clamp-1">
-            {listing.title}
-          </h3>
-          <span className="text-lg font-bold text-primary whitespace-nowrap">
-            {price}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4" />
-          <span className="line-clamp-1">{location}</span>
-        </div>
-      </CardHeader>
+                {/* Badges */}
+                <div className="absolute top-3 left-3 flex gap-2">
+                    {property.isPromoted && (
+                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none shadow-sm">Promoted</Badge>
+                    )}
+                    {property.isNew && (
+                         <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-sm">New</Badge>
+                    )}
+                </div>
 
-      <CardContent className="pb-3">
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Bed className="h-4 w-4" />
-            <span>{listing.rooms} {listing.rooms === 1 ? 'Room' : 'Rooms'}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Bath className="h-4 w-4" />
-            <span>{bathrooms} {bathrooms === 1 ? 'Bath' : 'Baths'}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Square className="h-4 w-4" />
-            <span>{listing.surfaceSqm} m²</span>
-          </div>
-        </div>
-      </CardContent>
+                {/* Favorite Button */}
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute top-3 right-3 h-9 w-9 rounded-full bg-white/90 hover:bg-white text-muted-foreground hover:text-red-500 shadow-sm backdrop-blur-sm"
+                    onClick={handleFavoriteClick}
+                >
+                    <Heart className={cn("h-5 w-5 transition-colors", favorited && "fill-red-500 text-red-500")} />
+                </Button>
 
-      <CardFooter className="pt-3 border-t">
-        <Link href={`/property/${listing.id}`} className="w-full">
-          <Button className="w-full" variant="outline">
-            View Details
-          </Button>
-        </Link>
-      </CardFooter>
-    </Card>
+                {/* Price */}
+                <div className="absolute bottom-3 left-3 text-white">
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-bold">{property.displayPrice}</span>
+                        {property.transactionType === 'RENT' && (
+                             <span className="text-sm font-medium opacity-90">/mo</span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Content */}
+            <CardContent className="p-4 flex-1 flex flex-col">
+                <h3 className="font-semibold text-lg leading-tight mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+                    {property.title}
+                </h3>
+                
+                <div className="flex items-center gap-1 text-muted-foreground text-sm mb-4">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span className="line-clamp-1">
+                        {property.neighborhood ? `${property.neighborhood}, ` : ''}{property.city}
+                    </span>
+                </div>
+
+                {/* Characteristics */}
+                <div className="flex items-center gap-4 text-sm text-slate-600 mb-4 mt-auto">
+                    <div className="flex items-center gap-1.5" title="Rooms">
+                        <Bed className="h-4 w-4" />
+                        <span className="font-medium">{property.rooms}</span>
+                    </div>
+                    {/* Bathrooms not in IPropertyListItem, maybe add if API supports it later */}
+                     <div className="flex items-center gap-1.5" title="Total Area">
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        <span className="font-medium">{property.totalArea} m²</span>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
+                    {property.owner?.isVerified && (
+                        <div className="flex items-center gap-1 text-emerald-600 font-medium">
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            <span>Verified Owner</span>
+                        </div>
+                    )}
+                    
+                    {/* Stats placeholder if needed, listing item doesn't usually have stats unless detailed */}
+                     <div className="ml-auto" /> 
+                </div>
+            </CardContent>
+        </Card>
+    </Link>
   );
 };

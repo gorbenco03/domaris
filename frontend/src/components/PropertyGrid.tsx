@@ -1,77 +1,61 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { PropertyCard } from "./PropertyCard";
 import { SearchFilters } from "./SearchFilters";
-import { useListings } from "@/hooks/useListings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { searchApi } from "@/features/search/api";
+import { IPropertyListItem } from "@domaris/types";
 
 export const PropertyGrid = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [priceRange, setPriceRange] = useState("all");
   const [bedrooms, setBedrooms] = useState("all");
   const [propertyType, setPropertyType] = useState("all");
+  
+  const [listings, setListings] = useState<IPropertyListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Convert filters to API format
-  const apiFilters = useMemo(() => {
-    const filters: Record<string, any> = {
-      limit: 50,
-      sortBy: 'postedAt',
-      sortOrder: 'DESC',
+  useEffect(() => {
+    const fetchProps = async () => {
+        setLoading(true);
+        try {
+            const filters: any = {};
+             // Price range filter
+            if (priceRange !== "all") {
+                if (priceRange === "0-2000") {
+                    filters.maxPrice = 2000;
+                } else if (priceRange === "2000-3000") {
+                    filters.minPrice = 2000;
+                    filters.maxPrice = 3000;
+                } else if (priceRange === "3000-5000") {
+                    filters.minPrice = 3000;
+                    filters.maxPrice = 5000;
+                } else if (priceRange === "5000+") {
+                    filters.minPrice = 5000;
+                }
+            }
+             // Bedrooms filter
+            if (bedrooms !== "all") {
+                if (bedrooms !== "4+") {
+                    filters.rooms = parseInt(bedrooms);
+                }
+            }
+
+            if(searchTerm) filters.location = searchTerm;
+
+            const res = await searchApi.advancedSearch(filters);
+            setListings(res.items);
+        } catch {
+            setError("Failed to load featured properties");
+        } finally {
+            setLoading(false);
+        }
     };
-
-    // City/Neighborhood filter from search term
-    if (searchTerm) {
-      // Try to detect if it's a city or neighborhood
-      // For now, we'll search in both city and neighborhood
-      filters.city = searchTerm;
-    }
-
-    // Price range filter
-    if (priceRange !== "all") {
-      if (priceRange === "0-2000") {
-        filters.minPrice = 0;
-        filters.maxPrice = 2000;
-      } else if (priceRange === "2000-3000") {
-        filters.minPrice = 2000;
-        filters.maxPrice = 3000;
-      } else if (priceRange === "3000-5000") {
-        filters.minPrice = 3000;
-        filters.maxPrice = 5000;
-      } else if (priceRange === "5000+") {
-        filters.minPrice = 5000;
-      }
-    }
-
-    // Bedrooms filter
-    if (bedrooms !== "all") {
-      if (bedrooms === "4+") {
-        filters.minRooms = 4;
-      } else {
-        const rooms = parseInt(bedrooms);
-        filters.minRooms = rooms;
-        filters.maxRooms = rooms;
-      }
-    }
-
-    // Property type filter (not directly supported by API, but we can filter client-side)
-    // For now, we'll just fetch all and filter client-side if needed
-
-    return filters;
+    fetchProps();
   }, [searchTerm, priceRange, bedrooms, propertyType]);
-
-  const { listings, loading, error, pagination } = useListings(apiFilters);
-
-  // Client-side filtering for property type (if needed)
-  const filteredListings = useMemo(() => {
-    if (propertyType === "all") {
-      return listings;
-    }
-    // Since API doesn't have property type, we'll show all for now
-    // This can be enhanced later if property type is added to the API
-    return listings;
-  }, [listings, propertyType]);
 
   return (
     <section id="properties" className="py-16 bg-muted/30">
@@ -112,18 +96,13 @@ export const PropertyGrid = () => {
               {error}
             </AlertDescription>
           </Alert>
-        ) : filteredListings.length > 0 ? (
+        ) : listings.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredListings.map((listing) => (
-                <PropertyCard key={listing.id} listing={listing} />
+              {listings.map((listing) => (
+                <PropertyCard key={listing.id} property={listing} />
               ))}
             </div>
-            {pagination && (
-              <div className="mt-8 text-center text-sm text-muted-foreground">
-                Showing {filteredListings.length} of {pagination.total} properties
-              </div>
-            )}
           </>
         ) : (
           <div className="text-center py-12">

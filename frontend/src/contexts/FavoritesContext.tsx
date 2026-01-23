@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 interface Property {
-  id: number;
+  id: string; // Changed to string to match shared types
   image: string;
   title: string;
   location: string;
@@ -27,13 +27,13 @@ interface FavoritesContextType {
   favorites: Property[];
   wishlists: Wishlist[];
   addFavorite: (property: Property) => void;
-  removeFavorite: (id: number) => void;
-  isFavorite: (id: number) => boolean;
+  removeFavorite: (id: string) => void;
+  isFavorite: (id: string) => boolean;
   toggleFavorite: (property: Property) => void;
   createWishlist: (name: string, description: string) => void;
   deleteWishlist: (wishlistId: number) => void;
-  addToWishlist: (wishlistId: number, propertyId: number) => void;
-  removeFromWishlist: (wishlistId: number, propertyId: number) => void;
+  addToWishlist: (wishlistId: number, propertyId: string) => void;
+  removeFromWishlist: (wishlistId: number, propertyId: string) => void;
   shareWishlist: (wishlistId: number) => void;
 }
 
@@ -81,11 +81,11 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const removeFavorite = (id: number) => {
+  const removeFavorite = (id: string) => {
     setFavorites((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const isFavorite = (id: number) => {
+  const isFavorite = (id: string) => {
     return favorites.some((p) => p.id === id);
   };
 
@@ -112,7 +112,7 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
     setWishlists((prev) => prev.filter((wl) => wl.id !== wishlistId));
   };
 
-  const addToWishlist = (wishlistId: number, propertyId: number) => {
+  const addToWishlist = (wishlistId: number, propertyId: string) => {
     const property = favorites.find((p) => p.id === propertyId);
     if (!property) return;
 
@@ -127,7 +127,7 @@ export const FavoritesProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const removeFromWishlist = (wishlistId: number, propertyId: number) => {
+  const removeFromWishlist = (wishlistId: number, propertyId: string) => {
     setWishlists((prev) =>
       prev.map((wl) => {
         if (wl.id === wishlistId) {

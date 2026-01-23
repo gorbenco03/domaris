@@ -7,7 +7,7 @@ import { Home, Building2 } from "lucide-react";
 
 export const Header = () => {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -32,7 +32,7 @@ export const Header = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push(user?.role === "landlord" ? "/landlord/dashboard" : "/tenant/dashboard")}
+                onClick={() => router.push("/account/properties")}
               >
                 My Dashboard
               </Button>
