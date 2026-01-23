@@ -14,14 +14,14 @@ export class NotificationService {
         type: string;
         title: string;
         body: string;
-        data?: Record<string, any>;
+        metadata?: Record<string, any>;
     }) {
         const notification = await Notification.create({
             userId,
             type: data.type,
             title: data.title,
             body: data.body,
-            data: data.data,
+            metadata: data.metadata || {},
             isRead: false,
         });
 

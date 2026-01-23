@@ -3,7 +3,7 @@
  * Property search results with filters
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Pressable,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -27,11 +30,13 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { SearchBar } from '@/features/search/components/SearchBar';
 import { FilterChips } from '@/features/search/components/FilterChips';
 import { PropertyCard } from '@/features/properties/components/PropertyCard';
-import { IconButton } from '@/shared/components/IconButton';
-import { useSearch } from '@/features/search/hooks/useSearch';
+import { useSearch, useSearchSuggestions } from '@/features/search/hooks/useSearch';
+import { useFavorites, useToggleFavorite } from '@/features/favorites/hooks/useFavorites';
 import { SearchStackParamList } from '@/app/navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { IPropertyListItem } from '@/core/api/types';
+import type { IAdvancedSearchFilters, ISearchSuggestion } from '@/features/search/api/searchApi';
+import { PAGINATION } from '@/config/constants';
 
 type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
@@ -54,6 +59,8 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 // COMPONENT
 // ============================================
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 const SearchResultsScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
@@ -61,15 +68,107 @@ const SearchResultsScreen: React.FC = () => {
 
   // Extract initial filters from route params
   const initialFilters = route.params?.filters || {};
-  const [searchText, setSearchText] = useState(initialFilters.query || initialFilters.city || '');
+  const sortButtonRef = useRef<View>(null);
+  const [sortMenuPosition, setSortMenuPosition] = useState<{ top: number; left: number } | null>(
+    null
+  );
+
+  const normalizeFilters = useCallback((raw: any): IAdvancedSearchFilters => {
+    const toNumber = (value: unknown) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      const numeric = Number(value);
+      return Number.isNaN(numeric) ? undefined : numeric;
+    };
+
+    return {
+      query: raw.query || undefined,
+      city: raw.city || undefined,
+      neighborhood: raw.neighborhood || undefined,
+      transactionType: raw.transactionType || undefined,
+      propertyType: raw.propertyType || undefined,
+      priceMin: toNumber(raw.priceMin ?? raw.minPrice ?? raw.priceRange?.min),
+      priceMax: toNumber(raw.priceMax ?? raw.maxPrice ?? raw.priceRange?.max),
+      rooms: toNumber(raw.rooms),
+      roomsMin: toNumber(raw.roomsMin ?? raw.minRooms ?? raw.rooms?.min),
+      roomsMax: toNumber(raw.roomsMax ?? raw.maxRooms ?? raw.rooms?.max),
+      bedroomsMin: toNumber(raw.bedroomsMin ?? raw.bedrooms?.min),
+      bedroomsMax: toNumber(raw.bedroomsMax ?? raw.bedrooms?.max),
+      bathroomsMin: toNumber(raw.bathroomsMin ?? raw.bathrooms?.min),
+      bathroomsMax: toNumber(raw.bathroomsMax ?? raw.bathrooms?.max),
+      floorMin: toNumber(raw.floorMin ?? raw.floor?.min),
+      floorMax: toNumber(raw.floorMax ?? raw.floor?.max),
+      yearBuiltMin: toNumber(raw.yearBuiltMin ?? raw.yearBuilt?.min),
+      yearBuiltMax: toNumber(raw.yearBuiltMax ?? raw.yearBuilt?.max),
+      surfaceMin: toNumber(raw.surfaceMin ?? raw.area?.min ?? raw.surface?.min),
+      surfaceMax: toNumber(raw.surfaceMax ?? raw.area?.max ?? raw.surface?.max),
+      isFurnished: raw.isFurnished ?? undefined,
+      hasCentralHeating: raw.hasCentralHeating ?? undefined,
+      petFriendly: raw.petFriendly ?? undefined,
+      amenities: raw.amenities ?? undefined,
+      excludeAgencies: raw.excludeAgencies ?? undefined,
+      rentType: raw.rentType ?? undefined,
+      page: raw.page ? Number(raw.page) : undefined,
+      limit: raw.limit ? Number(raw.limit) : undefined,
+    };
+  }, []);
+
+  const [filters, setFilters] = useState<IAdvancedSearchFilters>(() =>
+    normalizeFilters(initialFilters)
+  );
+  const [searchText, setSearchText] = useState(
+    initialFilters.query || initialFilters.city || initialFilters.neighborhood || ''
+  );
   // const [viewMode, setViewMode] = useState<'list' | 'map'>('list'); // Removed viewMode state
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   const [showSortModal, setShowSortModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [filters, setFilters] = useState<any>({
-    ...initialFilters,
-    transactionType: initialFilters.transactionType || 'SALE',
+
+  const { data: favoritesData } = useFavorites({
+    page: 1,
+    limit: PAGINATION.MAX_PAGE_SIZE,
   });
+  const toggleFavoriteMutation = useToggleFavorite();
+  const favoriteIds = useMemo(
+    () => new Set((favoritesData?.data || []).map((favorite) => String(favorite.propertyId))),
+    [favoritesData?.data]
+  );
+
+  useEffect(() => {
+    if (!route.params?.filters) return;
+    const nextFilters = normalizeFilters(route.params.filters);
+    setFilters((prev) => ({ ...prev, ...nextFilters }));
+    const nextText = nextFilters.query || nextFilters.city || nextFilters.neighborhood || '';
+    if (nextText) {
+      setSearchText(nextText);
+    }
+  }, [route.params?.filters, normalizeFilters]);
+
+  useEffect(() => {
+    if (searchText.trim().length === 0 && (filters.query || filters.city || filters.neighborhood)) {
+      setFilters((prev) => ({
+        ...prev,
+        query: undefined,
+        city: undefined,
+        neighborhood: undefined,
+        page: 1,
+      }));
+    }
+  }, [searchText, filters.query, filters.city, filters.neighborhood]);
+
+  const { data: suggestionsData } = useSearchSuggestions(searchText.trim());
+  const suggestions = useMemo(() => {
+    return (suggestionsData || []).map((suggestion: ISearchSuggestion, index: number) => ({
+      id: `${suggestion.type}-${suggestion.text}-${index}`,
+      text: suggestion.text,
+      type: suggestion.type === 'city' || suggestion.type === 'neighborhood' ? 'location' : 'popular',
+      subtitle:
+        suggestion.type === 'city'
+          ? 'Oraș'
+          : suggestion.type === 'neighborhood'
+          ? 'Cartier'
+          : undefined,
+    }));
+  }, [suggestionsData]);
 
   // Real data fetching
   const { 
@@ -78,12 +177,11 @@ const SearchResultsScreen: React.FC = () => {
     refetch,
   } = useSearch({
     ...filters,
-    query: searchText,
     sortBy: sortBy === 'date_newest' ? 'date_desc' : sortBy as any,
   });
 
   const results = searchResponse?.data || [];
-  const totalCount = searchResponse?.total || 0;
+  const totalCount = searchResponse?.meta?.total ?? (searchResponse as any)?.total ?? 0;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -95,22 +193,126 @@ const SearchResultsScreen: React.FC = () => {
     navigation.navigate('PropertyDetail', { propertyId });
   };
 
-  const handleFilterPress = (filterType: string) => {
-    // Open full filters modal for now, focusing logic can be added later
-    (navigation.navigate as any)('SearchFilters', { filters });
+  const handleToggleFavorite = async (propertyId: number, currentlyFavorite: boolean) => {
+    try {
+      await toggleFavoriteMutation.mutateAsync({ propertyId, currentlyFavorite });
+    } catch (error) {
+      console.warn('Failed to toggle favorite', error);
+    }
+  };
+
+  const handleApplyFilters = useCallback(
+    (nextFilters: IAdvancedSearchFilters) => {
+      const normalized = normalizeFilters(nextFilters);
+      setFilters((prev) => ({ ...prev, ...normalized, page: 1 }));
+    },
+    [normalizeFilters]
+  );
+
+  const handleFilterPress = (_filterType: string) => {
+    // Open full filters modal for now
+    setShowSortModal(false);
+    (navigation.navigate as any)('SearchFilters', { filters, onApply: handleApplyFilters });
   };
 
   const handleFiltersPress = () => {
     // Open full filters modal passing current filters
-    (navigation.navigate as any)('SearchFilters', { filters });
+    setShowSortModal(false);
+    (navigation.navigate as any)('SearchFilters', { filters, onApply: handleApplyFilters });
   };
 
   const getActiveFiltersCount = () => {
-    return Object.values(filters).filter(Boolean).length;
+    const keys: Array<keyof IAdvancedSearchFilters> = [
+      'transactionType',
+      'propertyType',
+      'priceMin',
+      'priceMax',
+      'rooms',
+      'roomsMin',
+      'roomsMax',
+      'bedroomsMin',
+      'bedroomsMax',
+      'bathroomsMin',
+      'bathroomsMax',
+      'floorMin',
+      'floorMax',
+      'yearBuiltMin',
+      'yearBuiltMax',
+      'surfaceMin',
+      'surfaceMax',
+      'isFurnished',
+      'hasCentralHeating',
+      'petFriendly',
+      'amenities',
+      'excludeAgencies',
+      'rentType',
+    ];
+
+    return keys.reduce((count, key) => {
+      const value = filters[key];
+      if (value === undefined || value === null || value === '') return count;
+      if (value === false) return count;
+      if (Array.isArray(value) && value.length === 0) return count;
+      return count + 1;
+    }, 0);
   };
 
   const getCurrentSortLabel = () => {
     return SORT_OPTIONS.find((o) => o.value === sortBy)?.label || 'Sortare';
+  };
+
+  const handleSearchSubmit = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setFilters((prev) => ({
+        ...prev,
+        query: undefined,
+        city: undefined,
+        neighborhood: undefined,
+        page: 1,
+      }));
+      return;
+    }
+
+    setFilters((prev) => ({
+      ...prev,
+      query: trimmed,
+      city: undefined,
+      neighborhood: undefined,
+      page: 1,
+    }));
+  };
+
+  const handleSuggestionSelect = (suggestion: { text: string; type: string }) => {
+    setSearchText(suggestion.text);
+    if (suggestion.type === 'location') {
+      const [neighborhood, city] = suggestion.text.split(',').map((part) => part.trim());
+      setFilters((prev) => ({
+        ...prev,
+        city: city || suggestion.text,
+        neighborhood: city ? neighborhood : undefined,
+        query: undefined,
+        page: 1,
+      }));
+      return;
+    }
+
+    setFilters((prev) => ({
+      ...prev,
+      query: suggestion.text,
+      city: undefined,
+      neighborhood: undefined,
+      page: 1,
+    }));
+  };
+
+  const openSortMenu = () => {
+    sortButtonRef.current?.measureInWindow((x, y, width, height) => {
+      const menuWidth = 190;
+      const left = Math.min(x, SCREEN_WIDTH - menuWidth - 16);
+      setSortMenuPosition({ top: y + height + 8, left });
+      setShowSortModal(true);
+    });
   };
 
   const renderHeader = () => (
@@ -129,7 +331,10 @@ const SearchResultsScreen: React.FC = () => {
           <SearchBar
             value={searchText}
             onChangeText={setSearchText}
-            onSubmit={() => {}}
+            onSubmit={handleSearchSubmit}
+            onSuggestionSelect={handleSuggestionSelect}
+            suggestions={suggestions}
+            showSuggestions={searchText.trim().length >= 2}
             placeholder="Caută..."
           />
         </View>
@@ -150,16 +355,18 @@ const SearchResultsScreen: React.FC = () => {
         </Text>
         <View style={styles.resultsActions}>
           {/* Sort Button */}
-          <TouchableOpacity
-            style={[styles.sortButton, { backgroundColor: theme.colors.surface }]}
-            onPress={() => setShowSortModal(!showSortModal)}
-            activeOpacity={0.8}
-          >
-            <ArrowUpDown size={16} color={theme.colors.textSecondary} />
-            <Text style={[styles.sortButtonText, { color: theme.colors.textSecondary }]}>
-              {getCurrentSortLabel()}
-            </Text>
-          </TouchableOpacity>
+          <View ref={sortButtonRef}>
+            <TouchableOpacity
+              style={[styles.sortButton, { backgroundColor: theme.colors.surface }]}
+              onPress={openSortMenu}
+              activeOpacity={0.8}
+            >
+              <ArrowUpDown size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.sortButtonText, { color: theme.colors.textSecondary }]}>
+                {getCurrentSortLabel()}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* View Mode Toggle */}
           <View style={[styles.viewToggle, { backgroundColor: theme.colors.surface }]}>
@@ -186,46 +393,6 @@ const SearchResultsScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Sort Options Dropdown */}
-      {showSortModal && (
-        <View 
-          style={[
-            styles.sortDropdown, 
-            { 
-              backgroundColor: theme.colors.surface,
-              ...theme.shadows.lg,
-            }
-          ]}
-        >
-          {SORT_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.sortOption,
-                sortBy === option.value && { backgroundColor: `${theme.colors.primary.main}10` },
-              ]}
-              onPress={() => {
-                setSortBy(option.value);
-                setShowSortModal(false);
-              }}
-            >
-              <Text
-                style={[
-                  styles.sortOptionText,
-                  {
-                    color: sortBy === option.value 
-                      ? theme.colors.primary.main 
-                      : theme.colors.textPrimary,
-                    fontFamily: sortBy === option.value ? 'Inter-SemiBold' : 'Inter-Regular',
-                  },
-                ]}
-              >
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
     </View>
   );
 
@@ -250,7 +417,13 @@ const SearchResultsScreen: React.FC = () => {
         <PropertyCard
           {...mappedProps}
           onPress={() => handlePropertyPress(String(item.id))}
-          onFavoritePress={() => {}}
+          isFavorite={favoriteIds.has(String(item.id))}
+          onFavoritePress={() =>
+            handleToggleFavorite(
+              Number(item.id),
+              favoriteIds.has(String(item.id))
+            )
+          }
         />
       </View>
     );
@@ -270,13 +443,8 @@ const SearchResultsScreen: React.FC = () => {
       <TouchableOpacity
         style={[styles.emptyButton, { backgroundColor: theme.colors.primary.main }]}
         onPress={() => {
-          setFilters({
-            transactionType: null,
-            propertyType: null,
-            priceRange: null,
-            rooms: null,
-            area: null,
-          });
+          setFilters({});
+          setSearchText('');
         }}
       >
         <X size={18} color="#ffffff" />
@@ -303,6 +471,7 @@ const SearchResultsScreen: React.FC = () => {
         ListFooterComponent={renderFooter}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={() => setShowSortModal(false)}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -319,6 +488,53 @@ const SearchResultsScreen: React.FC = () => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary.main} />
         </View>
+      )}
+      {showSortModal && sortMenuPosition && (
+        <Modal transparent animationType="fade" visible={showSortModal}>
+          <View style={styles.sortOverlay}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowSortModal(false)} />
+            <View
+              style={[
+                styles.sortDropdown,
+                {
+                  top: sortMenuPosition.top,
+                  left: sortMenuPosition.left,
+                  backgroundColor: theme.colors.surface,
+                  ...theme.shadows.lg,
+                },
+              ]}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.sortOption,
+                    sortBy === option.value && { backgroundColor: `${theme.colors.primary.main}10` },
+                  ]}
+                  onPress={() => {
+                    setSortBy(option.value);
+                    setShowSortModal(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.sortOptionText,
+                      {
+                        color:
+                          sortBy === option.value
+                            ? theme.colors.primary.main
+                            : theme.colors.textPrimary,
+                        fontFamily: sortBy === option.value ? 'Inter-SemiBold' : 'Inter-Regular',
+                      },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Modal>
       )}
     </SafeAreaView>
   );
@@ -390,9 +606,7 @@ const styles = StyleSheet.create({
   },
   sortDropdown: {
     position: 'absolute',
-    top: 160,
-    right: 16,
-    width: 180,
+    width: 190,
     borderRadius: 12,
     paddingVertical: 8,
     zIndex: 100,
@@ -454,6 +668,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  sortOverlay: {
+    flex: 1,
   },
 });
 

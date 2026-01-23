@@ -287,12 +287,12 @@ const MyPropertiesScreen: React.FC = () => {
 
 
 
-  const handlePropertyPress = (propertyId: string) => {
-    navigation.navigate('EditProperty', { propertyId });
+  const handlePropertyPress = (propertyId: string, property?: ExtendedPropertyListItem) => {
+    navigation.navigate('EditProperty', { propertyId, property });
   };
 
-  const handleEdit = (propertyId: string) => {
-    navigation.navigate('EditProperty', { propertyId });
+  const handleEdit = (propertyId: string, property?: ExtendedPropertyListItem) => {
+    navigation.navigate('EditProperty', { propertyId, property });
   };
 
   const handleDelete = (propertyId: string) => {
@@ -445,8 +445,8 @@ const MyPropertiesScreen: React.FC = () => {
               <PropertyListItem
                 key={property.id}
                 property={property}
-                onPress={() => handlePropertyPress(String(property.id))}
-                onEdit={() => handleEdit(String(property.id))}
+                onPress={() => handlePropertyPress(String(property.id), property)}
+                onEdit={() => handleEdit(String(property.id), property)}
                 onDelete={() => handleDelete(String(property.id))}
                 onStats={() => handleStats(String(property.id))}
                 onBoost={() => handleBoost(String(property.id))}

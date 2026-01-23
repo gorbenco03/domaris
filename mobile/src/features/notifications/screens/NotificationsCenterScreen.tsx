@@ -47,15 +47,15 @@ const NotificationsCenterScreen: React.FC = () => {
       userId: String(n.userId),
       type: n.type.toLowerCase().replace(/_/g, '_') as any,
       title: n.title,
-      body: n.message,
+      body: n.body, // Backend returns 'body' not 'message'
       read: n.isRead,
       readAt: n.isRead ? new Date() : undefined,
       channels: ['push', 'in_app'],
       deliveredVia: ['push'],
       createdAt: new Date(n.createdAt),
-      actionType: n.data?.actionType,
-      actionData: n.data,
-      imageUrl: n.data?.imageUrl,
+      actionType: n.metadata?.actionType || n.metadata?.type,
+      actionData: n.metadata, // Backend returns 'metadata' not 'data'
+      imageUrl: n.metadata?.imageUrl,
     }));
   }, [notifications]);
 

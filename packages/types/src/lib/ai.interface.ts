@@ -126,6 +126,24 @@ export interface IAIPropertyAnalysis {
 }
 
 /**
+ * Rezumat proprietate pentru vizitatori
+ */
+export interface IAIPropertySummary {
+  summary: string;
+  highlights: string[];
+  amenities: string[];
+  location: string;
+  suitableFor: string[];
+  cautions: string[];
+  matchScore: number;
+  priceComparison: {
+    averagePrice: number;
+    percentDiff: number | null;
+    note: string;
+  };
+}
+
+/**
  * Recomandare AI
  */
 export interface IAIRecommendation {

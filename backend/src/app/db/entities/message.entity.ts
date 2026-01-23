@@ -33,6 +33,13 @@ export class Message extends ExtModel {
     @Column(DataType.TEXT)
     content!: string;
 
+    @Column({
+        type: DataType.STRING,
+        allowNull: false,
+        defaultValue: 'TEXT',
+    })
+    type!: string;
+
     @Column(DataType.DATE)
     readAt!: Date | null;
 }

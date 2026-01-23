@@ -15,7 +15,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Listing } from '../../db/entities/listing.entity.js';
 import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { User } from '../../db/entities/user.entity.js';
-import { Op, literal, fn, col } from 'sequelize';
+import { Op, literal, fn, col, where } from 'sequelize';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -40,11 +40,23 @@ export interface SearchFilters {
   // Price range
   priceMin?: number;
   priceMax?: number;
+
+  // Transaction & property type
+  transactionType?: string;
+  propertyType?: string;
   
   // Property details
   rooms?: number;
   roomsMin?: number;
   roomsMax?: number;
+  bedroomsMin?: number;
+  bedroomsMax?: number;
+  bathroomsMin?: number;
+  bathroomsMax?: number;
+  floorMin?: number;
+  floorMax?: number;
+  yearBuiltMin?: number;
+  yearBuiltMax?: number;
   surfaceMin?: number;
   surfaceMax?: number;
   
@@ -52,6 +64,7 @@ export interface SearchFilters {
   isFurnished?: boolean;
   hasCentralHeating?: boolean;
   petFriendly?: boolean;
+  amenities?: string[];
   
   // Rent type
   rentType?: 'camera' | 'garsoniera' | 'ap2' | 'ap3' | 'casa';
@@ -91,6 +104,13 @@ export interface SearchResult {
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
 
+  private normalizeDiacritics(value: string) {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
   /**
    * Căutare principală cu full-text și filtre
    */
@@ -120,15 +140,46 @@ export class SearchService {
 
     // City filter
     if (filters.city) {
-      whereConditions.push({
-        city: { [Op.iLike]: `%${filters.city}%` },
-      });
+      const normalizedCity = this.normalizeDiacritics(filters.city);
+      const cityOr: any[] = [
+        { city: { [Op.iLike]: `%${filters.city}%` } },
+        where(
+          fn(
+            'translate',
+            fn('lower', col('city')),
+            'ăâîșşțţĂÂÎȘŞȚŢ',
+            'aaisstAAISST'
+          ),
+          { [Op.like]: `%${normalizedCity}%` }
+        ),
+      ];
+
+      if (normalizedCity.includes('bucuresti')) {
+        cityOr.push({ city: { [Op.iLike]: 'Sector %' } });
+        if (filters.neighborhood) {
+          cityOr.push({ city: { [Op.iLike]: `%${filters.neighborhood}%` } });
+        }
+      }
+
+      whereConditions.push({ [Op.or]: cityOr });
     }
 
     // Neighborhood filter
     if (filters.neighborhood) {
+      const normalizedNeighborhood = this.normalizeDiacritics(filters.neighborhood);
       whereConditions.push({
-        neighborhood: { [Op.iLike]: `%${filters.neighborhood}%` },
+        [Op.or]: [
+          { neighborhood: { [Op.iLike]: `%${filters.neighborhood}%` } },
+          where(
+            fn(
+              'translate',
+              fn('lower', col('neighborhood')),
+              'ăâîșşțţĂÂÎȘŞȚŢ',
+              'aaisstAAISST'
+            ),
+            { [Op.like]: `%${normalizedNeighborhood}%` }
+          ),
+        ],
       });
     }
 
@@ -141,6 +192,12 @@ export class SearchService {
     }
 
     // Price range
+    if (filters.transactionType) {
+      whereConditions.push({ transactionType: filters.transactionType });
+    }
+    if (filters.propertyType) {
+      whereConditions.push({ propertyType: filters.propertyType });
+    }
     if (filters.priceMin !== undefined) {
       whereConditions.push({ priceEur: { [Op.gte]: filters.priceMin } });
     }
@@ -148,15 +205,57 @@ export class SearchService {
       whereConditions.push({ priceEur: { [Op.lte]: filters.priceMax } });
     }
 
+    if (filters.transactionType) {
+      whereConditions.push({ transactionType: filters.transactionType });
+    }
+
+    if (filters.propertyType) {
+      whereConditions.push({ propertyType: filters.propertyType });
+    }
+
     // Rooms
     if (filters.rooms !== undefined) {
       whereConditions.push({ rooms: filters.rooms });
+    }
+    if (filters.bedroomsMin !== undefined) {
+      whereConditions.push({ bedrooms: { [Op.gte]: filters.bedroomsMin } });
+    }
+    if (filters.bedroomsMax !== undefined) {
+      whereConditions.push({ bedrooms: { [Op.lte]: filters.bedroomsMax } });
     }
     if (filters.roomsMin !== undefined) {
       whereConditions.push({ rooms: { [Op.gte]: filters.roomsMin } });
     }
     if (filters.roomsMax !== undefined) {
       whereConditions.push({ rooms: { [Op.lte]: filters.roomsMax } });
+    }
+
+    if (filters.bedroomsMin !== undefined) {
+      whereConditions.push({ bedrooms: { [Op.gte]: filters.bedroomsMin } });
+    }
+    if (filters.bedroomsMax !== undefined) {
+      whereConditions.push({ bedrooms: { [Op.lte]: filters.bedroomsMax } });
+    }
+
+    if (filters.bathroomsMin !== undefined) {
+      whereConditions.push({ bathrooms: { [Op.gte]: filters.bathroomsMin } });
+    }
+    if (filters.bathroomsMax !== undefined) {
+      whereConditions.push({ bathrooms: { [Op.lte]: filters.bathroomsMax } });
+    }
+
+    if (filters.floorMin !== undefined) {
+      whereConditions.push({ floor: { [Op.gte]: filters.floorMin } });
+    }
+    if (filters.floorMax !== undefined) {
+      whereConditions.push({ floor: { [Op.lte]: filters.floorMax } });
+    }
+
+    if (filters.yearBuiltMin !== undefined) {
+      whereConditions.push({ yearBuilt: { [Op.gte]: filters.yearBuiltMin } });
+    }
+    if (filters.yearBuiltMax !== undefined) {
+      whereConditions.push({ yearBuilt: { [Op.lte]: filters.yearBuiltMax } });
     }
 
     // Surface
@@ -176,6 +275,10 @@ export class SearchService {
     }
     if (filters.petFriendly !== undefined) {
       whereConditions.push({ petFriendly: filters.petFriendly });
+    }
+
+    if (filters.amenities && filters.amenities.length > 0) {
+      whereConditions.push({ amenities: { [Op.contains]: filters.amenities } });
     }
 
     // Rent type

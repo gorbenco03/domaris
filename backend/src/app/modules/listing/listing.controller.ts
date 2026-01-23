@@ -104,6 +104,14 @@ export class ListingController {
     @Query('neighborhood') neighborhood?: string,
     @Query('transactionType') transactionType?: string,
     @Query('propertyType') propertyType?: string,
+    @Query('minBedrooms') minBedrooms?: string,
+    @Query('maxBedrooms') maxBedrooms?: string,
+    @Query('minBathrooms') minBathrooms?: string,
+    @Query('maxBathrooms') maxBathrooms?: string,
+    @Query('minFloor') minFloor?: string,
+    @Query('maxFloor') maxFloor?: string,
+    @Query('minYearBuilt') minYearBuilt?: string,
+    @Query('maxYearBuilt') maxYearBuilt?: string,
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
     @Query('minRooms') minRooms?: string,
@@ -113,6 +121,8 @@ export class ListingController {
     @Query('isFurnished') isFurnished?: string,
     @Query('hasCentralHeating') hasCentralHeating?: string,
     @Query('isAgency') isAgency?: string,
+    @Query('petFriendly') petFriendly?: string,
+    @Query('amenities') amenities?: string | string[],
     @Query('sortBy') sortBy?: 'price' | 'createdAt' | 'postedAt',
     @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
   ) {
@@ -120,21 +130,38 @@ export class ListingController {
     const parsedPage = page ? Number(page) : 1;
     const parsedOffset = offset ? Number(offset) : (parsedPage - 1) * parsedLimit;
 
-    // Note: transactionType and propertyType will be added to service when Listing entity is updated
+    const amenitiesList = Array.isArray(amenities)
+      ? amenities
+      : amenities
+      ? amenities.split(',').map((item) => item.trim()).filter(Boolean)
+      : undefined;
+
     return this.listingService.findAll({
       limit: parsedLimit,
       offset: parsedOffset,
       city,
       neighborhood,
+      transactionType,
+      propertyType,
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       minRooms: minRooms ? Number(minRooms) : undefined,
       maxRooms: maxRooms ? Number(maxRooms) : undefined,
+      minBedrooms: minBedrooms ? Number(minBedrooms) : undefined,
+      maxBedrooms: maxBedrooms ? Number(maxBedrooms) : undefined,
+      minBathrooms: minBathrooms ? Number(minBathrooms) : undefined,
+      maxBathrooms: maxBathrooms ? Number(maxBathrooms) : undefined,
+      minFloor: minFloor ? Number(minFloor) : undefined,
+      maxFloor: maxFloor ? Number(maxFloor) : undefined,
+      minYearBuilt: minYearBuilt ? Number(minYearBuilt) : undefined,
+      maxYearBuilt: maxYearBuilt ? Number(maxYearBuilt) : undefined,
       minSurface: minSurface ? Number(minSurface) : undefined,
       maxSurface: maxSurface ? Number(maxSurface) : undefined,
       isFurnished: isFurnished ? isFurnished === 'true' : undefined,
       hasCentralHeating: hasCentralHeating ? hasCentralHeating === 'true' : undefined,
       isAgency: isAgency ? isAgency === 'true' : undefined,
+      petFriendly: petFriendly ? petFriendly === 'true' : undefined,
+      amenities: amenitiesList,
       sortBy,
       sortOrder,
     });

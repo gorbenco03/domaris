@@ -52,5 +52,12 @@ export class Conversation extends ExtModel {
 
     @HasMany(() => Message)
     messages!: Message[];
+
+    @Column({
+        type: DataType.JSONB,
+        allowNull: false,
+        defaultValue: [],
+    })
+    archivedBy!: number[];
 }
 

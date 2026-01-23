@@ -64,6 +64,9 @@ export const API_ENDPOINTS = {
     ADD: '/favorites',
     REMOVE: (propertyId: string) => `/favorites/${propertyId}`,
     CHECK: (propertyId: string) => `/favorites/check/${propertyId}`,
+    LISTS: '/favorites/lists',
+    MOVE: '/favorites/move',
+    COMPARE: '/favorites/compare',
   },
 
   // Conversations (Chat/Messaging)
@@ -110,6 +113,7 @@ export const API_ENDPOINTS = {
     SUGGEST_PRICE: '/ai/suggest-price',
     GENERATE_DESCRIPTION: '/ai/generate-description',
     IMPROVE_LISTING: '/ai/improve-listing',
+    PROPERTY_SUMMARY: (propertyId: string) => `/ai/property-summary/${propertyId}`,
   },
 
   // Media

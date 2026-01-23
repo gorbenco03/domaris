@@ -40,10 +40,12 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   const p = conversation.otherParticipant;
   const participantName = p?.name || (p?.firstName ? `${p.firstName} ${p.lastName}` : 'Utilizator');
   const propertyTitle = conversation.property?.title || 'Proprietate';
-  const lastMessageText = conversation.lastMessage?.content || '';
-  const lastMessageTime = conversation.lastMessage?.createdAt 
-    ? formatDistanceToNow(new Date(conversation.lastMessage.createdAt))
+  const lastMessageText = conversation.lastMessage?.content || conversation.lastMessage?.text || '';
+  const lastMessageTime = conversation.lastMessage?.createdAt || conversation.lastMessage?.sentAt
+    ? formatDistanceToNow(new Date(conversation.lastMessage.createdAt || conversation.lastMessage.sentAt))
     : '';
+  const isArchived =
+    (conversation.status as any) === 'ARCHIVED' || conversation.status === ('archived' as any);
 
   // Truncate last message
   const truncatedMessage = lastMessageText.length > 40 
@@ -55,10 +57,11 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: hasUnread 
-            ? `${theme.colors.primary.main}08` 
+          backgroundColor: hasUnread
+            ? `${theme.colors.primary.main}08`
             : theme.colors.surface,
           borderBottomColor: theme.colors.divider,
+          opacity: isArchived ? 0.6 : 1,
         },
       ]}
       onPress={() => onPress(conversation.id)}
@@ -143,6 +146,13 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
           >
             {propertyTitle}
           </Text>
+          {isArchived && (
+            <View style={[styles.archivedBadge, { borderColor: theme.colors.textTertiary }]}>
+              <Text style={[styles.archivedBadgeText, { color: theme.colors.textTertiary }]}>
+                Arhivat
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Message preview row */}
@@ -241,6 +251,16 @@ const styles = StyleSheet.create({
   propertyTitle: {
     fontSize: 13,
     flex: 1,
+  },
+  archivedBadge: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  archivedBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   messageRow: {
     flexDirection: 'row',

@@ -18,6 +18,10 @@ export interface IAdvancedSearchFilters {
   city?: string;
   neighborhood?: string;
 
+  // Transaction & property type
+  transactionType?: string;
+  propertyType?: string;
+
   // Price
   priceMin?: number;
   priceMax?: number;
@@ -26,6 +30,14 @@ export interface IAdvancedSearchFilters {
   rooms?: number; // Exact
   roomsMin?: number;
   roomsMax?: number;
+  bedroomsMin?: number;
+  bedroomsMax?: number;
+  bathroomsMin?: number;
+  bathroomsMax?: number;
+  floorMin?: number;
+  floorMax?: number;
+  yearBuiltMin?: number;
+  yearBuiltMax?: number;
 
   // Surface (mp)
   surfaceMin?: number;
@@ -35,9 +47,16 @@ export interface IAdvancedSearchFilters {
   isFurnished?: boolean;
   hasCentralHeating?: boolean;
   petFriendly?: boolean;
+  amenities?: string[];
 
   // Filters
   excludeAgencies?: boolean;
+
+  // Rent type
+  rentType?: string;
+
+  // Bounding box
+  bounds?: IMapBounds;
 
   // Sorting
   sortBy?: 'price_asc' | 'price_desc' | 'date_desc' | 'date_asc' | 'relevance';
@@ -49,16 +68,19 @@ export interface IAdvancedSearchFilters {
 
 export interface ISearchResponse {
   data: IPropertyListing[];
-  total: number;
-  page: number;
-  limit: number;
-  hasMore: boolean;
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
 }
 
 export interface ISearchSuggestion {
   type: 'city' | 'neighborhood' | 'property' | 'keyword';
-  value: string;
-  label: string;
+  text: string;
   count?: number;
 }
 
@@ -100,7 +122,7 @@ export interface IMapDataResponse {
 }
 
 export interface ISearchFacets {
-  cities: Array<{ city: string; count: number }>;
+  cities: Array<{ name: string; count: number }>;
   priceRanges: Array<{
     min: number;
     max: number;

@@ -3,7 +3,7 @@
  * Step 6 of property creation wizard - Final preview before publishing
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity } from 'react-native';
 import {
   MapPin,
@@ -18,6 +18,9 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
 import { AIAnalysisWidget } from '@/features/properties/components/AIAnalysisWidget';
+import { useQuery } from '@tanstack/react-query';
+import { aiApi } from '@/features/ai/api/aiApi';
+import { QUERY_KEYS } from '@/config/constants';
 import type { PropertyFormData } from '../CreatePropertyWizard';
 
 // ============================================
@@ -30,31 +33,6 @@ interface PreviewStepProps {
 }
 
 // ============================================
-// MOCK AI ANALYSIS
-// ============================================
-
-const MOCK_AI_ANALYSIS = {
-  overallScore: 78,
-  pricing: {
-    status: 'high' as const,
-    currentPrice: 95000,
-    recommendedMin: 85000,
-    recommendedMax: 92000,
-    visibilityImpact: -22,
-  },
-  description: {
-    score: 72,
-    missingKeywords: ['an renovare', 'tip încălzire'],
-    suggestions: ['Adaugă detalii despre finisaje'],
-  },
-  photos: {
-    count: 8,
-    missingRooms: ['bucătărie'],
-    qualityIssues: [],
-  },
-};
-
-// ============================================
 // COMPONENT
 // ============================================
 
@@ -63,6 +41,78 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
   onEditStep,
 }) => {
   const { theme } = useTheme();
+  const analysisInput = useMemo(() => ({
+    title: formData.title || undefined,
+    description: formData.description || undefined,
+    priceEur: formData.pricing?.price,
+    city: formData.location?.city,
+    rooms: formData.characteristics?.rooms,
+    surfaceSqm: formData.characteristics?.totalArea,
+    photosCount: formData.photos.length,
+  }), [formData]);
+
+  const analysisQuery = useQuery({
+    queryKey: [QUERY_KEYS.AI_ANALYSIS, analysisInput],
+    queryFn: () => aiApi.analyzeListingDraft(analysisInput),
+    enabled:
+      !!analysisInput.city &&
+      !!analysisInput.priceEur &&
+      !!analysisInput.rooms &&
+      !!analysisInput.surfaceSqm,
+  });
+
+  const estimateQuery = useQuery({
+    queryKey: [QUERY_KEYS.AI_ANALYSIS, analysisInput, 'estimate'],
+    queryFn: () =>
+      aiApi.estimatePrice({
+        city: analysisInput.city!,
+        neighborhood: formData.location?.neighborhood,
+        propertyType: formData.propertyType || 'APARTMENT',
+        rooms: analysisInput.rooms!,
+        surface: analysisInput.surfaceSqm!,
+        floor: formData.characteristics?.floor,
+        yearBuilt: formData.characteristics?.yearBuilt,
+      }),
+    enabled:
+      !!analysisInput.city &&
+      !!analysisInput.rooms &&
+      !!analysisInput.surfaceSqm,
+  });
+
+  const mappedAnalysis = useMemo(() => {
+    if (!analysisQuery.data) return null;
+    const analysis = analysisQuery.data;
+    const estimate = estimateQuery.data;
+    const currentPrice = analysisInput.priceEur || 0;
+    const percentDiff = analysis.priceAnalysis?.percentDiff ?? 0;
+    const status =
+      analysis.priceAnalysis.isReasonable
+        ? 'optimal'
+        : percentDiff < 0
+          ? 'low'
+          : 'high';
+
+    return {
+      overallScore: analysis.overallScore,
+      pricing: {
+        status,
+        currentPrice,
+        recommendedMin: estimate?.priceRange.min ?? currentPrice,
+        recommendedMax: estimate?.priceRange.max ?? currentPrice,
+        visibilityImpact: percentDiff ? Math.round(-percentDiff) : 0,
+      },
+      description: {
+        score: analysis.descriptionAnalysis.score,
+        missingKeywords: analysis.descriptionAnalysis.issues,
+        suggestions: analysis.descriptionAnalysis.suggestions,
+      },
+      photos: {
+        count: analysis.photosAnalysis.count,
+        missingRooms: [],
+        qualityIssues: [],
+      },
+    };
+  }, [analysisQuery.data, estimateQuery.data, analysisInput.priceEur]);
 
   const formatPrice = () => {
     if (!formData.pricing) return '-';
@@ -129,7 +179,8 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
 
       {/* AI Analysis */}
       <AIAnalysisWidget
-        analysis={MOCK_AI_ANALYSIS}
+        analysis={mappedAnalysis}
+        isLoading={analysisQuery.isLoading}
         onGenerateDescription={() => onEditStep(5)}
         onAdjustPrice={() => onEditStep(5)}
         onAddPhotos={() => onEditStep(4)}

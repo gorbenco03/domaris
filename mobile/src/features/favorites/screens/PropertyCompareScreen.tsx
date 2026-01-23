@@ -3,7 +3,7 @@
  * Side-by-side comparison of 2-4 properties
  */
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,170 +11,89 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Share2, CheckCircle, X } from 'lucide-react-native';
+import { ArrowLeft, Share2, X } from 'lucide-react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Button } from '@/shared/components';
+import { FavoritesStackParamList } from '@/app/navigation/types';
+import { useCompareFavorites } from '../hooks/useFavorites';
 
 const { width } = Dimensions.get('window');
-const COLUMN_WIDTH = (width - 120) / 3; // 3 columns + paddings
-
-interface ComparisonProperty {
-  id: string;
-  title: string;
-  location: string;
-  price: number;
-  area: number;
-  pricePerSqm: number;
-  bedrooms: number;
-  bathrooms: number;
-  floor: string;
-  yearBuilt: number;
-  hasParking: boolean;
-  hasAC: boolean;
-  balconies: number;
-  imageUrl: string;
-}
-
-interface ComparisonRow {
-  label: string;
-  key: keyof ComparisonProperty;
-  type: 'text' | 'number' | 'boolean' | 'currency' | 'badge';
-  suffix?: string;
-  highlightBest?: 'highest' | 'lowest';
-}
-
 const PropertyCompareScreen: React.FC = () => {
   const { theme } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<FavoritesStackParamList, 'Compare'>>();
+  const route = useRoute();
+  const params = route.params as FavoritesStackParamList['Compare'];
+  const initialPropertyIds = params?.propertyIds || [];
+  const [activePropertyIds, setActivePropertyIds] = useState<number[]>(
+    initialPropertyIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+  );
 
-  // Mock data - in production, this would come from route params
-  const properties: ComparisonProperty[] = [
-    {
-      id: '1',
-      title: 'Apartament 3 cam',
-      location: 'Drumul Taberei',
-      price: 95000,
-      area: 75,
-      pricePerSqm: 1267,
-      bedrooms: 3,
-      bathrooms: 2,
-      floor: '4/10',
-      yearBuilt: 2008,
-      hasParking: true,
-      hasAC: true,
-      balconies: 1,
-      imageUrl: 'https://via.placeholder.com/300x200',
-    },
-    {
-      id: '2',
-      title: 'Apartament 2 cam',
-      location: 'Militari',
-      price: 87000,
-      area: 68,
-      pricePerSqm: 1279,
-      bedrooms: 2,
-      bathrooms: 1,
-      floor: '2/8',
-      yearBuilt: 2015,
-      hasParking: false,
-      hasAC: true,
-      balconies: 2,
-      imageUrl: 'https://via.placeholder.com/300x200',
-    },
-    {
-      id: '3',
-      title: 'Apartament 3 cam',
-      location: 'Berceni',
-      price: 102000,
-      area: 82,
-      pricePerSqm: 1244,
-      bedrooms: 3,
-      bathrooms: 2,
-      floor: '6/12',
-      yearBuilt: 2020,
-      hasParking: true,
-      hasAC: true,
-      balconies: 1,
-      imageUrl: 'https://via.placeholder.com/300x200',
-    },
-  ];
+  const { data: comparison, isLoading } = useCompareFavorites(activePropertyIds);
+  const properties = comparison?.properties || [];
+  const comparisonRows = comparison?.matrix || [];
+  const columnWidth = useMemo(() => {
+    const columns = Math.max(properties.length, 1);
+    return Math.max(120, (width - 120) / columns);
+  }, [properties.length]);
+  const tableContentWidth = useMemo(() => {
+    const columns = Math.max(properties.length, 1);
+    return 100 + columns * (columnWidth + 16);
+  }, [columnWidth, properties.length]);
 
-  const comparisonRows: ComparisonRow[] = [
-    { label: 'Preț', key: 'price', type: 'currency', highlightBest: 'lowest' },
-    { label: 'Suprafață', key: 'area', type: 'number', suffix: 'mp', highlightBest: 'highest' },
-    { label: '€/mp', key: 'pricePerSqm', type: 'currency', highlightBest: 'lowest' },
-    { label: 'Camere', key: 'bedrooms', type: 'number' },
-    { label: 'Băi', key: 'bathrooms', type: 'number' },
-    { label: 'Etaj', key: 'floor', type: 'text' },
-    { label: 'An construcție', key: 'yearBuilt', type: 'number', highlightBest: 'highest' },
-    { label: 'Parcare', key: 'hasParking', type: 'boolean' },
-    { label: 'Aer condiționat', key: 'hasAC', type: 'boolean' },
-    { label: 'Balcoane', key: 'balconies', type: 'number', highlightBest: 'highest' },
-  ];
-
-  const getBestValue = (row: ComparisonRow): any => {
-    if (!row.highlightBest) return null;
-
-    const values = properties.map((p) => p[row.key]);
-    
-    if (row.type === 'boolean') return true;
-    
-    if (row.highlightBest === 'highest') {
-      return Math.max(...(values as number[]));
-    } else {
-      return Math.min(...(values as number[]));
+  const handleRemoveProperty = (propertyId: number) => {
+    const next = activePropertyIds.filter((id) => id !== propertyId);
+    if (next.length < 2) {
+      navigation.goBack();
+      return;
     }
+    setActivePropertyIds(next);
   };
 
-  const isBestValue = (row: ComparisonRow, value: any): boolean => {
-    if (!row.highlightBest) return false;
-    const bestValue = getBestValue(row);
-    return value === bestValue;
-  };
-
-  const formatValue = (row: ComparisonRow, property: ComparisonProperty): string => {
-    const value = property[row.key];
-
-    switch (row.type) {
-      case 'currency':
-        return `${(value as number).toLocaleString('ro-RO')} €`;
-      case 'number':
-        return `${value}${row.suffix ? ' ' + row.suffix : ''}`;
-      case 'boolean':
-        return value ? '✓' : '✗';
-      case 'badge':
-        return String(value);
-      default:
-        return String(value);
-    }
-  };
-
-  const renderPropertyHeader = (property: ComparisonProperty) => (
+  const renderPropertyHeader = (property: { id: number; title: string; address?: string; city?: string; image?: string | null }) => (
     <View
       key={property.id}
       style={[
         styles.propertyHeader,
         {
-          width: COLUMN_WIDTH,
+          width: columnWidth,
           marginHorizontal: 8,
         },
       ]}
     >
       {/* Image */}
-      <View
-        style={[
-          styles.propertyImage,
-          {
-            backgroundColor: theme.colors.border,
-            borderRadius: theme.borderRadius.md,
-            marginBottom: theme.spacing[2],
-          },
-        ]}
-      >
-        <Text style={[styles.imagePlaceholder, { color: theme.colors.textTertiary }]}>📷</Text>
-      </View>
+      {property.image ? (
+        <Image
+          source={{ uri: property.image }}
+          style={[
+            styles.propertyImage,
+            {
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing[2],
+            },
+          ]}
+          resizeMode="cover"
+        />
+      ) : (
+        <View
+          style={[
+            styles.propertyImage,
+            {
+              backgroundColor: theme.colors.border,
+              borderRadius: theme.borderRadius.md,
+              marginBottom: theme.spacing[2],
+            },
+          ]}
+        >
+          <Text style={[styles.imagePlaceholder, { color: theme.colors.textTertiary }]}>📷</Text>
+        </View>
+      )}
 
       {/* Title */}
       <Text
@@ -186,6 +105,7 @@ const PropertyCompareScreen: React.FC = () => {
             marginBottom: theme.spacing[1],
           },
         ]}
+        numberOfLines={2}
       >
         {property.title}
       </Text>
@@ -200,8 +120,9 @@ const PropertyCompareScreen: React.FC = () => {
             marginBottom: theme.spacing[2],
           },
         ]}
+        numberOfLines={1}
       >
-        {property.location}
+        {[property.address, property.city].filter(Boolean).join(', ')}
       </Text>
 
       {/* Remove Button */}
@@ -214,15 +135,24 @@ const PropertyCompareScreen: React.FC = () => {
             borderRadius: theme.borderRadius.md,
           },
         ]}
+        onPress={() => handleRemoveProperty(property.id)}
       >
         <X size={16} color={theme.colors.textSecondary} />
       </TouchableOpacity>
     </View>
   );
 
-  const renderComparisonRow = (row: ComparisonRow) => (
+  const renderComparisonRow = (row: {
+    label: string;
+    values: Array<{ propertyId: number; formatted: string }>;
+  }) => {
+    const valuesById = new Map(
+      row.values.map((value) => [value.propertyId, value.formatted])
+    );
+
+    return (
     <View
-      key={row.key}
+      key={row.label}
       style={[
         styles.comparisonRow,
         {
@@ -249,9 +179,7 @@ const PropertyCompareScreen: React.FC = () => {
 
       {/* Value Columns */}
       {properties.map((property) => {
-        const value = property[row.key];
-        const isBest = isBestValue(row, value);
-        const formattedValue = formatValue(row, property);
+        const formattedValue = valuesById.get(property.id) ?? '-';
 
         return (
           <View
@@ -259,9 +187,8 @@ const PropertyCompareScreen: React.FC = () => {
             style={[
               styles.valueColumn,
               {
-                width: COLUMN_WIDTH,
+                width: columnWidth,
                 marginHorizontal: 8,
-                backgroundColor: isBest ? theme.colors.accent.main + '10' : 'transparent',
                 borderRadius: theme.borderRadius.sm,
                 paddingVertical: theme.spacing[1],
               },
@@ -271,26 +198,50 @@ const PropertyCompareScreen: React.FC = () => {
               style={[
                 styles.valueText,
                 {
-                  color: isBest ? theme.colors.accent.main : theme.colors.textPrimary,
+                  color: theme.colors.textPrimary,
                   fontSize: theme.typography.fontSize.sm,
-                  fontWeight: isBest ? '700' : '500',
+                  fontWeight: '500',
                 },
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
             >
               {formattedValue}
             </Text>
-            {isBest && row.highlightBest && (
-              <CheckCircle
-                size={12}
-                color={theme.colors.accent.main}
-                style={{ marginLeft: 4 }}
-              />
-            )}
           </View>
         );
       })}
     </View>
   );
+  };
+
+  if (activePropertyIds.length < 2) {
+    return (
+      <SafeAreaView
+        style={[styles.container, styles.loadingContainer, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Selectează cel puțin 2 proprietăți pentru comparație.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, styles.loadingContainer, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Se încarcă comparația...
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -309,7 +260,7 @@ const PropertyCompareScreen: React.FC = () => {
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => {/* Navigate back */}}
+          onPress={() => navigation.goBack()}
         >
           <ArrowLeft size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
@@ -334,7 +285,6 @@ const PropertyCompareScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Property Headers - Horizontal Scroll */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -346,56 +296,30 @@ const PropertyCompareScreen: React.FC = () => {
             },
           ]}
         >
-          <View style={{ width: 100 }} />
-          {properties.map(renderPropertyHeader)}
+          <View style={{ width: tableContentWidth }}>
+            <View style={styles.headersRow}>
+              <View style={{ width: 100 }} />
+              {properties.map(renderPropertyHeader)}
+            </View>
+
+            <View style={[styles.tableContainer]}>
+              <View
+                style={[
+                  styles.table,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderRadius: theme.borderRadius.xl,
+                    marginTop: theme.spacing[4],
+                    padding: theme.spacing[2],
+                    ...theme.shadows.card,
+                  },
+                ]}
+              >
+                {comparisonRows.map(renderComparisonRow)}
+              </View>
+            </View>
+          </View>
         </ScrollView>
-
-        {/* Comparison Table */}
-        <View style={[styles.tableContainer, { paddingHorizontal: theme.spacing[4] }]}>
-          <View
-            style={[
-              styles.table,
-              {
-                backgroundColor: theme.colors.surface,
-                borderRadius: theme.borderRadius.xl,
-                marginTop: theme.spacing[4],
-                padding: theme.spacing[2],
-                ...theme.shadows.card,
-              },
-            ]}
-          >
-            {comparisonRows.map(renderComparisonRow)}
-          </View>
-        </View>
-
-        {/* Legend */}
-        <View
-          style={[
-            styles.legend,
-            {
-              marginHorizontal: theme.spacing[4],
-              marginTop: theme.spacing[4],
-              padding: theme.spacing[3],
-              backgroundColor: theme.colors.accent.main + '08',
-              borderRadius: theme.borderRadius.md,
-            },
-          ]}
-        >
-          <View style={styles.legendItem}>
-            <CheckCircle size={16} color={theme.colors.accent.main} />
-            <Text
-              style={[
-                styles.legendText,
-                {
-                  color: theme.colors.textSecondary,
-                  fontSize: theme.typography.fontSize.xs,
-                },
-              ]}
-            >
-              = Cea mai bună valoare
-            </Text>
-          </View>
-        </View>
 
         {/* Action Buttons */}
         <View
@@ -412,8 +336,10 @@ const PropertyCompareScreen: React.FC = () => {
           {properties.map((property) => (
             <Button
               key={property.id}
-              title={`Contactează pentru ${property.title}`}
-              onPress={() => {/* Navigate to contact */}}
+              title={`Vezi ${property.title}`}
+              onPress={() =>
+                navigation.navigate('PropertyDetail', { propertyId: String(property.id) })
+              }
               variant="secondary"
               fullWidth
             />
@@ -457,8 +383,14 @@ const styles = StyleSheet.create({
   headersContainer: {
     flexDirection: 'row',
   },
+  headersRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
   propertyHeader: {
     alignItems: 'center',
+    minHeight: 150,
+    justifyContent: 'flex-start',
   },
   propertyImage: {
     width: '100%',
@@ -507,19 +439,18 @@ const styles = StyleSheet.create({
   valueText: {
     textAlign: 'center',
   },
-  legend: {
-    // Styles applied inline
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  legendText: {
-    fontWeight: '500',
-  },
   actionsContainer: {
     // Styles applied inline
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
 

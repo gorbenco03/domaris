@@ -46,6 +46,14 @@ export class Listing extends ExtModel {
   @Column(DataType.TEXT)
   description!: string;
 
+  @ApiProperty({ example: 'SALE' })
+  @Column(DataType.STRING)
+  transactionType!: string;
+
+  @ApiProperty({ example: 'APARTMENT' })
+  @Column(DataType.STRING)
+  propertyType!: string;
+
   @ApiProperty({ example: 'Bucuresti' })
   @Index
   @Column(DataType.STRING)
@@ -64,6 +72,10 @@ export class Listing extends ExtModel {
   @ApiProperty({ example: 2 })
   @Column(DataType.INTEGER)
   rooms!: number;
+
+  @ApiProperty({ required: false })
+  @Column(DataType.INTEGER)
+  bedrooms?: number;
 
   // 👇 NOU
   @ApiProperty({ required: false })

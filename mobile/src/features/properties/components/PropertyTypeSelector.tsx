@@ -3,13 +3,14 @@
  * Grid of property type options for listing wizard
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Dimensions,
 } from 'react-native';
 import {
   Building2,
@@ -118,9 +119,10 @@ interface TypeCardProps {
   option: PropertyTypeOption;
   selected: boolean;
   onPress: () => void;
+  cardWidth: number;
 }
 
-const TypeCard: React.FC<TypeCardProps> = ({ option, selected, onPress }) => {
+const TypeCard: React.FC<TypeCardProps> = ({ option, selected, onPress, cardWidth }) => {
   const { theme } = useTheme();
   const scale = React.useRef(new Animated.Value(1)).current;
 
@@ -176,6 +178,7 @@ const TypeCard: React.FC<TypeCardProps> = ({ option, selected, onPress }) => {
             borderColor: selected ? theme.colors.primary.main : theme.colors.border,
             borderRadius: theme.borderRadius.lg,
             transform: [{ scale }],
+            width: cardWidth,
           },
           selected && theme.shadows.md,
         ]}
@@ -209,6 +212,15 @@ export const PropertyTypeSelector: React.FC<PropertyTypeSelectorProps> = ({
 }) => {
   const { theme } = useTheme();
   const propertyTypes = getPropertyTypes(theme.colors.primary.main, 28);
+  const cardWidth = useMemo(() => {
+    const screenWidth = Dimensions.get('window').width;
+    const horizontalPadding = 40; // matches wizard content padding
+    const gap = 12;
+    const columns = 3;
+    const totalGap = gap * (columns - 1);
+    const available = screenWidth - horizontalPadding - totalGap;
+    return Math.floor(available / columns);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -222,6 +234,7 @@ export const PropertyTypeSelector: React.FC<PropertyTypeSelectorProps> = ({
             option={option}
             selected={selectedType === option.type}
             onPress={() => onSelect(option.type)}
+            cardWidth={cardWidth}
           />
         ))}
       </View>
@@ -241,12 +254,10 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 12,
   },
   typeCard: {
-    flexBasis: '30%',
-    maxWidth: '30%',
     minHeight: 120,
     justifyContent: 'flex-start',
     alignItems: 'center',
@@ -267,6 +278,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     textAlign: 'center',
     lineHeight: 16,
+    minHeight: 32,
   },
 });
 

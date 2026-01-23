@@ -11,11 +11,14 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  TextInput,
 } from 'react-native';
-import { X, RotateCcw, ChevronRight } from 'lucide-react-native';
+import { X, RotateCcw } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton, Button, Chip, Divider } from '@/shared/components';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { IAdvancedSearchFilters } from '@/features/search/api/searchApi';
+import { AmenitySelector, type Amenity } from '@/features/properties/components/AmenitySelector';
 
 // ============================================
 // TYPES
@@ -59,26 +62,77 @@ const FiltersScreen: React.FC = () => {
   const initialFilters = route.params?.filters || {};
 
   // State initialization from params
-  const [propertyType, setPropertyType] = useState<string[]>(
-    initialFilters.propertyType ? [initialFilters.propertyType] : []
+  const [transactionType, setTransactionType] = useState<string | null>(
+    initialFilters.transactionType || null
+  );
+  const [propertyType, setPropertyType] = useState<string | null>(
+    initialFilters.propertyType || null
   );
   const [rooms, setRooms] = useState<string[]>(
-    initialFilters.minRooms ? [String(initialFilters.minRooms)] : []
+    initialFilters.rooms
+      ? [String(initialFilters.rooms)]
+      : initialFilters.roomsMin || initialFilters.roomsMax
+      ? [
+          ...(initialFilters.roomsMin ? [String(initialFilters.roomsMin)] : []),
+          ...(initialFilters.roomsMax ? [String(initialFilters.roomsMax)] : []),
+        ]
+      : []
   );
-  // Note: Backend might expect numbers, UI uses strings. We map loosely here.
-  
-  const [priceRange, setPriceRange] = useState({ 
-    min: initialFilters.minPrice ? String(initialFilters.minPrice) : '', 
-    max: initialFilters.maxPrice ? String(initialFilters.maxPrice) : '' 
+
+  const [priceRange, setPriceRange] = useState({
+    min: initialFilters.priceMin ? String(initialFilters.priceMin) : '',
+    max: initialFilters.priceMax ? String(initialFilters.priceMax) : '',
   });
 
-  const [comfort, setComfort] = useState<string | null>(null); // Not fully mapped to backend yet
+  const [surfaceRange, setSurfaceRange] = useState({
+    min: initialFilters.surfaceMin ? String(initialFilters.surfaceMin) : '',
+    max: initialFilters.surfaceMax ? String(initialFilters.surfaceMax) : '',
+  });
+
+  const [bedroomsRange, setBedroomsRange] = useState({
+    min: initialFilters.bedroomsMin ? String(initialFilters.bedroomsMin) : '',
+    max: initialFilters.bedroomsMax ? String(initialFilters.bedroomsMax) : '',
+  });
+  const [bathroomsRange, setBathroomsRange] = useState({
+    min: initialFilters.bathroomsMin ? String(initialFilters.bathroomsMin) : '',
+    max: initialFilters.bathroomsMax ? String(initialFilters.bathroomsMax) : '',
+  });
+  const [floorRange, setFloorRange] = useState({
+    min: initialFilters.floorMin ? String(initialFilters.floorMin) : '',
+    max: initialFilters.floorMax ? String(initialFilters.floorMax) : '',
+  });
+  const [yearBuiltRange, setYearBuiltRange] = useState({
+    min: initialFilters.yearBuiltMin ? String(initialFilters.yearBuiltMin) : '',
+    max: initialFilters.yearBuiltMax ? String(initialFilters.yearBuiltMax) : '',
+  });
+
+  const [amenities, setAmenities] = useState<Amenity[]>(
+    (initialFilters.amenities as Amenity[]) || []
+  );
+  const [isFurnished, setIsFurnished] = useState<boolean>(
+    initialFilters.isFurnished ?? false
+  );
+  const [hasCentralHeating, setHasCentralHeating] = useState<boolean>(
+    initialFilters.hasCentralHeating ?? false
+  );
+  const [petFriendly, setPetFriendly] = useState<boolean>(
+    initialFilters.petFriendly ?? false
+  );
 
   const resetFilters = () => {
-    setPropertyType([]);
+    setTransactionType(null);
+    setPropertyType(null);
     setRooms([]);
-    setComfort(null);
     setPriceRange({ min: '', max: '' });
+    setSurfaceRange({ min: '', max: '' });
+    setBedroomsRange({ min: '', max: '' });
+    setBathroomsRange({ min: '', max: '' });
+    setFloorRange({ min: '', max: '' });
+    setYearBuiltRange({ min: '', max: '' });
+    setAmenities([]);
+    setIsFurnished(false);
+    setHasCentralHeating(false);
+    setPetFriendly(false);
   };
 
   const toggleSelection = (list: string[], item: string, setter: (val: string[]) => void) => {
@@ -89,18 +143,58 @@ const FiltersScreen: React.FC = () => {
     }
   };
 
+  const toggleSingleSelection = (
+    value: string | null,
+    item: string,
+    setter: (val: string | null) => void
+  ) => {
+    if (value === item) {
+      setter(null);
+    } else {
+      setter(item);
+    }
+  };
+
   const handleApply = () => {
     // Map local state back to API filter params
-    const activeFilters: any = {
+    const selectedRooms = rooms.map(Number).filter((value) => !Number.isNaN(value));
+    const minRoom = selectedRooms.length > 0 ? Math.min(...selectedRooms) : undefined;
+    const maxRoom = selectedRooms.length > 0 ? Math.max(...selectedRooms) : undefined;
+    const hasOpenEndedRooms = rooms.includes('5');
+
+    const activeFilters: IAdvancedSearchFilters & Record<string, unknown> = {
       ...initialFilters,
-      propertyType: propertyType.length > 0 ? propertyType[0] : undefined, // Backend usually takes one type or array depending on impl
-      minRooms: rooms.length > 0 ? Math.min(...rooms.map(Number)) : undefined,
-      minPrice: priceRange.min ? Number(priceRange.min) : undefined,
-      maxPrice: priceRange.max ? Number(priceRange.max) : undefined,
+      transactionType: transactionType || undefined,
+      propertyType: propertyType || undefined,
+      roomsMin: minRoom,
+      roomsMax: hasOpenEndedRooms ? undefined : maxRoom,
+      priceMin: priceRange.min ? Number(priceRange.min) : undefined,
+      priceMax: priceRange.max ? Number(priceRange.max) : undefined,
+      surfaceMin: surfaceRange.min ? Number(surfaceRange.min) : undefined,
+      surfaceMax: surfaceRange.max ? Number(surfaceRange.max) : undefined,
+      bedroomsMin: bedroomsRange.min ? Number(bedroomsRange.min) : undefined,
+      bedroomsMax: bedroomsRange.max ? Number(bedroomsRange.max) : undefined,
+      bathroomsMin: bathroomsRange.min ? Number(bathroomsRange.min) : undefined,
+      bathroomsMax: bathroomsRange.max ? Number(bathroomsRange.max) : undefined,
+      floorMin: floorRange.min ? Number(floorRange.min) : undefined,
+      floorMax: floorRange.max ? Number(floorRange.max) : undefined,
+      yearBuiltMin: yearBuiltRange.min ? Number(yearBuiltRange.min) : undefined,
+      yearBuiltMax: yearBuiltRange.max ? Number(yearBuiltRange.max) : undefined,
+      amenities: amenities.length > 0 ? amenities : undefined,
+      isFurnished: isFurnished || undefined,
+      hasCentralHeating: hasCentralHeating || undefined,
+      petFriendly: petFriendly || undefined,
     };
 
-    // Clean undefined
-    Object.keys(activeFilters).forEach(key => activeFilters[key] === undefined && delete activeFilters[key]);
+    Object.keys(activeFilters).forEach(
+      (key) => activeFilters[key] === undefined && delete activeFilters[key]
+    );
+
+    if (route.params?.onApply) {
+      route.params.onApply(activeFilters);
+      navigation.goBack();
+      return;
+    }
 
     navigation.navigate('SearchResults', { filters: activeFilters });
   };
@@ -126,15 +220,42 @@ const FiltersScreen: React.FC = () => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Property Type */}
-        <FilterSection title="Tipul proprietății">
+        {/* Transaction Type */}
+        <FilterSection title="Tip tranzacție">
           <View style={styles.chipsGrid}>
-            {['APARTMENT', 'HOUSE', 'STUDIO', 'PENTHOUSE', 'LAND'].map((type) => (
+            {['SALE', 'RENT'].map((type) => (
               <Chip
                 key={type}
-                label={type === 'APARTMENT' ? 'Apartament' : type === 'HOUSE' ? 'Casă' : type === 'STUDIO' ? 'Garsonieră' : type === 'PENTHOUSE' ? 'Penthouse' : 'Teren'}
-                selected={propertyType.includes(type)}
-                onPress={() => toggleSelection(propertyType, type, setPropertyType)}
+                label={type === 'SALE' ? 'Vânzare' : 'Închiriere'}
+                selected={transactionType === type}
+                onPress={() => toggleSingleSelection(transactionType, type, setTransactionType)}
+                style={styles.chip}
+              />
+            ))}
+          </View>
+        </FilterSection>
+
+        <Divider />
+
+        {/* Property Type */}
+        <FilterSection title="Tip proprietate">
+          <View style={styles.chipsGrid}>
+            {[
+              { id: 'APARTMENT', label: 'Apartament' },
+              { id: 'HOUSE', label: 'Casă' },
+              { id: 'STUDIO', label: 'Garsonieră' },
+              { id: 'ROOM', label: 'Cameră' },
+              { id: 'COMMERCIAL', label: 'Comercial' },
+              { id: 'LAND', label: 'Teren' },
+              { id: 'OFFICE', label: 'Birou' },
+              { id: 'GARAGE', label: 'Garaj' },
+              { id: 'OTHER', label: 'Altul' },
+            ].map((type) => (
+              <Chip
+                key={type.id}
+                label={type.label}
+                selected={propertyType === type.id}
+                onPress={() => toggleSingleSelection(propertyType, type.id, setPropertyType)}
                 style={styles.chip}
               />
             ))}
@@ -166,18 +287,133 @@ const FiltersScreen: React.FC = () => {
 
         <Divider />
 
+        {/* Bedrooms */}
+        <FilterSection title="Dormitoare">
+          <View style={styles.row}>
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Minim</Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={bedroomsRange.min}
+                onChangeText={(value) => setBedroomsRange((prev) => ({ ...prev, min: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="0"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+            <View style={styles.priceSeparator} />
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Maxim</Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={bedroomsRange.max}
+                onChangeText={(value) => setBedroomsRange((prev) => ({ ...prev, max: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="Nelimitat"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+          </View>
+        </FilterSection>
+
+        <Divider />
+
+        {/* Bathrooms */}
+        <FilterSection title="Băi">
+          <View style={styles.row}>
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Minim</Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={bathroomsRange.min}
+                onChangeText={(value) => setBathroomsRange((prev) => ({ ...prev, min: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="0"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+            <View style={styles.priceSeparator} />
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Maxim</Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={bathroomsRange.max}
+                onChangeText={(value) => setBathroomsRange((prev) => ({ ...prev, max: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="Nelimitat"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+          </View>
+        </FilterSection>
+
+        <Divider />
+
         {/* Price Range */}
         <FilterSection title="Interval preț (€)">
           <View style={styles.row}>
-            <View style={[styles.priceInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Minim</Text>
-              {/* Simple Text Input would be better here, using Text for UI mockup */}
-              <Text style={[styles.priceValue, { color: theme.colors.textPrimary }]}>{priceRange.min || '0'} €</Text>
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>
+                Minim
+              </Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={priceRange.min}
+                onChangeText={(value) => setPriceRange((prev) => ({ ...prev, min: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="0"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
             </View>
             <View style={styles.priceSeparator} />
-            <View style={[styles.priceInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Maxim</Text>
-              <Text style={[styles.priceValue, { color: theme.colors.textPrimary }]}>{priceRange.max || 'Nelimitat'}</Text>
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>
+                Maxim
+              </Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={priceRange.max}
+                onChangeText={(value) => setPriceRange((prev) => ({ ...prev, max: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="Nelimitat"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
             </View>
           </View>
           {/* Slider placeholder */}
@@ -186,16 +422,174 @@ const FiltersScreen: React.FC = () => {
 
         <Divider />
 
-        {/* Amenities Selection */}
-        <TouchableOpacity style={styles.moreFiltersRow}>
-          <Text style={[styles.moreFiltersText, { color: theme.colors.textPrimary }]}>
-            Dotări și facilități
-          </Text>
-          <View style={styles.moreFiltersRight}>
-             <Text style={[styles.selectedCount, { color: theme.colors.textTertiary }]}>Selectează</Text>
-             <ChevronRight size={20} color={theme.colors.textTertiary} />
+        {/* Floor */}
+        <FilterSection title="Etaj">
+          <View style={styles.row}>
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Minim</Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={floorRange.min}
+                onChangeText={(value) => setFloorRange((prev) => ({ ...prev, min: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="0"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+            <View style={styles.priceSeparator} />
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Maxim</Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={floorRange.max}
+                onChangeText={(value) => setFloorRange((prev) => ({ ...prev, max: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="Nelimitat"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
           </View>
-        </TouchableOpacity>
+        </FilterSection>
+
+        <Divider />
+
+        {/* Year Built */}
+        <FilterSection title="An construcție">
+          <View style={styles.row}>
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Minim</Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={yearBuiltRange.min}
+                onChangeText={(value) => setYearBuiltRange((prev) => ({ ...prev, min: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="1900"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+            <View style={styles.priceSeparator} />
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Maxim</Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={yearBuiltRange.max}
+                onChangeText={(value) => setYearBuiltRange((prev) => ({ ...prev, max: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="Nelimitat"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+          </View>
+        </FilterSection>
+
+        <Divider />
+
+        {/* Surface Range */}
+        <FilterSection title="Suprafață (m²)">
+          <View style={styles.row}>
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>
+                Minim
+              </Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={surfaceRange.min}
+                onChangeText={(value) => setSurfaceRange((prev) => ({ ...prev, min: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="0"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+            <View style={styles.priceSeparator} />
+            <View
+              style={[
+                styles.priceInput,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+              ]}
+            >
+              <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>
+                Maxim
+              </Text>
+              <TextInput
+                style={[styles.priceValue, { color: theme.colors.textPrimary }]}
+                value={surfaceRange.max}
+                onChangeText={(value) => setSurfaceRange((prev) => ({ ...prev, max: value }))}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                placeholder="Nelimitat"
+                placeholderTextColor={theme.colors.textTertiary}
+              />
+            </View>
+          </View>
+        </FilterSection>
+
+        <Divider />
+
+        {/* Amenities */}
+        <FilterSection title="Dotări și facilități">
+          <View style={styles.amenitiesContainer}>
+            <AmenitySelector
+              selectedAmenities={amenities}
+              onSelectionChange={setAmenities}
+            />
+          </View>
+        </FilterSection>
+
+        <Divider />
+
+        {/* Preferences */}
+        <FilterSection title="Preferințe">
+          <View style={styles.chipsGrid}>
+            <Chip
+              label="Mobilat"
+              selected={isFurnished}
+              onPress={() => setIsFurnished((prev) => !prev)}
+              style={styles.chip}
+            />
+            <Chip
+              label="Încălzire centrală"
+              selected={hasCentralHeating}
+              onPress={() => setHasCentralHeating((prev) => !prev)}
+              style={styles.chip}
+            />
+            <Chip
+              label="Animale permise"
+              selected={petFriendly}
+              onPress={() => setPetFriendly((prev) => !prev)}
+              style={styles.chip}
+            />
+          </View>
+        </FilterSection>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -303,24 +697,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
     opacity: 0.3,
   },
-  moreFiltersRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  moreFiltersText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-  },
-  moreFiltersRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  selectedCount: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
+  amenitiesContainer: {
+    height: 360,
   },
   footer: {
     padding: 20,

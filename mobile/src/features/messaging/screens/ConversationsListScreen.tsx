@@ -43,13 +43,13 @@ const ConversationsListScreen: React.FC = () => {
   const [filter, setFilter] = useState<ConversationFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch conversations based on filter
   const {
     data: conversations = [],
     isLoading,
     refetch,
-    isFetching,
   } = useConversations({
     type: filter,
   });
@@ -73,8 +73,13 @@ const ConversationsListScreen: React.FC = () => {
     return conversations.reduce((acc, conv) => acc + conv.unreadCount, 0);
   }, [conversations]);
 
-  const handleRefresh = useCallback(() => {
-    refetch();
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [refetch]);
 
   const handleConversationPress = (conversationId: string) => {
@@ -191,7 +196,7 @@ const ConversationsListScreen: React.FC = () => {
           }
           refreshControl={
             <RefreshControl
-              refreshing={isFetching}
+              refreshing={isRefreshing}
               onRefresh={handleRefresh}
               tintColor={theme.colors.primary.main}
             />

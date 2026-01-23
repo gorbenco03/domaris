@@ -80,6 +80,32 @@ class EstimatePriceBody {
   yearBuilt?: number;
 }
 
+class PropertySummaryResponse {
+  summary!: string;
+  highlights!: string[];
+  amenities!: string[];
+  location!: string;
+  suitableFor!: string[];
+  cautions!: string[];
+  matchScore!: number;
+  priceComparison!: {
+    averagePrice: number;
+    percentDiff: number | null;
+    note: string;
+  };
+}
+
+class AnalyzeListingBody {
+  propertyId?: number;
+  title?: string;
+  description?: string;
+  priceEur?: number;
+  city?: string;
+  rooms?: number;
+  surfaceSqm?: number;
+  photosCount?: number;
+}
+
 // ============================================================================
 // CONTROLLER
 // ============================================================================
@@ -196,6 +222,45 @@ export class AIController {
   })
   async analyzeProperty(@Param('propertyId', ParseIntPipe) propertyId: number) {
     return this.aiService.analyzeProperty(propertyId);
+  }
+
+  @Post('analyze-listing')
+  @MinVerificationLevel(2)
+  @ApiOperation({
+    summary: 'Analyze a listing (draft or existing)',
+    description:
+      'Analyze a listing by propertyId or raw listing data for draft flows.',
+  })
+  @ApiBody({ type: AnalyzeListingBody })
+  async analyzeListing(@Body() body: AnalyzeListingBody) {
+    if (body.propertyId) {
+      return this.aiService.analyzeProperty(body.propertyId);
+    }
+
+    return this.aiService.analyzeListingDraft({
+      title: body.title,
+      description: body.description,
+      priceEur: body.priceEur,
+      city: body.city,
+      rooms: body.rooms,
+      surfaceSqm: body.surfaceSqm,
+      photosCount: body.photosCount,
+    });
+  }
+
+  @Get('property-summary/:propertyId')
+  @Public()
+  @ApiOperation({
+    summary: 'Summarize property for seekers',
+    description: 'Returns a concise AI summary about a property for viewers.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Property summary with highlights and cautions',
+    type: PropertySummaryResponse,
+  })
+  async summarizeProperty(@Param('propertyId', ParseIntPipe) propertyId: number) {
+    return this.aiService.summarizeProperty(propertyId);
   }
 
   // ========================================================================

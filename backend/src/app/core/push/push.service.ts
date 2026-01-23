@@ -81,17 +81,7 @@ export class PushNotificationService {
     const { userId, notification, saveToDatabase = true, type = NotificationTypes.SYSTEM } = options;
 
     try {
-      // Găsește toate dispozitivele utilizatorului
-      const devices = await Device.findAll({
-        where: { userId },
-      });
-
-      if (devices.length === 0) {
-        this.logger.debug(`No devices registered for user ${userId}`);
-        return false;
-      }
-
-      // Salvează notificarea în baza de date
+      // Salvează notificarea în baza de date ÎNTÂI (pentru Notification Center)
       if (saveToDatabase) {
         await Notification.create({
           userId,
@@ -101,6 +91,17 @@ export class PushNotificationService {
           metadata: notification.data || {},
           isRead: false,
         });
+        this.logger.log(`📬 Notification saved to DB for user ${userId}: ${notification.title}`);
+      }
+
+      // Găsește toate dispozitivele utilizatorului pentru push
+      const devices = await Device.findAll({
+        where: { userId },
+      });
+
+      if (devices.length === 0) {
+        this.logger.debug(`No devices registered for user ${userId} - skipping push`);
+        return saveToDatabase; // Return true if we saved to DB
       }
 
       // Trimite către fiecare dispozitiv
@@ -117,7 +118,7 @@ export class PushNotificationService {
       const successCount = results.filter(r => r.status === 'fulfilled' && r.value).length;
       this.logger.log(`Push sent to ${successCount}/${devices.length} devices for user ${userId}`);
 
-      return successCount > 0;
+      return successCount > 0 || saveToDatabase;
     } catch (error) {
       this.logger.error(`Failed to send push to user ${userId}:`, error);
       return false;

@@ -15,7 +15,9 @@ validateEnv();
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+  });
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
   app.enableCors();

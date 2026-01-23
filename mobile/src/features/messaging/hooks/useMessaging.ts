@@ -20,7 +20,8 @@ export const useConversations = (params?: {
   return useQuery({
     queryKey: [QUERY_KEYS.CONVERSATIONS, params],
     queryFn: () => messagingApi.getConversations(params),
-    refetchInterval: 30000, // Poll every 30s (reduced from 10s to prevent flickering)
+    refetchInterval: () =>
+      socketService.getIsConnected() ? false : 30000, // Poll only if sockets are down
   });
 };
 
@@ -43,9 +44,12 @@ export const useMessages = (conversationId: string | undefined) => {
     queryKey: [QUERY_KEYS.MESSAGES, conversationId],
     queryFn: () => messagingApi.getMessages(conversationId!),
     enabled: !!conversationId && conversationId !== 'new',
+    refetchOnMount: 'always',
+    refetchOnReconnect: true,
     // Poll messages less frequently now that sockets are active.
     // 3000ms was too aggressive and caused UI flickering (pull-down effect).
-    refetchInterval: (query) => (query.state.error ? false : 10000), 
+    refetchInterval: (query) =>
+      socketService.getIsConnected() ? false : query.state.error ? false : 10000,
   });
 };
 
@@ -117,6 +121,9 @@ export const useMarkAsRead = () => {
         queryKey: [QUERY_KEYS.CONVERSATIONS, conversationId],
       });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CONVERSATIONS] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.CONVERSATIONS, 'unread-count'],
+      });
     },
   });
 };
@@ -137,6 +144,21 @@ export const useArchiveConversation = () => {
 };
 
 /**
+ * Unarchive conversation mutation
+ */
+export const useUnarchiveConversation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      messagingApi.unarchiveConversation(conversationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CONVERSATIONS] });
+    },
+  });
+};
+
+/**
 /**
  * Socket updates hook - Instant updates without polling
  */
@@ -144,8 +166,6 @@ export const useSocketUpdates = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!socketService.getIsConnected()) return;
-
     const handleNewMessageNotification = (data: {
       conversationId: number;
       message: any;
@@ -205,10 +225,55 @@ export const useSocketUpdates = () => {
       });
     };
 
+    const handleUserOnline = (data: { userId: number }) => {
+      queryClient.setQueriesData({ queryKey: [QUERY_KEYS.CONVERSATIONS] }, (oldData: any) => {
+        if (!oldData) return oldData;
+        const list = Array.isArray(oldData) ? oldData : (oldData.data || []);
+        const updatedList = list.map((conv: any) => {
+          if (String(conv.otherParticipant?.id) === String(data.userId)) {
+            return {
+              ...conv,
+              otherParticipant: {
+                ...conv.otherParticipant,
+                isOnline: true,
+              },
+            };
+          }
+          return conv;
+        });
+        return Array.isArray(oldData) ? updatedList : { ...oldData, data: updatedList };
+      });
+    };
+
+    const handleUserOffline = (data: { userId: number }) => {
+      queryClient.setQueriesData({ queryKey: [QUERY_KEYS.CONVERSATIONS] }, (oldData: any) => {
+        if (!oldData) return oldData;
+        const list = Array.isArray(oldData) ? oldData : (oldData.data || []);
+        const updatedList = list.map((conv: any) => {
+          if (String(conv.otherParticipant?.id) === String(data.userId)) {
+            return {
+              ...conv,
+              otherParticipant: {
+                ...conv.otherParticipant,
+                isOnline: false,
+              },
+            };
+          }
+          return conv;
+        });
+        return Array.isArray(oldData) ? updatedList : { ...oldData, data: updatedList };
+      });
+    };
+
+    // Attach listeners directly - socket.io handles reconnection and listeners persist
     socketService.onNewMessageNotification(handleNewMessageNotification);
+    socketService.onUserOnline(handleUserOnline);
+    socketService.onUserOffline(handleUserOffline);
 
     return () => {
       socketService.off('new_message_notification', handleNewMessageNotification);
+      socketService.off('user_online', handleUserOnline);
+      socketService.off('user_offline', handleUserOffline);
     };
   }, [queryClient]);
 };

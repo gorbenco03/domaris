@@ -19,7 +19,7 @@ export const useSearch = (filters: IAdvancedSearchFilters) => {
     queryKey: [QUERY_KEYS.SEARCH_RESULTS, filters],
     queryFn: () => searchApi.advancedSearch(filters),
     staleTime: 2 * 60 * 1000, // 2 minutes
-    enabled: !!filters.query || !!filters.city, // Only search if there's a query or city
+    enabled: true,
   });
 };
 

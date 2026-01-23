@@ -15,7 +15,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MoreVertical, ArrowLeft } from 'lucide-react-native';
 import {
@@ -25,6 +25,7 @@ import {
   useMarkAsRead,
   useArchiveConversation,
   useStartConversation,
+  useUnarchiveConversation,
 } from '@/features/messaging/hooks/useMessaging';
 import socketService from '@/features/messaging/services/socketService';
 
@@ -32,6 +33,8 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { MessagesStackParamList } from '@/app/navigation/types';
 import { Message, Participant, PropertyPreview } from '../types';
+import { useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/config/constants';
 import {
   MessageBubble,
   ChatInput,
@@ -81,53 +84,115 @@ const ChatScreen: React.FC = () => {
   const { user } = useAuth();
   const navigation = useNavigation<ChatNavigationProp>();
   const route = useRoute<ChatRouteProp>();
+  const queryClient = useQueryClient();
 
   const flatListRef = useRef<FlatList>(null);
   const chatInputRef = useRef<ChatInputRef>(null);
 
-  const conversationId = route.params.conversationId;
-  const isNew = conversationId === 'new';
+  const initialConversationId = route.params.conversationId;
+  const [activeConversationId, setActiveConversationId] = useState(initialConversationId);
+  const isNew = activeConversationId === 'new';
+
+  useEffect(() => {
+    setActiveConversationId(route.params.conversationId);
+  }, [route.params.conversationId]);
 
   // Fetch conversation details and messages (skip if new)
-  const { data: conversation, isLoading: isConversationLoading } = useConversation(conversationId);
-  const { data: messagesData, isLoading: isMessagesLoading } = useMessages(conversationId);
+  const { data: conversation, isLoading: isConversationLoading } = useConversation(activeConversationId);
+  const { data: messagesData, isLoading: isMessagesLoading } = useMessages(activeConversationId);
   
   const sendMessageMutation = useSendMessage();
   const startConversationMutation = useStartConversation();
   const markAsReadMutation = useMarkAsRead();
   const archiveConversationMutation = useArchiveConversation();
+  const unarchiveConversationMutation = useUnarchiveConversation();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [isParticipantOnline, setIsParticipantOnline] = useState(false);
+
+  const mapMessageType = (rawType: string | undefined) => {
+    const normalized = (rawType || 'TEXT').toUpperCase();
+    switch (normalized) {
+      case 'IMAGE':
+        return 'image' as const;
+      case 'VIEWING_REQUEST':
+        return 'viewing_request' as const;
+      case 'SYSTEM':
+        return 'system' as const;
+      default:
+        return 'text' as const;
+    }
+  };
 
   // WebSocket setup
   useEffect(() => {
-    if (isNew || !conversationId || !socketService.getIsConnected()) return;
+    if (isNew || !activeConversationId) return;
 
-    socketService.joinConversation(Number(conversationId));
+    // Join conversation if connected
+    if (socketService.getIsConnected()) {
+      socketService.joinConversation(Number(activeConversationId));
+    }
+
+    // Re-join on reconnect
+    const handleReconnect = () => {
+      socketService.joinConversation(Number(activeConversationId));
+    };
+    const unsubscribeConnect = socketService.onConnect(handleReconnect);
 
     // Listen for new messages
     const handleNewMessage = (incomingMessage: IMessage) => {
       const message = incomingMessage as any;
-      if (String(message.conversationId) === String(conversationId)) {
+      if (String(message.conversationId) === String(activeConversationId)) {
+        const content = message.content ?? message.text ?? '';
+        const isFromCurrentUser = String(message.senderId ?? message.sender?.id ?? '') === String(user?.id);
         const mapped: Message = {
           id: String(message.id),
           conversationId: String(message.conversationId),
-          senderId: String(message.senderId),
-          type: 'text' as const,
-          content: message.content,
-          status: 'delivered' as any,
-          createdAt: new Date(message.createdAt),
+          senderId: String(message.senderId ?? message.sender?.id ?? ''),
+          type: mapMessageType(message.type),
+          content,
+          status: 'delivered',
+          createdAt: new Date(message.createdAt ?? message.sentAt ?? new Date()),
         };
-        setMessages((prev) => [mapped, ...prev]);
+        setMessages((prev) => mergeMessagesById([mapped], prev));
+        
+        // If message is from another user and we're viewing the chat, mark as read immediately
+        if (!isFromCurrentUser && socketService.getIsConnected()) {
+          socketService.sendRead(Number(activeConversationId));
+        }
+        
+        // Update conversations list cache - don't increment unread since we're viewing
+        queryClient.setQueriesData({ queryKey: [QUERY_KEYS.CONVERSATIONS] }, (oldData: any) => {
+          if (!oldData) return oldData;
+          const list = Array.isArray(oldData) ? oldData : oldData.data || [];
+          const updated = list.map((conv: any) => {
+            if (String(conv.id) !== String(activeConversationId)) return conv;
+            return {
+              ...conv,
+              lastMessage: {
+                ...conv.lastMessage,
+                content: content,
+                text: content,
+                createdAt: mapped.createdAt,
+                sentAt: mapped.createdAt,
+                isFromMe: isFromCurrentUser,
+              },
+              updatedAt: mapped.createdAt,
+              // Don't increment unreadCount since user is viewing this chat
+              unreadCount: 0,
+            };
+          });
+          return Array.isArray(oldData) ? updated : { ...oldData, data: updated };
+        });
       }
     };
 
     socketService.onNewMessage(handleNewMessage);
 
     const handleUserTyping = ({ conversationId: cid, userId }: any) => {
-      if (String(cid) === String(conversationId) && String(userId) !== String(user?.id)) {
+      if (String(cid) === String(activeConversationId) && String(userId) !== String(user?.id)) {
         setIsTyping(true);
         setTimeout(() => setIsTyping(false), 3000);
       }
@@ -135,38 +200,132 @@ const ChatScreen: React.FC = () => {
     socketService.onUserTyping(handleUserTyping);
 
     return () => {
-      socketService.leaveConversation(Number(conversationId));
+      unsubscribeConnect();
+      if (socketService.getIsConnected()) {
+        socketService.leaveConversation(Number(activeConversationId));
+      }
       socketService.off('message:new', handleNewMessage);
       socketService.off('user:typing', handleUserTyping);
     };
-  }, [conversationId, isNew, user]);
+  }, [activeConversationId, isNew, user, queryClient]);
+
+  useEffect(() => {
+    if (!socketService.getIsConnected()) return;
+
+    const handleMessageSent = (data: { localId?: string; message: IMessage }) => {
+      const message = data.message as any;
+      if (String(message.conversationId) !== String(activeConversationId)) return;
+      const content = message.content ?? message.text ?? '';
+      const mapped: Message = {
+        id: String(message.id),
+        conversationId: String(message.conversationId),
+        senderId: String(message.senderId ?? message.sender?.id ?? ''),
+        type: mapMessageType(message.type),
+        content,
+        status: message.readAt ? 'read' : 'delivered',
+        createdAt: new Date(message.createdAt ?? message.sentAt ?? new Date()),
+      };
+
+      setMessages((prev) => {
+        const withoutTemp = data.localId ? prev.filter((m) => m.id !== data.localId) : prev;
+        return mergeMessagesById([mapped], withoutTemp);
+      });
+      queryClient.setQueriesData({ queryKey: [QUERY_KEYS.CONVERSATIONS] }, (oldData: any) => {
+        if (!oldData) return oldData;
+        const list = Array.isArray(oldData) ? oldData : oldData.data || [];
+        const updated = list.map((conv: any) => {
+          if (String(conv.id) !== String(activeConversationId)) return conv;
+          return {
+            ...conv,
+            lastMessage: {
+              ...conv.lastMessage,
+              content: content,
+              text: content,
+              createdAt: mapped.createdAt,
+              sentAt: mapped.createdAt,
+              isFromMe: true,
+            },
+            updatedAt: mapped.createdAt,
+          };
+        });
+        return Array.isArray(oldData) ? updated : { ...oldData, data: updated };
+      });
+    };
+
+    socketService.onMessageSent(handleMessageSent);
+
+    return () => {
+      socketService.off('message:sent', handleMessageSent);
+    };
+  }, [activeConversationId, queryClient]);
 
   // Map messages from API
   useEffect(() => {
     if (messagesData) {
       const mapped: Message[] = messagesData.map((item: IMessage) => {
         const m = item as any;
+        const content = m.content ?? m.text ?? '';
+        const senderId = String(m.senderId ?? m.sender?.id ?? '');
         return {
           id: String(m.id),
           conversationId: String(m.conversationId),
-          senderId: String(m.senderId),
-          type: 'text' as const,
-          content: m.content,
-          status: (m.readAt ? 'read' : 'delivered') as any,
-          createdAt: new Date(m.createdAt),
+          senderId,
+          type: mapMessageType(m.type),
+          content,
+          status: m.readAt ? 'read' : 'delivered',
+          createdAt: new Date(m.createdAt ?? m.sentAt ?? new Date()),
         };
       }).reverse();
 
-      setMessages(mapped);
+      setMessages((prev) => mergeMessagesById(mapped, prev));
     }
   }, [messagesData]);
 
-  // Mark as read when entering chat
+  // Mark as read when entering/focusing chat
+  useFocusEffect(
+    useCallback(() => {
+      if (!activeConversationId || isNew) return;
+
+      // Mark as read via API
+      markAsReadMutation.mutate(activeConversationId);
+      
+      // Also via socket for real-time receipt
+      if (socketService.getIsConnected()) {
+        socketService.sendRead(Number(activeConversationId));
+      }
+
+      // Update unread count in conversations cache to 0 for this conversation
+      queryClient.setQueriesData({ queryKey: [QUERY_KEYS.CONVERSATIONS] }, (oldData: any) => {
+        if (!oldData) return oldData;
+        const list = Array.isArray(oldData) ? oldData : oldData.data || [];
+        const updated = list.map((conv: any) => {
+          if (String(conv.id) !== String(activeConversationId)) return conv;
+          return { ...conv, unreadCount: 0 };
+        });
+        return Array.isArray(oldData) ? updated : { ...oldData, data: updated };
+      });
+    }, [activeConversationId, isNew])
+  );
+
+  // Read receipt updates
   useEffect(() => {
-    if (conversationId && !isNew) {
-      markAsReadMutation.mutate(conversationId);
-    }
-  }, [conversationId, isNew]);
+    if (!socketService.getIsConnected()) return;
+
+    const handleReadReceipt = (data: { conversationId: number; readBy: number }) => {
+      if (String(data.conversationId) !== String(activeConversationId)) return;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.senderId === String(user?.id) ? { ...msg, status: 'read' } : msg
+        )
+      );
+    };
+
+    socketService.onMessageRead(handleReadReceipt);
+
+    return () => {
+      socketService.off('message:read_receipt', handleReadReceipt);
+    };
+  }, [activeConversationId, user]);
 
   const handleSendMessage = useCallback(
     async (content: string) => {
@@ -177,7 +336,7 @@ const ChatScreen: React.FC = () => {
       try {
         const tempMessage: Message = {
           id: tempId,
-          conversationId: conversationId,
+          conversationId: activeConversationId,
           senderId: user.id,
           type: 'text',
           content,
@@ -185,7 +344,7 @@ const ChatScreen: React.FC = () => {
           createdAt: new Date(),
         };
 
-        setMessages((prev) => [tempMessage, ...prev]);
+        setMessages((prev) => mergeMessagesById([tempMessage], prev));
 
         if (isNew) {
           // Create new conversation
@@ -194,42 +353,67 @@ const ChatScreen: React.FC = () => {
 
           if (!propertyId) throw new Error('Property ID missing for new conversation');
           
-          // Start conversation via API
+          // Start conversation via API (without sending message)
           const newConversation = await startConversationMutation.mutateAsync({
             propertyId: Number(propertyId),
-            message: content
-          });
-          
-          // The API returns the conversation object.
-          // We need to update the navigation params to the real ID so WebSockets connect
-          // But navigation.setParams might not be enough to trigger a full re-mount or might be tricky with hooks.
-          // Better to replace the screen or reset params.
-          
-          // For now, let's assume setParams works and triggers re-render
-          navigation.setParams({ 
-            conversationId: String(newConversation.id),
-            // Keep other params if needed, or fetch from newConversation
-            recipientName: recipientNameParam 
           });
 
-          // Also remove the temp message because the refetch will bring the real one?
-          // Or keep it until refetch happens.
-          
-        } else {
-          // Existing conversation
+          const newId = String(newConversation.id);
+          setActiveConversationId(newId);
+          navigation.setParams({
+            conversationId: newId,
+            recipientName: recipientNameParam,
+          });
+
           if (socketService.getIsConnected()) {
-            socketService.sendMessage(Number(conversationId), content, 'TEXT');
+            socketService.joinConversation(Number(newId));
+            socketService.sendMessage(Number(newId), content, 'TEXT', tempId);
           } else {
-            await sendMessageMutation.mutateAsync({
-              conversationId: conversationId,
+            const sent = await sendMessageMutation.mutateAsync({
+              conversationId: newId,
               content,
               type: 'TEXT',
             });
+            const mapped: Message = {
+              id: String((sent as any).id),
+              conversationId: newId,
+              senderId: user.id,
+              type: mapMessageType((sent as any).type),
+              content: (sent as any).content ?? (sent as any).text ?? content,
+              status: (sent as any).readAt ? 'read' : 'delivered',
+              createdAt: new Date((sent as any).createdAt ?? new Date()),
+            };
+            setMessages((prev) => mergeMessagesById([mapped], prev.filter((m) => m.id !== tempId)));
+            return;
+          }
+        } else {
+          // Existing conversation
+          if (socketService.getIsConnected()) {
+            socketService.sendMessage(Number(activeConversationId), content, 'TEXT', tempId);
+          } else {
+            const sent = await sendMessageMutation.mutateAsync({
+              conversationId: activeConversationId,
+              content,
+              type: 'TEXT',
+            });
+            const mapped: Message = {
+              id: String((sent as any).id),
+              conversationId: activeConversationId,
+              senderId: user.id,
+              type: mapMessageType((sent as any).type),
+              content: (sent as any).content ?? (sent as any).text ?? content,
+              status: (sent as any).readAt ? 'read' : 'delivered',
+              createdAt: new Date((sent as any).createdAt ?? new Date()),
+            };
+            setMessages((prev) => mergeMessagesById([mapped], prev.filter((m) => m.id !== tempId)));
+            return;
           }
         }
 
         // Remove temp message (real one will come via WebSocket or query invalidation)
-        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        if (!socketService.getIsConnected()) {
+          setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        }
 
       } catch (error) {
         console.error('Send message failed', error);
@@ -238,8 +422,36 @@ const ChatScreen: React.FC = () => {
         setMessages((prev) => prev.filter((m) => m.id !== tempId));
       }
     },
-    [conversationId, sendMessageMutation, startConversationMutation, user, isNew, route.params.propertyId, navigation, route.params.recipientName]
+    [
+      activeConversationId,
+      sendMessageMutation,
+      startConversationMutation,
+      user,
+      isNew,
+      route.params.propertyId,
+      navigation,
+      route.params.recipientName,
+      queryClient,
+    ]
   );
+
+  // Note: We no longer invalidate conversations on unfocus as it causes pull-to-refresh issues.
+  // The socket updates and mark-as-read logic handle cache updates appropriately.
+
+  const mergeMessagesById = (incoming: Message[], existing: Message[]) => {
+    const map = new Map<string, Message>();
+    existing.forEach((msg) => map.set(msg.id, msg));
+    incoming.forEach((msg) => map.set(msg.id, msg));
+    return Array.from(map.values()).sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+    );
+  };
+
+  const getMessageKey = (message: Message, index: number) => {
+    if (message.id) return message.id;
+    const createdAt = message.createdAt instanceof Date ? message.createdAt.toISOString() : String(message.createdAt);
+    return `${message.senderId}-${createdAt}-${index}`;
+  };
 
   const handleAttachPress = () => Alert.alert('Atașament', 'În curând');
   const handleCameraPress = () => Alert.alert('Cameră', 'În curând');
@@ -247,6 +459,8 @@ const ChatScreen: React.FC = () => {
 
   const handleMenuPress = () => {
     const participantData = (conversation as any)?.otherParticipant;
+    const isArchived =
+      (conversation as any)?.status === 'ARCHIVED' || (conversation as any)?.status === 'archived';
 
     Alert.alert('Opțiuni', 'Ce acțiune doriți?', [
       { text: 'Anulează', style: 'cancel' },
@@ -263,14 +477,19 @@ const ChatScreen: React.FC = () => {
           }),
       },
       {
-        text: 'Arhivează',
+        text: isArchived ? 'Dezarhivează' : 'Arhivează',
         onPress: async () => {
           try {
-            await archiveConversationMutation.mutateAsync(conversationId);
-            Alert.alert('Succes', 'Conversația a fost arhivată');
+            if (isArchived) {
+              await unarchiveConversationMutation.mutateAsync(conversationId);
+              Alert.alert('Succes', 'Conversația a fost dezarhivată');
+            } else {
+              await archiveConversationMutation.mutateAsync(conversationId);
+              Alert.alert('Succes', 'Conversația a fost arhivată');
+            }
             navigation.goBack();
           } catch (error) {
-            Alert.alert('Eroare', 'Nu am putut arhiva conversația');
+            Alert.alert('Eroare', 'Nu am putut actualiza conversația');
           }
         },
       },
@@ -302,12 +521,40 @@ const ChatScreen: React.FC = () => {
   const otherParticipant = (conversation as any)?.otherParticipant;
   const property = (conversation as any)?.property;
 
+  useEffect(() => {
+    setIsParticipantOnline(Boolean(otherParticipant?.isOnline));
+  }, [otherParticipant?.isOnline]);
+
+  useEffect(() => {
+    if (!otherParticipant?.id) return;
+
+    const handleOnline = (data: { userId: number }) => {
+      if (String(otherParticipant?.id) === String(data.userId)) {
+        setIsParticipantOnline(true);
+      }
+    };
+    const handleOffline = (data: { userId: number }) => {
+      if (String(otherParticipant?.id) === String(data.userId)) {
+        setIsParticipantOnline(false);
+      }
+    };
+
+    // Attach listeners - they work even if socket connects later
+    socketService.onUserOnline(handleOnline);
+    socketService.onUserOffline(handleOffline);
+
+    return () => {
+      socketService.off('user_online', handleOnline);
+      socketService.off('user_offline', handleOffline);
+    };
+  }, [otherParticipant?.id]);
+
   const participant: Participant = {
     id: String(otherParticipant?.id || ''),
     name: otherParticipant
       ? `${otherParticipant.firstName} ${otherParticipant.lastName}`
       : route.params.recipientName || 'Unknown',
-    isOnline: false,
+    isOnline: isParticipantOnline,
   };
 
   // Property preview
@@ -356,7 +603,7 @@ const ChatScreen: React.FC = () => {
         <FlatList
           ref={flatListRef}
           data={messages}
-          keyExtractor={(item) => item.id}
+          keyExtractor={getMessageKey}
           renderItem={renderMessage}
           inverted
           contentContainerStyle={styles.messagesList}

@@ -20,12 +20,17 @@ const Stack = createNativeStackNavigator<SearchStackParamList>();
 const SearchNavigator: React.FC = () => {
   return (
     <Stack.Navigator
+      initialRouteName="SearchResults"
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
+      <Stack.Screen
+        name="SearchResults"
+        component={SearchResultsScreen}
+        initialParams={{ filters: {} }}
+      />
       <Stack.Screen name="MapSearch" component={MapSearchScreen} />
       <Stack.Screen name="Search" component={HomeScreen} />
       <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} />

@@ -98,7 +98,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
       </TouchableOpacity>
 
       {/* County Selector */}
-      <View style={styles.fieldContainer}>
+      <View style={[styles.fieldContainer, showCountyPicker && styles.fieldContainerActive]}>
         <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
           Județ / Sector *
         </Text>
@@ -110,7 +110,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
               borderColor: theme.colors.border,
             }
           ]}
-          onPress={() => setShowCountyPicker(!showCountyPicker)}
+          onPress={() => {
+            setShowCityPicker(false);
+            setShowCountyPicker(!showCountyPicker);
+          }}
         >
           <MapPin size={20} color={theme.colors.textSecondary} />
           <Text 
@@ -129,7 +132,12 @@ const LocationStep: React.FC<LocationStepProps> = ({
         </TouchableOpacity>
 
         {showCountyPicker && (
-          <Card style={{...styles.pickerDropdown, backgroundColor: theme.colors.surface}}>
+          <Card
+            style={[
+              styles.pickerDropdown,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
             {COUNTIES.map((county) => (
               <TouchableOpacity
                 key={county}
@@ -163,7 +171,7 @@ const LocationStep: React.FC<LocationStepProps> = ({
       </View>
 
       {/* City Selector */}
-      <View style={styles.fieldContainer}>
+      <View style={[styles.fieldContainer, showCityPicker && styles.fieldContainerActive]}>
         <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
           Oraș / Cartier *
         </Text>
@@ -175,7 +183,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
               borderColor: theme.colors.border,
             }
           ]}
-          onPress={() => setShowCityPicker(!showCityPicker)}
+          onPress={() => {
+            setShowCountyPicker(false);
+            setShowCityPicker(!showCityPicker);
+          }}
           disabled={!formData.location?.county}
         >
           <MapPin size={20} color={theme.colors.textSecondary} />
@@ -195,7 +206,12 @@ const LocationStep: React.FC<LocationStepProps> = ({
         </TouchableOpacity>
 
         {showCityPicker && formData.location?.county && (
-          <Card style={{...styles.pickerDropdown, backgroundColor: theme.colors.surface}}>
+          <Card
+            style={[
+              styles.pickerDropdown,
+              { backgroundColor: theme.colors.surface },
+            ]}
+          >
             {(CITIES[formData.location.county] || []).map((city) => (
               <TouchableOpacity
                 key={city}
@@ -330,6 +346,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     position: 'relative',
     zIndex: 10,
+    overflow: 'visible',
+  },
+  fieldContainerActive: {
+    zIndex: 30,
   },
   label: {
     fontSize: 13,
@@ -352,13 +372,18 @@ const styles = StyleSheet.create({
   },
   pickerDropdown: {
     position: 'absolute',
-    top: 90,
+    top: 60,
     left: 0,
     right: 0,
     borderRadius: 12,
     paddingVertical: 8,
     zIndex: 100,
     maxHeight: 250,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   pickerOption: {
     paddingHorizontal: 16,

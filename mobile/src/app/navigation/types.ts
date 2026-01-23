@@ -6,6 +6,7 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { IPropertyListing } from '@/core/api/types';
 
 // ============================================
 // AUTH STACK
@@ -58,6 +59,7 @@ export type HomeStackParamList = {
   Home: undefined;
   PropertyDetail: { propertyId: string };
   AIChat: undefined;
+  PropertyInsights: { propertyId: string };
 };
 
 // ============================================
@@ -72,6 +74,7 @@ export type SearchStackParamList = {
   MapSearch: undefined;
   SavedSearches: undefined;
   AIChat: undefined;
+  PropertyInsights: { propertyId: string };
 };
 
 // ============================================
@@ -97,6 +100,7 @@ export type FavoritesStackParamList = {
   Favorites: undefined;
   PropertyDetail: { propertyId: string };
   Compare: { propertyIds: string[] };
+  PropertyInsights: { propertyId: string };
 };
 
 // ============================================
@@ -108,7 +112,7 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   MyProperties: undefined;
   CreateProperty: undefined;
-  EditProperty: { propertyId: string };
+  EditProperty: { propertyId: string; property?: IPropertyListing };
   PropertyStats: { propertyId: string };
   Viewings: undefined;
   ViewingDetail: { viewingId: string };

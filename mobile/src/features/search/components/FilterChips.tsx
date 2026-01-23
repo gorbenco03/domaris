@@ -14,25 +14,17 @@ import {
 import { SlidersHorizontal } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Chip } from '@/shared/components/Chip';
+import type { IAdvancedSearchFilters } from '@/features/search/api/searchApi';
 
 // ============================================
 // TYPES
 // ============================================
 
-type TransactionType = 'SALE' | 'RENT';
-type PropertyType = 'APARTMENT' | 'HOUSE' | 'STUDIO' | 'LAND' | 'COMMERCIAL';
-
-interface FilterState {
-  transactionType: TransactionType | null;
-  propertyType: PropertyType | null;
-  priceRange: { min?: number; max?: number } | null;
-  rooms: { min?: number; max?: number } | null;
-  area: { min?: number; max?: number } | null;
-}
+type FilterChipKey = 'transactionType' | 'propertyType' | 'price' | 'rooms' | 'surface';
 
 interface FilterChipsProps {
-  filters: FilterState;
-  onFilterPress: (filterType: keyof FilterState) => void;
+  filters: IAdvancedSearchFilters;
+  onFilterPress: (filterType: FilterChipKey) => void;
   onFiltersPress: () => void;
   activeFiltersCount: number;
 }
@@ -41,17 +33,21 @@ interface FilterChipsProps {
 // DATA
 // ============================================
 
-const TRANSACTION_LABELS: Record<TransactionType, string> = {
+const TRANSACTION_LABELS: Record<string, string> = {
   SALE: 'Vânzare',
   RENT: 'Închiriere',
 };
 
-const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
   APARTMENT: 'Apartament',
   HOUSE: 'Casă',
   STUDIO: 'Garsonieră',
-  LAND: 'Teren',
+  ROOM: 'Cameră',
   COMMERCIAL: 'Comercial',
+  LAND: 'Teren',
+  OFFICE: 'Birou',
+  GARAGE: 'Garaj',
+  OTHER: 'Altul',
 };
 
 // ============================================
@@ -59,61 +55,70 @@ const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
 // ============================================
 
 export const FilterChips: React.FC<FilterChipsProps> = ({
-  filters,
+  filters = {} as IAdvancedSearchFilters,
   onFilterPress,
   onFiltersPress,
   activeFiltersCount,
 }) => {
   const { theme } = useTheme();
+  const safeFilters: IAdvancedSearchFilters = filters || {};
 
   const getTransactionLabel = () => {
-    if (filters.transactionType) {
-      return TRANSACTION_LABELS[filters.transactionType];
+    if (safeFilters.transactionType) {
+      return TRANSACTION_LABELS[safeFilters.transactionType] || safeFilters.transactionType;
     }
-    return 'Tip';
+    return 'Tranzacție';
   };
 
   const getPropertyTypeLabel = () => {
-    if (filters.propertyType) {
-      return PROPERTY_TYPE_LABELS[filters.propertyType];
+    if (safeFilters.propertyType) {
+      return PROPERTY_TYPE_LABELS[safeFilters.propertyType] || safeFilters.propertyType;
     }
     return 'Proprietate';
   };
 
   const getPriceLabel = () => {
-    if (filters.priceRange) {
-      const { min, max } = filters.priceRange;
-      if (min && max) {
-        return `${min/1000}k - ${max/1000}k €`;
-      } else if (min) {
-        return `de la ${min/1000}k €`;
-      } else if (max) {
-        return `până la ${max/1000}k €`;
+    const { priceMin, priceMax } = safeFilters;
+    if (priceMin !== undefined || priceMax !== undefined) {
+      if (priceMin !== undefined && priceMax !== undefined) {
+        return `${Math.round(priceMin / 1000)}k - ${Math.round(priceMax / 1000)}k €`;
       }
+      if (priceMin !== undefined) {
+        return `de la ${Math.round(priceMin / 1000)}k €`;
+      }
+      return `până la ${Math.round((priceMax || 0) / 1000)}k €`;
     }
     return 'Preț';
   };
 
   const getRoomsLabel = () => {
-    if (filters.rooms) {
-      const { min, max } = filters.rooms;
-      if (min && max) {
-        return `${min}-${max} camere`;
-      } else if (min) {
-        return `${min}+ camere`;
+    if (
+      safeFilters.roomsMin !== undefined ||
+      safeFilters.roomsMax !== undefined ||
+      safeFilters.rooms !== undefined
+    ) {
+      if (safeFilters.rooms !== undefined) {
+        return `${safeFilters.rooms} camere`;
+      }
+      if (safeFilters.roomsMin !== undefined && safeFilters.roomsMax !== undefined) {
+        return `${safeFilters.roomsMin}-${safeFilters.roomsMax} camere`;
+      }
+      if (safeFilters.roomsMin !== undefined) {
+        return `${safeFilters.roomsMin}+ camere`;
       }
     }
     return 'Camere';
   };
 
-  const getAreaLabel = () => {
-    if (filters.area) {
-      const { min, max } = filters.area;
-      if (min && max) {
-        return `${min}-${max} m²`;
-      } else if (min) {
-        return `${min}+ m²`;
+  const getSurfaceLabel = () => {
+    if (safeFilters.surfaceMin !== undefined || safeFilters.surfaceMax !== undefined) {
+      if (safeFilters.surfaceMin !== undefined && safeFilters.surfaceMax !== undefined) {
+        return `${safeFilters.surfaceMin}-${safeFilters.surfaceMax} m²`;
       }
+      if (safeFilters.surfaceMin !== undefined) {
+        return `${safeFilters.surfaceMin}+ m²`;
+      }
+      return `până la ${safeFilters.surfaceMax} m²`;
     }
     return 'Suprafață';
   };
@@ -128,7 +133,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
         {/* Transaction Type */}
         <Chip
           label={getTransactionLabel()}
-          selected={!!filters.transactionType}
+          selected={!!safeFilters.transactionType}
           hasDropdown
           onPress={() => onFilterPress('transactionType')}
         />
@@ -136,7 +141,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
         {/* Property Type */}
         <Chip
           label={getPropertyTypeLabel()}
-          selected={!!filters.propertyType}
+          selected={!!safeFilters.propertyType}
           hasDropdown
           onPress={() => onFilterPress('propertyType')}
         />
@@ -144,25 +149,29 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
         {/* Price Range */}
         <Chip
           label={getPriceLabel()}
-          selected={!!filters.priceRange}
+          selected={safeFilters.priceMin !== undefined || safeFilters.priceMax !== undefined}
           hasDropdown
-          onPress={() => onFilterPress('priceRange')}
+          onPress={() => onFilterPress('price')}
         />
 
         {/* Rooms */}
         <Chip
           label={getRoomsLabel()}
-          selected={!!filters.rooms}
+          selected={
+            safeFilters.rooms !== undefined ||
+            safeFilters.roomsMin !== undefined ||
+            safeFilters.roomsMax !== undefined
+          }
           hasDropdown
           onPress={() => onFilterPress('rooms')}
         />
 
-        {/* Area */}
+        {/* Surface */}
         <Chip
-          label={getAreaLabel()}
-          selected={!!filters.area}
+          label={getSurfaceLabel()}
+          selected={safeFilters.surfaceMin !== undefined || safeFilters.surfaceMax !== undefined}
           hasDropdown
-          onPress={() => onFilterPress('area')}
+          onPress={() => onFilterPress('surface')}
         />
 
         {/* More Filters Button */}

@@ -13,7 +13,7 @@ import {
   MapSearchScreen,
   PropertyDetailScreen
 } from '@/features/search/screens';
-import { AIChatScreen } from '@/features/ai';
+import { AIChatScreen, PropertyInsightsScreen } from '@/features/ai';
 
 const Stack = createNativeStackNavigator<SearchStackParamList>();
 
@@ -38,6 +38,7 @@ const DiscoveryNavigator: React.FC = () => {
       />
       <Stack.Screen name="MapSearch" component={MapSearchScreen} />
       <Stack.Screen name="AIChat" component={AIChatScreen} />
+      <Stack.Screen name="PropertyInsights" component={PropertyInsightsScreen} />
     </Stack.Navigator>
   );
 };

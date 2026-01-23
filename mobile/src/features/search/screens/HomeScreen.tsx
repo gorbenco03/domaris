@@ -3,7 +3,7 @@
  * Main discovery screen with search and property highlights
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -34,9 +34,11 @@ import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
 import { useProperties } from '@/features/properties/hooks/useProperties';
 import { useSearchFacets, useSearch } from '@/features/search/hooks/useSearch';
+import { useFavorites, useToggleFavorite } from '@/features/favorites/hooks/useFavorites';
 import { ActivityIndicator } from 'react-native';
 import { SearchStackParamList } from '@/app/navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { PAGINATION } from '@/config/constants';
 
 type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
@@ -62,6 +64,16 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [quickFilters, setQuickFilters] = useState<string[]>([]);
 
+  const { data: favoritesData } = useFavorites({
+    page: 1,
+    limit: PAGINATION.MAX_PAGE_SIZE,
+  });
+  const toggleFavoriteMutation = useToggleFavorite();
+  const favoriteIds = useMemo(
+    () => new Set((favoritesData?.data || []).map((favorite) => String(favorite.propertyId))),
+    [favoritesData?.data]
+  );
+
   // Tutorial target refs
   const categoriesRef = useRef<View>(null);
   const aiBannerRef = useRef<View>(null);
@@ -76,6 +88,14 @@ const HomeScreen: React.FC = () => {
         ? prev.filter((f) => f !== filterId)
         : [...prev, filterId]
     );
+  };
+
+  const handleToggleFavorite = async (propertyId: number, currentlyFavorite: boolean) => {
+    try {
+      await toggleFavoriteMutation.mutateAsync({ propertyId, currentlyFavorite });
+    } catch (error) {
+      console.warn('Failed to toggle favorite', error);
+    }
   };
 
   // Real data fetching
@@ -98,8 +118,8 @@ const HomeScreen: React.FC = () => {
   const properties = propertiesData?.data || [];
   const popularLocations = (facetsData?.cities || []).slice(0, 4).map((f, i) => ({
     id: String(i),
-    name: f.city,
-    count: f.count
+    name: f.name,
+    count: f.count,
   }));
 
   const handleSearch = (filters: Record<string, unknown>) => {
@@ -327,7 +347,13 @@ const HomeScreen: React.FC = () => {
                     'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
                   }
                   onPress={() => handlePropertyPress(String(property.id))}
-                  onFavoritePress={() => {}}
+                  isFavorite={favoriteIds.has(String(property.id))}
+                  onFavoritePress={() =>
+                    handleToggleFavorite(
+                      Number(property.id),
+                      favoriteIds.has(String(property.id))
+                    )
+                  }
                 />
               ))
             ) : (

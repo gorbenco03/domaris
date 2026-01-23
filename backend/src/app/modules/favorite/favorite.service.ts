@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { Favorite } from '../../db/entities/favorite.entity.js';
 import { Listing } from '../../db/entities/listing.entity.js';
+import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { Op } from 'sequelize';
 
 interface GetFavoritesParams {
@@ -48,14 +49,19 @@ export class FavoriteService {
             'priceEur',
             'addressText',
             'city',
-            'area',
+            'surfaceSqm',
             'lat',
             'lng',
             'isFurnished',
             'rooms',
-            'surface',
-            'images',
             'status',
+          ],
+          include: [
+            {
+              model: ListingImage,
+              attributes: ['url', 'isPrimary', 'order'],
+              required: false,
+            },
           ],
         },
       ],
@@ -87,9 +93,8 @@ export class FavoriteService {
       if (listId) {
         existing.listId = listId;
         await existing.save();
-        return this.formatFavorite(existing);
       }
-      throw new ConflictException('Proprietatea este deja în favorite');
+      return this.formatFavorite(existing);
     }
 
     const listing = await Listing.findByPk(propertyId);
@@ -261,14 +266,19 @@ export class FavoriteService {
         'priceEur',
         'addressText',
         'city',
-        'area',
         'rooms',
-        'surface',
+        'surfaceSqm',
         'floor',
         'totalFloors',
         'isFurnished',
         'hasCentralHeating',
-        'images',
+      ],
+      include: [
+        {
+          model: ListingImage,
+          attributes: ['url', 'isPrimary', 'order'],
+          required: false,
+        },
       ],
     });
 
@@ -280,7 +290,7 @@ export class FavoriteService {
     const characteristics = [
       { key: 'priceEur', label: 'Preț (€)', format: 'currency' },
       { key: 'rooms', label: 'Camere', format: 'number' },
-      { key: 'surface', label: 'Suprafață (mp)', format: 'number' },
+      { key: 'surfaceSqm', label: 'Suprafață (mp)', format: 'number' },
       { key: 'floor', label: 'Etaj', format: 'floor' },
       { key: 'isFurnished', label: 'Mobilat', format: 'boolean' },
       { key: 'hasCentralHeating', label: 'Încălzire centrală', format: 'boolean' },
@@ -299,7 +309,7 @@ export class FavoriteService {
       properties: properties.map((p: any) => ({
         id: p.id,
         title: p.title,
-        image: p.images?.[0],
+        image: p.images?.[0]?.url,
         address: p.addressText,
         city: p.city,
       })),
@@ -325,10 +335,10 @@ export class FavoriteService {
             price: favorite.property.priceEur,
             address: favorite.property.addressText,
             city: favorite.property.city,
-            area: favorite.property.area,
+            area: favorite.property.surfaceSqm,
             rooms: favorite.property.rooms,
-            surface: favorite.property.surface,
-            image: favorite.property.images?.[0],
+            surface: favorite.property.surfaceSqm,
+            image: favorite.property.images?.[0]?.url,
             isFurnished: favorite.property.isFurnished,
             status: favorite.property.status,
             coordinates: favorite.property.lat

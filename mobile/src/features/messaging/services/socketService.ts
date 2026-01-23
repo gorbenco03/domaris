@@ -10,6 +10,8 @@ import { IMessage } from '../api/messagingApi';
 class SocketService {
   private socket: Socket | null = null;
   private isConnected = false;
+  private connectListeners: Array<() => void> = [];
+  private pendingListeners: Array<{ event: string; callback: (...args: any[]) => void }> = [];
 
   /**
    * Connect to WebSocket server
@@ -20,9 +22,10 @@ class SocketService {
       return;
     }
 
-    console.log('[WebSocket] Connecting to:', ENV.WS_URL);
+    const baseUrl = ENV.WS_URL.endsWith('/chat') ? ENV.WS_URL : `${ENV.WS_URL}/chat`;
+    console.log('[WebSocket] Connecting to:', baseUrl);
 
-    this.socket = io(ENV.WS_URL, {
+    this.socket = io(baseUrl, {
       auth: {
         token: accessToken,
       },
@@ -35,6 +38,14 @@ class SocketService {
     this.socket.on('connect', () => {
       console.log('[WebSocket] Connected successfully');
       this.isConnected = true;
+      
+      // Attach pending listeners that were registered before socket connected
+      this.pendingListeners.forEach(({ event, callback }) => {
+        this.socket?.on(event, callback);
+      });
+      this.pendingListeners = [];
+      
+      this.connectListeners.forEach((listener) => listener());
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -71,6 +82,23 @@ class SocketService {
   }
 
   /**
+   * Register callback for socket connect/reconnect
+   * The callback will ONLY be called on future connect events, not immediately
+   * Returns a function to unsubscribe
+   */
+  onConnect(callback: () => void): () => void {
+    this.connectListeners.push(callback);
+    
+    // Return unsubscribe function
+    return () => {
+      const index = this.connectListeners.indexOf(callback);
+      if (index > -1) {
+        this.connectListeners.splice(index, 1);
+      }
+    };
+  }
+
+  /**
    * Join a conversation room
    */
   joinConversation(conversationId: number) {
@@ -94,7 +122,12 @@ class SocketService {
   /**
    * Send message via WebSocket (faster than REST)
    */
-  sendMessage(conversationId: number, content: string, type: string = 'TEXT') {
+  sendMessage(
+    conversationId: number,
+    content: string,
+    type: string = 'TEXT',
+    localId?: string
+  ) {
     if (!this.socket) {
       throw new Error('Socket not initialized');
     }
@@ -102,6 +135,7 @@ class SocketService {
       conversationId,
       content,
       type,
+      localId,
     });
   }
 
@@ -133,13 +167,24 @@ class SocketService {
   }
 
   /**
+   * Listen for message sent confirmation
+   */
+  onMessageSent(callback: (data: { localId?: string; message: IMessage }) => void) {
+    if (!this.socket) return;
+    this.socket.on('message:sent', callback);
+  }
+
+  /**
    * Listen for new message notification (for list view)
    */
   onNewMessageNotification(
     callback: (data: { conversationId: number; message: any; preview: string }) => void
   ) {
-    if (!this.socket) return;
-    this.socket.on('new_message_notification', callback);
+    if (this.socket) {
+      this.socket.on('new_message_notification', callback);
+    } else {
+      this.pendingListeners.push({ event: 'new_message_notification', callback });
+    }
   }
 
   /**
@@ -149,7 +194,7 @@ class SocketService {
     callback: (data: { conversationId: number; messageIds: number[] }) => void
   ) {
     if (!this.socket) return;
-    this.socket.on('message:read', callback);
+    this.socket.on('message:read_receipt', callback);
   }
 
   /**
@@ -160,6 +205,36 @@ class SocketService {
   ) {
     if (!this.socket) return;
     this.socket.on('user:typing', callback);
+  }
+
+  /**
+   * Listen for user online status
+   */
+  onUserOnline(callback: (data: { userId: number }) => void) {
+    if (this.socket) {
+      this.socket.on('user_online', callback);
+    } else {
+      this.pendingListeners.push({ event: 'user_online', callback });
+    }
+  }
+
+  /**
+   * Listen for user offline status
+   */
+  onUserOffline(callback: (data: { userId: number }) => void) {
+    if (this.socket) {
+      this.socket.on('user_offline', callback);
+    } else {
+      this.pendingListeners.push({ event: 'user_offline', callback });
+    }
+  }
+
+  /**
+   * Send read receipt
+   */
+  sendRead(conversationId: number) {
+    if (!this.socket) return;
+    this.socket.emit('message:read', { conversationId });
   }
 
   /**

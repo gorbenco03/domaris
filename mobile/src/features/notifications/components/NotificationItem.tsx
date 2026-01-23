@@ -6,20 +6,37 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Notification, NOTIFICATION_TYPE_INFO } from '../types';
-import { MessageCircle, Calendar, CheckCircle, XCircle, Clock, Home, TrendingDown, AlertCircle, Shield, Smartphone, Gift } from 'lucide-react-native';
+import { MessageCircle, Calendar, CheckCircle, XCircle, Clock, Home, TrendingDown, AlertCircle, Shield, Smartphone, Gift, Bell } from 'lucide-react-native';
 
 interface NotificationItemProps {
   notification: Notification;
   onPress?: () => void;
 }
 
+// Map backend types to mobile types
+const mapNotificationType = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'new_message': 'message',
+    'verification_approved': 'verification_complete',
+    'verification_rejected': 'verification_complete',
+    'property_favorited': 'property_match',
+    'property_inquiry': 'message',
+    'system': 'promotion',
+  };
+  return typeMap[type] || type;
+};
+
+// Default fallback for unknown types
+const DEFAULT_TYPE_INFO = { icon: 'bell', color: '#6366f1', label: 'Notificare' };
+
 const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPress }) => {
   const { theme } = useTheme();
-  const typeInfo = NOTIFICATION_TYPE_INFO[notification.type];
+  const mappedType = mapNotificationType(notification.type);
+  const typeInfo = NOTIFICATION_TYPE_INFO[mappedType as keyof typeof NOTIFICATION_TYPE_INFO] || DEFAULT_TYPE_INFO;
 
   const getIcon = () => {
     const props = { size: 20, color: typeInfo.color };
-    switch (notification.type) {
+    switch (mappedType) {
       case 'message': return <MessageCircle {...props} />;
       case 'viewing_request':
       case 'viewing_confirmed': return <Calendar {...props} />;
@@ -31,7 +48,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPre
       case 'verification_complete': return <Shield {...props} />;
       case 'new_device_login': return <Smartphone {...props} />;
       case 'promotion': return <Gift {...props} />;
-      default: return <AlertCircle {...props} />;
+      default: return <Bell {...props} />;
     }
   };
 

@@ -35,4 +35,10 @@ export class Favorite extends ExtModel {
         allowNull: true,
     })
     listId?: string; // Optional custom list identifier/name
+
+    @Column({
+        type: DataType.TEXT,
+        allowNull: true,
+    })
+    notes?: string;
 }

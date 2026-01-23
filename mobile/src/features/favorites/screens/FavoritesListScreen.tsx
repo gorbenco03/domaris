@@ -3,32 +3,47 @@
  * Main screen for viewing and managing favorite properties
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Image,
+  RefreshControl,
+  ActivityIndicator,
+  Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
-  Heart,
   Plus,
-  Edit2,
   X,
   MapPin,
   Bed,
   Bath,
   Square,
   TrendingDown,
-  Eye,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Button, Badge } from '@/shared/components';
+import { PAGINATION } from '@/config/constants';
+import { FavoritesStackParamList } from '@/app/navigation/types';
+import { Button } from '@/shared/components';
+import {
+  useCreateFavoriteList,
+  useDeleteFavoriteList,
+  useFavoriteLists,
+  useFavorites,
+  useMoveFavorite,
+  useRemoveFavorite,
+  useUpdateFavoriteList,
+} from '../hooks/useFavorites';
 
 interface FavoriteList {
   id: string;
@@ -38,59 +53,121 @@ interface FavoriteList {
 }
 
 interface FavoriteProperty {
-  id: string;
+  favoriteId: number;
+  propertyId: number;
   title: string;
   location: string;
   price: number;
   priceAtSave: number;
-  imageUrl: string;
-  bedrooms: number;
-  bathrooms: number;
-  area: number;
+  imageUrl?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  area?: number;
   notes?: string;
   savedAt: Date;
 }
 
 const FavoritesListScreen: React.FC = () => {
   const { theme } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<FavoritesStackParamList, 'Favorites'>>();
   const [selectedList, setSelectedList] = useState<string>('all');
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [isCreateListModalOpen, setIsCreateListModalOpen] = useState(false);
+  const [isManageListsModalOpen, setIsManageListsModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [listDraftName, setListDraftName] = useState<Record<string, string>>({});
 
-  // Mock data - in production, this would come from backend
-  const favoriteLists: FavoriteList[] = [
-    { id: 'all', name: 'Toate', count: 12, isDefault: true },
-    { id: 'bucuresti', name: 'București', count: 5, isDefault: false },
-    { id: 'urgent', name: 'Urgent', count: 3, isDefault: false },
-  ];
+  const favoriteParams = useMemo(
+    () => ({
+      listId: selectedList !== 'all' ? selectedList : undefined,
+      page: 1,
+      limit: PAGINATION.MAX_PAGE_SIZE,
+    }),
+    [selectedList]
+  );
 
-  const favoriteProperties: FavoriteProperty[] = [
-    {
-      id: '1',
-      title: 'Apartament 3 camere',
-      location: 'Drumul Taberei, București',
-      price: 90000,
-      priceAtSave: 95000,
-      imageUrl: 'https://via.placeholder.com/400x250',
-      bedrooms: 3,
-      bathrooms: 2,
-      area: 75,
-      notes: 'Sună luni pentru vizionare',
-      savedAt: new Date('2026-01-15'),
-    },
-    {
-      id: '2',
-      title: 'Casă 4 camere',
-      location: 'Bragadiru, Ilfov',
-      price: 180000,
-      priceAtSave: 180000,
-      imageUrl: 'https://via.placeholder.com/400x250',
-      bedrooms: 4,
-      bathrooms: 3,
-      area: 150,
-      savedAt: new Date('2026-01-18'),
-    },
-  ];
+  const {
+    data: favoritesData,
+    isLoading,
+    isFetching,
+    refetch: refetchFavorites,
+  } = useFavorites(favoriteParams);
+  const {
+    data: listsData,
+    refetch: refetchLists,
+  } = useFavoriteLists();
+  const removeFavoriteMutation = useRemoveFavorite();
+  const createListMutation = useCreateFavoriteList();
+  const updateListMutation = useUpdateFavoriteList();
+  const deleteListMutation = useDeleteFavoriteList();
+  const moveFavoriteMutation = useMoveFavorite();
+
+  const favoriteLists: FavoriteList[] = useMemo(() => {
+    const apiLists = listsData || [];
+    const defaultList =
+      apiLists.find((list) => list.isDefault) ||
+      apiLists.find((list) => list.id === 'default');
+    const totalCount = defaultList?.count ?? favoritesData?.meta.total ?? 0;
+    const customLists = apiLists.filter(
+      (list) => !(list.isDefault || list.id === 'default')
+    );
+
+    return [
+      { id: 'all', name: 'Toate', count: totalCount, isDefault: true },
+      ...customLists.map((list) => ({
+        id: list.id,
+        name: list.name,
+        count: list.count ?? 0,
+        isDefault: false,
+      })),
+    ];
+  }, [listsData, favoritesData?.meta.total]);
+
+  const moveListOptions = useMemo(() => {
+    const apiLists = listsData || [];
+    const defaultList =
+      apiLists.find((list) => list.isDefault) ||
+      apiLists.find((list) => list.id === 'default');
+    const options = [
+      {
+        id: 'default',
+        name: defaultList?.name || 'Toate favoritele',
+      },
+      ...apiLists.filter((list) => !list.isDefault && list.id !== 'default').map((list) => ({
+        id: list.id,
+        name: list.name,
+      })),
+    ];
+    return options;
+  }, [listsData]);
+
+  const favoriteProperties: FavoriteProperty[] = useMemo(() => {
+    const items = favoritesData?.data || [];
+    return items
+      .filter((favorite) => favorite.property)
+      .map((favorite) => {
+        const property = favorite.property!;
+        const location = [property.address, property.city].filter(Boolean).join(', ');
+        const price = property.price ?? 0;
+        const area = property.surface ?? property.area;
+        return {
+          favoriteId: favorite.id,
+          propertyId: favorite.propertyId,
+          title: property.title,
+          location: location || property.city || '',
+          price,
+          priceAtSave: price,
+          imageUrl: property.image || undefined,
+          bedrooms: property.rooms,
+          bathrooms: undefined,
+          area,
+          notes: favorite.notes || undefined,
+          savedAt: favorite.addedAt ? new Date(favorite.addedAt) : new Date(),
+        };
+      });
+  }, [favoritesData?.data]);
 
   const togglePropertySelection = (propertyId: string) => {
     setSelectedProperties((prev) =>
@@ -100,12 +177,105 @@ const FavoritesListScreen: React.FC = () => {
     );
   };
 
+  const handleCompareToggle = (propertyId: string) => {
+    if (!isEditMode) {
+      setIsEditMode(true);
+    }
+    togglePropertySelection(propertyId);
+  };
+
+  const handleRemoveFavorite = async (propertyId: number) => {
+    try {
+      await removeFavoriteMutation.mutateAsync(propertyId);
+      setSelectedProperties((prev) =>
+        prev.filter((id) => id !== String(propertyId))
+      );
+    } catch (error) {
+      console.warn('Failed to remove favorite', error);
+    }
+  };
+
+  const handleCreateList = async () => {
+    const trimmed = newListName.trim();
+    if (!trimmed) return;
+    try {
+      await createListMutation.mutateAsync({ name: trimmed });
+      setNewListName('');
+      setIsCreateListModalOpen(false);
+    } catch (error) {
+      console.warn('Failed to create list', error);
+    }
+  };
+
+  const handleUpdateList = async (listId: string) => {
+    const name = (listDraftName[listId] || '').trim();
+    if (!name) return;
+    try {
+      await updateListMutation.mutateAsync({ listId, payload: { name } });
+    } catch (error) {
+      console.warn('Failed to update list', error);
+    }
+  };
+
+  const handleDeleteList = (listId: string) => {
+    Alert.alert(
+      'Șterge lista',
+      'Favoritele vor rămâne în lista principală.',
+      [
+        { text: 'Anulează', style: 'cancel' },
+        {
+          text: 'Șterge',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteListMutation.mutateAsync(listId);
+              if (selectedList === listId) {
+                setSelectedList('all');
+              }
+            } catch (error) {
+              console.warn('Failed to delete list', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMoveSelected = async (toListId: string) => {
+    const fromListId = selectedList !== 'all' ? selectedList : undefined;
+    try {
+      await Promise.all(
+        selectedProperties.map((propertyId) =>
+          moveFavoriteMutation.mutateAsync({
+            propertyId: Number(propertyId),
+            toListId,
+            fromListId,
+          })
+        )
+      );
+      setSelectedProperties([]);
+      setIsEditMode(false);
+      setIsMoveModalOpen(false);
+    } catch (error) {
+      console.warn('Failed to move favorites', error);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    await Promise.all([refetchFavorites(), refetchLists()]);
+  }, [refetchFavorites, refetchLists]);
+
   const renderListChip = (list: FavoriteList) => {
     const isSelected = selectedList === list.id;
     return (
       <TouchableOpacity
         key={list.id}
         onPress={() => setSelectedList(list.id)}
+        onLongPress={() => {
+          if (!list.isDefault) {
+            setIsManageListsModalOpen(true);
+          }
+        }}
         style={[
           styles.listChip,
           {
@@ -135,7 +305,8 @@ const FavoritesListScreen: React.FC = () => {
   };
 
   const renderPropertyCard = ({ item }: { item: FavoriteProperty }) => {
-    const isSelected = selectedProperties.includes(item.id);
+    const propertyKey = String(item.propertyId);
+    const isSelected = selectedProperties.includes(propertyKey);
     const priceChange = item.price - item.priceAtSave;
     const hasPriceChange = priceChange !== 0;
 
@@ -155,28 +326,42 @@ const FavoritesListScreen: React.FC = () => {
         ]}
         onPress={() => {
           if (isEditMode) {
-            togglePropertySelection(item.id);
+            togglePropertySelection(propertyKey);
           } else {
-            // Navigate to property detail
+            navigation.navigate('PropertyDetail', { propertyId: propertyKey });
           }
         }}
       >
         {/* Image Section */}
         <View style={styles.imageContainer}>
-          <View
-            style={[
-              styles.imagePlaceholder,
-              {
-                backgroundColor: theme.colors.border,
-                borderTopLeftRadius: theme.borderRadius.xl,
-                borderTopRightRadius: theme.borderRadius.xl,
-              },
-            ]}
-          >
-            <Text style={[styles.placeholderText, { color: theme.colors.textTertiary }]}>
-              📷
-            </Text>
-          </View>
+          {item.imageUrl ? (
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={[
+                styles.image,
+                {
+                  borderTopLeftRadius: theme.borderRadius.xl,
+                  borderTopRightRadius: theme.borderRadius.xl,
+                },
+              ]}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={[
+                styles.imagePlaceholder,
+                {
+                  backgroundColor: theme.colors.border,
+                  borderTopLeftRadius: theme.borderRadius.xl,
+                  borderTopRightRadius: theme.borderRadius.xl,
+                },
+              ]}
+            >
+              <Text style={[styles.placeholderText, { color: theme.colors.textTertiary }]}>
+                📷
+              </Text>
+            </View>
+          )}
 
           {/* Price Badge */}
           <View style={[styles.priceBadge, { backgroundColor: 'rgba(255,255,255,0.95)' }]}>
@@ -264,50 +449,61 @@ const FavoritesListScreen: React.FC = () => {
 
           {/* Features */}
           <View style={[styles.featuresRow, { marginTop: theme.spacing[3] }]}>
-            <View style={styles.feature}>
-              <Bed size={16} color={theme.colors.textTertiary} />
-              <Text
-                style={[
-                  styles.featureText,
-                  {
-                    color: theme.colors.textSecondary,
-                    fontSize: theme.typography.fontSize.sm,
-                  },
-                ]}
-              >
-                {item.bedrooms}
-              </Text>
-            </View>
-            <Text style={[styles.featureSeparator, { color: theme.colors.textTertiary }]}>·</Text>
-            <View style={styles.feature}>
-              <Bath size={16} color={theme.colors.textTertiary} />
-              <Text
-                style={[
-                  styles.featureText,
-                  {
-                    color: theme.colors.textSecondary,
-                    fontSize: theme.typography.fontSize.sm,
-                  },
-                ]}
-              >
-                {item.bathrooms}
-              </Text>
-            </View>
-            <Text style={[styles.featureSeparator, { color: theme.colors.textTertiary }]}>·</Text>
-            <View style={styles.feature}>
-              <Square size={16} color={theme.colors.textTertiary} />
-              <Text
-                style={[
-                  styles.featureText,
-                  {
-                    color: theme.colors.textSecondary,
-                    fontSize: theme.typography.fontSize.sm,
-                  },
-                ]}
-              >
-                {item.area} m²
-              </Text>
-            </View>
+            {typeof item.bedrooms === 'number' && (
+              <View style={styles.feature}>
+                <Bed size={16} color={theme.colors.textTertiary} />
+                <Text
+                  style={[
+                    styles.featureText,
+                    {
+                      color: theme.colors.textSecondary,
+                      fontSize: theme.typography.fontSize.sm,
+                    },
+                  ]}
+                >
+                  {item.bedrooms}
+                </Text>
+              </View>
+            )}
+            {typeof item.bedrooms === 'number' && typeof item.bathrooms === 'number' && (
+              <Text style={[styles.featureSeparator, { color: theme.colors.textTertiary }]}>·</Text>
+            )}
+            {typeof item.bathrooms === 'number' && (
+              <View style={styles.feature}>
+                <Bath size={16} color={theme.colors.textTertiary} />
+                <Text
+                  style={[
+                    styles.featureText,
+                    {
+                      color: theme.colors.textSecondary,
+                      fontSize: theme.typography.fontSize.sm,
+                    },
+                  ]}
+                >
+                  {item.bathrooms}
+                </Text>
+              </View>
+            )}
+            {(typeof item.bedrooms === 'number' || typeof item.bathrooms === 'number') &&
+              typeof item.area === 'number' && (
+                <Text style={[styles.featureSeparator, { color: theme.colors.textTertiary }]}>·</Text>
+              )}
+            {typeof item.area === 'number' && (
+              <View style={styles.feature}>
+                <Square size={16} color={theme.colors.textTertiary} />
+                <Text
+                  style={[
+                    styles.featureText,
+                    {
+                      color: theme.colors.textSecondary,
+                      fontSize: theme.typography.fontSize.sm,
+                    },
+                  ]}
+                >
+                  {item.area} m²
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Notes */}
@@ -341,7 +537,7 @@ const FavoritesListScreen: React.FC = () => {
           <View style={[styles.actionsRow, { marginTop: theme.spacing[4], gap: theme.spacing[2] }]}>
             <Button
               title="Compară"
-              onPress={() => {/* Add to comparison */}}
+              onPress={() => handleCompareToggle(propertyKey)}
               variant="secondary"
               style={{ flex: 1 }}
             />
@@ -353,6 +549,7 @@ const FavoritesListScreen: React.FC = () => {
                   borderRadius: theme.borderRadius.lg,
                 },
               ]}
+              onPress={() => handleRemoveFavorite(item.propertyId)}
             >
               <X size={20} color={theme.colors.secondary.error} />
             </TouchableOpacity>
@@ -361,6 +558,20 @@ const FavoritesListScreen: React.FC = () => {
       </TouchableOpacity>
     );
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, styles.loadingContainer, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Se încarcă favoritele...
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -388,24 +599,39 @@ const FavoritesListScreen: React.FC = () => {
         >
           Favorite
         </Text>
-        <TouchableOpacity
-          onPress={() => {
-            setIsEditMode(!isEditMode);
-            setSelectedProperties([]);
-          }}
-        >
-          <Text
-            style={[
-              styles.editButton,
-              {
-                color: theme.colors.primary.main,
-                fontSize: theme.typography.fontSize.base,
-              },
-            ]}
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setIsManageListsModalOpen(true)}>
+            <Text
+              style={[
+                styles.editButton,
+                {
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.typography.fontSize.base,
+                },
+              ]}
+            >
+              Liste
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setIsEditMode(!isEditMode);
+              setSelectedProperties([]);
+            }}
           >
-            {isEditMode ? 'Anulează' : 'Editează'}
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.editButton,
+                {
+                  color: theme.colors.primary.main,
+                  fontSize: theme.typography.fontSize.base,
+                },
+              ]}
+            >
+              {isEditMode ? 'Anulează' : 'Editează'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Lists Horizontal Scroll */}
@@ -438,6 +664,7 @@ const FavoritesListScreen: React.FC = () => {
               borderRadius: theme.borderRadius.full,
             },
           ]}
+          onPress={() => setIsCreateListModalOpen(true)}
         >
           <Plus size={20} color={theme.colors.accent.main} />
         </TouchableOpacity>
@@ -446,13 +673,20 @@ const FavoritesListScreen: React.FC = () => {
       {/* Properties List */}
       <FlatList
         data={favoriteProperties}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.propertyId)}
         renderItem={renderPropertyCard}
         contentContainerStyle={[
           styles.listContent,
           { paddingHorizontal: theme.spacing[4], paddingTop: theme.spacing[4] },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary.main}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={[styles.emptyEmoji]}>💭</Text>
@@ -482,8 +716,8 @@ const FavoritesListScreen: React.FC = () => {
         }
       />
 
-      {/* Floating Compare Button */}
-      {selectedProperties.length >= 2 && (
+      {/* Floating Actions */}
+      {selectedProperties.length >= 1 && (
         <View
           style={[
             styles.floatingButtonContainer,
@@ -493,23 +727,144 @@ const FavoritesListScreen: React.FC = () => {
             },
           ]}
         >
-          <LinearGradient
-            colors={[theme.colors.accent.main, theme.colors.accent.dark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.compareButton, { borderRadius: theme.borderRadius.lg }]}
-          >
+          <View style={styles.floatingActionsRow}>
             <TouchableOpacity
-              style={styles.compareButtonInner}
-              onPress={() => {/* Navigate to compare screen */}}
+              style={[styles.moveButton, { borderColor: theme.colors.border }]}
+              onPress={() => setIsMoveModalOpen(true)}
             >
-              <Text style={[styles.compareButtonText, { color: theme.colors.surface }]}>
-                Compară {selectedProperties.length} proprietăți
+              <Text style={[styles.moveButtonText, { color: theme.colors.textPrimary }]}>
+                Mută în listă
               </Text>
             </TouchableOpacity>
-          </LinearGradient>
+            {selectedProperties.length >= 2 && (
+              <LinearGradient
+                colors={[theme.colors.accent.main, theme.colors.accent.dark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.compareButton, { borderRadius: theme.borderRadius.lg }]}
+              >
+                <TouchableOpacity
+                  style={styles.compareButtonInner}
+                  onPress={() =>
+                    navigation.navigate('Compare', { propertyIds: selectedProperties })
+                  }
+                >
+                  <Text style={[styles.compareButtonText, { color: theme.colors.surface }]}>
+                    Compară {selectedProperties.length} proprietăți
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            )}
+          </View>
         </View>
       )}
+
+      {/* Create List Modal */}
+      <Modal transparent visible={isCreateListModalOpen} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>
+              Listă nouă
+            </Text>
+            <TextInput
+              value={newListName}
+              onChangeText={setNewListName}
+              placeholder="Nume listă"
+              placeholderTextColor={theme.colors.textTertiary}
+              style={[
+                styles.modalInput,
+                {
+                  borderColor: theme.colors.border,
+                  color: theme.colors.textPrimary,
+                },
+              ]}
+            />
+            <View style={styles.modalActions}>
+              <Button
+                title="Anulează"
+                onPress={() => setIsCreateListModalOpen(false)}
+                variant="secondary"
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="Creează"
+                onPress={handleCreateList}
+                variant="primary"
+                style={{ flex: 1 }}
+                disabled={!newListName.trim()}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Manage Lists Modal */}
+      <Modal transparent visible={isManageListsModalOpen} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>
+              Liste favorite
+            </Text>
+            <View style={styles.modalListContainer}>
+              {(listsData || [])
+                .filter((list) => !list.isDefault && list.id !== 'default')
+                .map((list) => (
+                  <View key={list.id} style={styles.listRow}>
+                    <TextInput
+                      value={listDraftName[list.id] ?? list.name}
+                      onChangeText={(value) =>
+                        setListDraftName((prev) => ({ ...prev, [list.id]: value }))
+                      }
+                      style={[
+                        styles.listInput,
+                        {
+                          borderColor: theme.colors.border,
+                          color: theme.colors.textPrimary,
+                        },
+                      ]}
+                    />
+                    <TouchableOpacity
+                      onPress={() => handleUpdateList(list.id)}
+                      style={[styles.listActionButton, { borderColor: theme.colors.border }]}
+                    >
+                      <Text style={{ color: theme.colors.textPrimary }}>Salvează</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteList(list.id)}
+                      style={[styles.listActionButton, { borderColor: theme.colors.secondary.error }]}
+                    >
+                      <Text style={{ color: theme.colors.secondary.error }}>Șterge</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+            </View>
+            <Button title="Închide" onPress={() => setIsManageListsModalOpen(false)} />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Move Modal */}
+      <Modal transparent visible={isMoveModalOpen} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>
+              Mută în listă
+            </Text>
+            <View style={styles.modalListContainer}>
+              {moveListOptions.map((list) => (
+                <TouchableOpacity
+                  key={list.id}
+                  onPress={() => handleMoveSelected(list.id)}
+                  style={[styles.moveOption, { borderColor: theme.colors.border }]}
+                >
+                  <Text style={{ color: theme.colors.textPrimary }}>{list.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Button title="Anulează" onPress={() => setIsMoveModalOpen(false)} />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -531,6 +886,11 @@ const styles = StyleSheet.create({
   },
   editButton: {
     fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
   },
   listsContainer: {
     borderBottomWidth: 1,
@@ -566,6 +926,10 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     height: 180,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
   },
   imagePlaceholder: {
     width: '100%',
@@ -683,8 +1047,25 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
+  floatingActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  moveButton: {
+    height: 56,
+    borderWidth: 1,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  moveButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   compareButton: {
     height: 56,
+    flex: 1,
   },
   compareButtonInner: {
     flex: 1,
@@ -695,6 +1076,66 @@ const styles = StyleSheet.create({
     // color applied dynamically
     fontSize: 16,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalListContainer: {
+    gap: 12,
+  },
+  listRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  listInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  listActionButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  moveOption: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
 });
 

@@ -138,6 +138,14 @@ const MainNavigator: React.FC = () => {
             />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            // Always reset messaging stack to conversations list
+            navigation.navigate('MessagesTab', {
+              screen: 'ConversationsList',
+            });
+          },
+        })}
       />
       <Tab.Screen
         name="FavoritesTab"

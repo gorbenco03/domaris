@@ -14,6 +14,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { SearchService, SearchFilters } from '../search/search.service.js';
 import { Listing } from '../../db/entities/listing.entity.js';
+import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import OpenAI from 'openai';
 
 // ============================================================================
@@ -76,6 +77,7 @@ export interface PropertyAnalysis {
     isReasonable: boolean;
     suggestion?: string;
     marketComparison?: string;
+    percentDiff?: number | null;
   };
   descriptionAnalysis: {
     score: number;
@@ -92,6 +94,21 @@ export interface PropertyAnalysis {
     description: string;
     impact: string;
   }[];
+}
+
+export interface PropertySummary {
+  summary: string;
+  highlights: string[];
+  amenities: string[];
+  location: string;
+  suitableFor: string[];
+  cautions: string[];
+  matchScore: number;
+  priceComparison: {
+    averagePrice: number;
+    percentDiff: number | null;
+    note: string;
+  };
 }
 
 export interface GeneratedDescription {
@@ -150,17 +167,52 @@ export class AIService {
       // 1. Parse user intent with user preferences context
       const intent = await this.parseSearchIntent(message, contextOptions?.userPreferences);
 
+      // Heuristic fallback for "show all listings"
+      const wantsAllListings = /toate|toți|toate anunțurile|toate proprietățile|baza de date|tot ce aveți/i.test(
+        message
+      );
+      if (wantsAllListings && intent.intent !== 'search') {
+        intent.intent = 'search';
+        intent.params = {};
+      }
+      if (intent.intent === 'search' && !intent.params) {
+        intent.params = {};
+      }
+      this.logger.log(
+        `AI Chat intent=${intent.intent} params=${JSON.stringify(intent.params || {})}`
+      );
+
       // 2. If it's a search intent, execute the search
       let properties: any[] = [];
       if (intent.intent === 'search' && intent.params) {
         // Apply user preferences as defaults if not specified
-        const searchParams = this.mergeWithPreferences(intent.params, contextOptions?.userPreferences);
-        
+        let searchParams = this.mergeWithPreferences(intent.params, contextOptions?.userPreferences);
+        searchParams = this.applyLocalHeuristics(message, searchParams);
+        this.logger.log(`AI Chat search params=${JSON.stringify(searchParams)}`);
+
         const searchResult = await this.searchService.search({
           ...searchParams,
           limit: contextOptions?.maxResults ?? 5,
         });
         properties = searchResult.data;
+        this.logger.log(
+          `AI Chat search results=${properties.length} total=${searchResult.meta.total}`
+        );
+
+        if (properties.length === 0 && searchParams.propertyType) {
+          const relaxedParams = { ...searchParams, propertyType: undefined };
+          this.logger.log(
+            `AI Chat retry without propertyType params=${JSON.stringify(relaxedParams)}`
+          );
+          const relaxedResult = await this.searchService.search({
+            ...relaxedParams,
+            limit: contextOptions?.maxResults ?? 5,
+          });
+          properties = relaxedResult.data;
+          this.logger.log(
+            `AI Chat relaxed results=${properties.length} total=${relaxedResult.meta.total}`
+          );
+        }
       }
 
       // 3. Generate conversational response with context
@@ -203,6 +255,23 @@ export class AIService {
       // Camer exclus - folosim doar ce a zis utilizatorul explicit
       rooms: params.rooms ?? preferences.preferredRooms,
     };
+  }
+
+  private applyLocalHeuristics(message: string, params: SearchFilters): SearchFilters {
+    const next = { ...params };
+    const normalizedMessage = message.toLowerCase();
+
+    const sectorMatch = normalizedMessage.match(/sector\s*([1-6])/);
+    if (sectorMatch) {
+      if (!next.city) next.city = 'București';
+      if (!next.neighborhood) next.neighborhood = `Sector ${sectorMatch[1]}`;
+    }
+
+    if (normalizedMessage.includes('bucuresti') && !next.city) {
+      next.city = 'București';
+    }
+
+    return next;
   }
 
   /**
@@ -440,8 +509,17 @@ Returnează un JSON cu:
       limit: 10,
     });
 
+    const avgPrice =
+      comparables.data.length > 0
+        ? comparables.data.reduce((sum: number, p: any) => sum + (p.priceEur || 0), 0) /
+          comparables.data.length
+        : property.priceEur;
+    const percentDiff =
+      avgPrice && property.priceEur ? ((property.priceEur - avgPrice) / avgPrice) * 100 : undefined;
+
     if (!this.openai) {
-      return this.mockAnalyzeProperty(property, comparables.data);
+      const mock = this.mockAnalyzeProperty(property, comparables.data);
+      return { ...mock, priceAnalysis: { ...mock.priceAnalysis, percentDiff } };
     }
 
     const prompt = `Analizează acest anunț imobiliar și oferă sugestii de îmbunătățire.
@@ -473,10 +551,227 @@ recommendations: [{ priority: high/medium/low, title, description, impact }]`;
         temperature: 0.5,
       });
 
-      return JSON.parse(completion.choices[0].message.content || '{}');
+      const parsed = JSON.parse(completion.choices[0].message.content || '{}');
+      return {
+        ...parsed,
+        priceAnalysis: {
+          ...parsed.priceAnalysis,
+          percentDiff: parsed.priceAnalysis?.percentDiff ?? percentDiff,
+        },
+      };
     } catch (error: any) {
       this.logger.error(`Property analysis error: ${error.message}`);
-      return this.mockAnalyzeProperty(property, comparables.data);
+      const mock = this.mockAnalyzeProperty(property, comparables.data);
+      return { ...mock, priceAnalysis: { ...mock.priceAnalysis, percentDiff } };
+    }
+  }
+
+  /**
+   * Analyze a draft listing (no propertyId yet)
+   */
+  async analyzeListingDraft(input: {
+    title?: string;
+    description?: string;
+    priceEur?: number;
+    city?: string;
+    rooms?: number;
+    surfaceSqm?: number;
+    photosCount?: number;
+  }): Promise<PropertyAnalysis> {
+    if (!input.city || !input.priceEur || !input.rooms || !input.surfaceSqm) {
+      throw new BadRequestException('Date insuficiente pentru analiză');
+    }
+
+    const comparables = await this.searchService.search({
+      city: input.city,
+      rooms: input.rooms,
+      priceMin: input.priceEur * 0.7,
+      priceMax: input.priceEur * 1.3,
+      limit: 10,
+    });
+
+    const avgPrice =
+      comparables.data.length > 0
+        ? comparables.data.reduce((sum: number, p: any) => sum + (p.priceEur || 0), 0) /
+          comparables.data.length
+        : input.priceEur;
+    const percentDiff =
+      avgPrice && input.priceEur ? ((input.priceEur - avgPrice) / avgPrice) * 100 : undefined;
+
+    if (!this.openai) {
+      const mock = this.mockAnalyzeProperty(
+        {
+          title: input.title,
+          description: input.description,
+          priceEur: input.priceEur,
+          city: input.city,
+          rooms: input.rooms,
+          surfaceSqm: input.surfaceSqm,
+          images: Array(input.photosCount || 0),
+        },
+        comparables.data
+      );
+      return { ...mock, priceAnalysis: { ...mock.priceAnalysis, percentDiff } };
+    }
+
+    const prompt = `Analizează acest anunț imobiliar și oferă sugestii de îmbunătățire.
+
+Anunț:
+- Titlu: ${input.title || 'Lipsește'}
+- Descriere: ${input.description || 'Lipsește'}
+- Preț: ${input.priceEur} EUR
+- Oraș: ${input.city}
+- Camere: ${input.rooms}
+- Suprafață: ${input.surfaceSqm} mp
+- Poze: ${input.photosCount ?? 0} imagini
+
+Proprietăți similare în zonă (${comparables.meta.total} găsite):
+${comparables.data.slice(0, 5).map((p: any) => `- ${p.title}: ${p.priceEur} EUR`).join('\n')}
+
+Returnează un JSON cu structura PropertyAnalysis (vezi tipul).
+overallScore: 0-100
+priceAnalysis: { isReasonable: bool, suggestion?, marketComparison? }
+descriptionAnalysis: { score: 0-100, issues: [], suggestions: [] }
+photosAnalysis: { count: number, suggestions: [] }
+recommendations: [{ priority: high/medium/low, title, description, impact }]`;
+
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.5,
+      });
+
+      const parsed = JSON.parse(completion.choices[0].message.content || '{}');
+      return {
+        ...parsed,
+        priceAnalysis: {
+          ...parsed.priceAnalysis,
+          percentDiff: parsed.priceAnalysis?.percentDiff ?? percentDiff,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error(`Draft analysis error: ${error.message}`);
+      const mock = this.mockAnalyzeProperty(
+        {
+          title: input.title,
+          description: input.description,
+          priceEur: input.priceEur,
+          city: input.city,
+          rooms: input.rooms,
+          surfaceSqm: input.surfaceSqm,
+          images: Array(input.photosCount || 0),
+        },
+        comparables.data
+      );
+      return { ...mock, priceAnalysis: { ...mock.priceAnalysis, percentDiff } };
+    }
+  }
+
+  /**
+   * Summarize a property for seekers
+   */
+  async summarizeProperty(propertyId: number): Promise<PropertySummary> {
+    const property = await Listing.findByPk(propertyId);
+
+    if (!property) {
+      throw new BadRequestException('Property not found');
+    }
+
+    const photosCount = await ListingImage.count({ where: { listingId: propertyId } });
+
+    const comparables = await this.searchService.search({
+      city: property.city,
+      rooms: property.rooms,
+      priceMin: property.priceEur * 0.7,
+      priceMax: property.priceEur * 1.3,
+      limit: 10,
+    });
+
+    const avgPrice =
+      comparables.data.length > 0
+        ? comparables.data.reduce((sum: number, p: any) => sum + (p.priceEur || 0), 0) /
+          comparables.data.length
+        : property.priceEur;
+    const percentDiff =
+      avgPrice && property.priceEur ? ((property.priceEur - avgPrice) / avgPrice) * 100 : null;
+    const priceNote =
+      percentDiff === null
+        ? 'Nu există suficiente comparabile.'
+        : percentDiff > 10
+          ? `Prețul este cu ~${Math.abs(percentDiff).toFixed(0)}% peste media zonei.`
+          : percentDiff < -10
+            ? `Prețul este cu ~${Math.abs(percentDiff).toFixed(0)}% sub media zonei.`
+            : 'Prețul este în linie cu media zonei.';
+
+    if (!this.openai) {
+      return this.mockSummarizeProperty(property, photosCount, {
+        averagePrice: Math.round(avgPrice),
+        percentDiff,
+        note: priceNote,
+      });
+    }
+
+    const prompt = `Rezuma această proprietate pentru un potențial cumpărător/chiriaș.
+
+Detalii:
+- Titlu: ${property.title}
+- Descriere: ${property.description || 'Lipsește'}
+- Preț: ${property.priceEur} EUR
+- Tip tranzacție: ${property.transactionType}
+- Tip proprietate: ${property.propertyType}
+- Oraș: ${property.city}
+- Cartier: ${property.neighborhood || 'N/A'}
+- Camere: ${property.rooms}
+- Suprafață: ${property.surfaceSqm} mp
+- Etaj: ${property.floor ?? 'N/A'}
+- Total etaje: ${property.totalFloors ?? 'N/A'}
+- Facilități: ${(property.amenities || []).join(', ') || 'N/A'}
+- Poze: ${photosCount} imagini
+
+Returnează JSON cu structura:
+{
+  "summary": string,
+  "highlights": string[],
+  "amenities": string[],
+  "location": string,
+  "suitableFor": string[],
+  "cautions": string[],
+  "matchScore": number,
+  "priceComparison": { "averagePrice": number, "percentDiff": number | null, "note": string }
+}
+Reguli:
+- Răspunde în română
+- Fără presupuneri neconfirmate
+- Evidențiază ce este cu adevărat în date
+`;
+
+    try {
+      const completion = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.4,
+      });
+
+      const parsed = JSON.parse(completion.choices[0].message.content || '{}');
+      return {
+        ...parsed,
+        matchScore: typeof parsed.matchScore === 'number' ? parsed.matchScore : 75,
+        priceComparison: {
+          averagePrice: parsed.priceComparison?.averagePrice ?? Math.round(avgPrice),
+          percentDiff: parsed.priceComparison?.percentDiff ?? percentDiff,
+          note: parsed.priceComparison?.note ?? priceNote,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error(`Property summary error: ${error.message}`);
+      return this.mockSummarizeProperty(property, photosCount, {
+        averagePrice: Math.round(avgPrice),
+        percentDiff,
+        note: priceNote,
+      });
     }
   }
 
@@ -641,6 +936,28 @@ Pentru a activa funcționalitățile AI, configurează variabila OPENAI_API_KEY.
           impact: 'Crește rata de contact cu 40%',
         },
       ],
+    };
+  }
+
+  private mockSummarizeProperty(
+    property: any,
+    photosCount: number,
+    priceComparison: { averagePrice: number; percentDiff: number | null; note: string }
+  ): PropertySummary {
+    return {
+      summary: `Proprietate ${property.propertyType || ''} în ${property.city} cu ${property.rooms || 'N/A'} camere și ${property.surfaceSqm || 'N/A'} mp. ${property.description ? 'Descriere disponibilă.' : 'Descrierea lipsește.'}`,
+      highlights: [
+        `${property.surfaceSqm || 'N/A'} mp`,
+        `${property.rooms || 'N/A'} camere`,
+        property.transactionType === 'RENT' ? 'Disponibilă la închiriere' : 'Disponibilă la vânzare',
+        `${photosCount} fotografii`,
+      ],
+      amenities: property.amenities || [],
+      location: [property.neighborhood, property.city].filter(Boolean).join(', ') || property.city,
+      suitableFor: ['familie', 'cuplu', 'investiție'],
+      cautions: property.description ? [] : ['Descrierea lipsește'],
+      matchScore: 78,
+      priceComparison,
     };
   }
 }

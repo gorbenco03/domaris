@@ -3,13 +3,15 @@
  * AI-powered analysis and optimization for property listings
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -26,10 +28,14 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Button } from '@/shared/components';
+import { usePropertyDetail } from '@/features/properties/hooks/useProperties';
+import { aiApi } from '../api/aiApi';
+import { QUERY_KEYS } from '@/config/constants';
 
 interface AnalysisSection {
   id: string;
@@ -46,78 +52,100 @@ const ListingAnalysisScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
   const [expandedSection, setExpandedSection] = useState<string | null>('price');
+  const route = useRoute<any>();
+  const propertyId = route.params?.propertyId;
 
-  // Mock property data
-  const property = {
-    title: 'Apartament 3 camere',
-    location: 'Drumul Taberei, București',
-    price: 120000,
-  };
+  const { data: property, isLoading: propertyLoading } = usePropertyDetail(propertyId);
+  const analysisQuery = useQuery({
+    queryKey: [QUERY_KEYS.AI_ANALYSIS, propertyId],
+    queryFn: () => aiApi.analyzeProperty(Number(propertyId)),
+    enabled: !!propertyId,
+  });
+  const estimateQuery = useQuery({
+    queryKey: [QUERY_KEYS.AI_ANALYSIS, propertyId, 'estimate'],
+    queryFn: () =>
+      aiApi.estimatePrice({
+        city: property?.city || '',
+        neighborhood: property?.neighborhood,
+        propertyType: property?.propertyType || 'APARTMENT',
+        rooms: property?.rooms || 0,
+        surface: property?.surfaceSqm || property?.surface || 0,
+        floor: property?.floor,
+        yearBuilt: property?.yearBuilt,
+      }),
+    enabled: !!property && !!propertyId,
+  });
 
-  const overallScore = 72;
+  const analysis = analysisQuery.data;
+  const estimate = estimateQuery.data;
+  const overallScore = analysis?.overallScore || 0;
 
-  const analysisSections: AnalysisSection[] = [
-    {
-      id: 'price',
-      title: 'Analiză Preț',
-      icon: DollarSign,
-      score: 45,
-      maxScore: 100,
-      status: 'critical',
-      issues: [
-        'Prețul tău: 120.000€',
-        'Preț mediu zonă: 98.000€',
-        'Ești cu 22% peste piață',
-      ],
-      suggestions: [
-        'Redu prețul la 95.000€ - 105.000€',
-        'Poate reduce vizibilitatea cu 40%',
-        'Timpul mediu de vânzare poate crește cu 60%',
-      ],
-    },
-    {
-      id: 'description',
-      title: 'Descriere',
-      icon: FileText,
-      score: 78,
-      maxScore: 100,
-      status: 'warning',
-      issues: [
-        'Lungime OK (320 caractere)',
-        'Lipsesc: anul renovării, tip încălzire',
-      ],
-      suggestions: [
-        'Adaugă detalii despre vecinătate',
-        'Menționează proximitatea metroului',
-        'Include informații despre orientare',
-      ],
-    },
-    {
-      id: 'photos',
-      title: 'Fotografii',
-      icon: Camera,
-      score: 65,
-      maxScore: 100,
-      status: 'warning',
-      issues: [
-        '8 fotografii încărcate',
-        'Lipsesc poze cu: bucătărie, baie',
-        'Calitate medie',
-      ],
-      suggestions: [
-        'Adaugă minim 5 poze suplimentare',
-        'Anunțurile cu poze complete au +60% contacte',
-        'Folosește lumină naturală pentru poze mai bune',
-      ],
-    },
-  ];
+  const analysisSections: AnalysisSection[] = useMemo(() => {
+    if (!analysis) return [];
 
-  const marketInsights = {
-    demandLevel: 'high' as const,
-    avgDaysOnMarket: 28,
-    competitionLevel: 72,
-    bestTimeToList: 'Martie - Mai',
-  };
+    const price = property?.priceEur ?? property?.price ?? 0;
+    const rangeText = estimate
+      ? `Recomandat: ${estimate.priceRange.min.toLocaleString('ro-RO')} - ${estimate.priceRange.max.toLocaleString('ro-RO')}€`
+      : undefined;
+
+    const priceIssues = [
+      `Prețul tău: ${price.toLocaleString('ro-RO')}€`,
+      rangeText,
+      analysis.priceAnalysis.marketComparison,
+    ].filter(Boolean) as string[];
+
+    const priceSuggestions = [
+      analysis.priceAnalysis.suggestion,
+    ].filter(Boolean) as string[];
+
+    const priceStatus: AnalysisSection['status'] =
+      analysis.priceAnalysis.isReasonable ? 'good' : 'critical';
+
+    const descriptionStatus: AnalysisSection['status'] =
+      analysis.descriptionAnalysis.score >= 80
+        ? 'good'
+        : analysis.descriptionAnalysis.score >= 60
+        ? 'warning'
+        : 'critical';
+
+    const photoStatus: AnalysisSection['status'] =
+      analysis.photosAnalysis.count >= 8 ? 'warning' : 'critical';
+
+    return [
+      {
+        id: 'price',
+        title: 'Analiză Preț',
+        icon: DollarSign,
+        score: analysis.priceAnalysis.isReasonable ? 85 : 45,
+        maxScore: 100,
+        status: priceStatus,
+        issues: priceIssues,
+        suggestions: priceSuggestions.length ? priceSuggestions : [],
+      },
+      {
+        id: 'description',
+        title: 'Descriere',
+        icon: FileText,
+        score: analysis.descriptionAnalysis.score,
+        maxScore: 100,
+        status: descriptionStatus,
+        issues: analysis.descriptionAnalysis.issues,
+        suggestions: analysis.descriptionAnalysis.suggestions,
+      },
+      {
+        id: 'photos',
+        title: 'Fotografii',
+        icon: Camera,
+        score: Math.min(100, analysis.photosAnalysis.count * 10),
+        maxScore: 100,
+        status: photoStatus,
+        issues: [
+          `${analysis.photosAnalysis.count} fotografii încărcate`,
+        ],
+        suggestions: analysis.photosAnalysis.suggestions,
+      },
+    ];
+  }, [analysis, estimate, property]);
 
   const toggleSection = (sectionId: string) => {
     setExpandedSection(expandedSection === sectionId ? null : sectionId);
@@ -142,6 +170,27 @@ const ListingAnalysisScreen: React.FC = () => {
         return AlertTriangle;
       case 'critical':
         return TrendingDown;
+    }
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!property) return;
+    try {
+      await aiApi.generatePropertyDescription({
+        propertyType: property.propertyType || 'APARTMENT',
+        transactionType: property.transactionType || 'SALE',
+        rooms: property.rooms || undefined,
+        surface: property.surfaceSqm || property.surface || undefined,
+        city: property.city,
+        neighborhood: property.neighborhood,
+        floor: property.floor,
+        totalFloors: property.totalFloors,
+        amenities: property.amenities,
+        yearBuilt: property.yearBuilt,
+      });
+      Alert.alert('Succes', 'Descrierea AI a fost generată.');
+    } catch (error) {
+      Alert.alert('Eroare', 'Nu am putut genera descrierea.');
     }
   };
 
@@ -190,6 +239,14 @@ const ListingAnalysisScreen: React.FC = () => {
         <View style={{ width: 44 }} />
       </View>
 
+      {analysisQuery.isLoading || propertyLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+            Se încarcă analiza...
+          </Text>
+        </View>
+      ) : (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -218,7 +275,7 @@ const ListingAnalysisScreen: React.FC = () => {
               },
             ]}
           >
-            {property.title}
+            {property?.title || 'Proprietate'}
           </Text>
           <Text
             style={[
@@ -230,7 +287,7 @@ const ListingAnalysisScreen: React.FC = () => {
               },
             ]}
           >
-            {property.location}
+            {[property?.addressText, property?.neighborhood, property?.city].filter(Boolean).join(', ')}
           </Text>
         </View>
 
@@ -457,7 +514,7 @@ const ListingAnalysisScreen: React.FC = () => {
                     {section.id === 'description' && (
                       <Button
                         title="Generează descriere AI"
-                        onPress={() => {}}
+                        onPress={handleGenerateDescription}
                         variant="primary"
                         fullWidth
                         style={{ marginTop: theme.spacing[3] }}
@@ -479,74 +536,8 @@ const ListingAnalysisScreen: React.FC = () => {
           })}
         </View>
 
-        {/* Market Insights */}
-        <View
-          style={[
-            styles.marketInsights,
-            {
-              backgroundColor: theme.colors.primary.main + '08',
-              marginHorizontal: theme.spacing[4],
-              marginTop: theme.spacing[4],
-              marginBottom: theme.spacing[6],
-              padding: theme.spacing[4],
-              borderRadius: theme.borderRadius.xl,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.marketTitle,
-              {
-                color: theme.colors.textPrimary,
-                fontSize: theme.typography.fontSize.lg,
-                marginBottom: theme.spacing[3],
-              },
-            ]}
-          >
-            📊 Insights Piață
-          </Text>
-          <View style={styles.insightRow}>
-            <TrendingUp size={16} color={theme.colors.accent.main} />
-            <Text
-              style={[
-                styles.insightText,
-                {
-                  color: theme.colors.textSecondary,
-                  fontSize: theme.typography.fontSize.sm,
-                },
-              ]}
-            >
-              Cerere: <Text style={{ fontWeight: '600' }}>Ridicată</Text>
-            </Text>
-          </View>
-          <View style={styles.insightRow}>
-            <Text
-              style={[
-                styles.insightText,
-                {
-                  color: theme.colors.textSecondary,
-                  fontSize: theme.typography.fontSize.sm,
-                },
-              ]}
-            >
-              Timp mediu vânzare: <Text style={{ fontWeight: '600' }}>{marketInsights.avgDaysOnMarket} zile</Text>
-            </Text>
-          </View>
-          <View style={styles.insightRow}>
-            <Text
-              style={[
-                styles.insightText,
-                {
-                  color: theme.colors.textSecondary,
-                  fontSize: theme.typography.fontSize.sm,
-                },
-              ]}
-            >
-              Perioada optimă: <Text style={{ fontWeight: '600' }}>{marketInsights.bestTimeToList}</Text>
-            </Text>
-          </View>
-        </View>
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -587,6 +578,15 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
   },
   scrollContent: {
     paddingBottom: 32,
@@ -683,19 +683,6 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     flex: 1,
-    lineHeight: 20,
-  },
-  marketInsights: {},
-  marketTitle: {
-    fontWeight: '600',
-  },
-  insightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  insightText: {
     lineHeight: 20,
   },
 });

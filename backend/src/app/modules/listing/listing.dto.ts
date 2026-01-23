@@ -15,6 +15,14 @@ export class CreateListingDto {
   @IsString()
   description: string;
 
+  @IsString()
+  @IsOptional()
+  transactionType?: string;
+
+  @IsString()
+  @IsOptional()
+  propertyType?: string;
+
   @IsNumber()
   @Type(() => Number)
   price: number;
@@ -39,6 +47,31 @@ export class CreateListingDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  bedrooms?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  bathrooms?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  floor?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  totalFloors?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  yearBuilt?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
   surface?: number; // mp
 
   @IsArray()
@@ -46,9 +79,22 @@ export class CreateListingDto {
   @IsOptional()
   photos?: string[];
 
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  amenities?: string[];
+
   @IsBoolean()
   @IsOptional()
   isFurnished?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  hasCentralHeating?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  petFriendly?: boolean;
 }
 
 export class UpdateListingDto {
@@ -59,6 +105,14 @@ export class UpdateListingDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  transactionType?: string;
+
+  @IsString()
+  @IsOptional()
+  propertyType?: string;
 
   @IsNumber()
   @IsOptional()
@@ -85,6 +139,31 @@ export class UpdateListingDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  bedrooms?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  bathrooms?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  floor?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  totalFloors?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  yearBuilt?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
   surface?: number;
 
   @IsArray()
@@ -92,7 +171,20 @@ export class UpdateListingDto {
   @IsOptional()
   photos?: string[];
 
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  amenities?: string[];
+
   @IsBoolean()
   @IsOptional()
   isFurnished?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  hasCentralHeating?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  petFriendly?: boolean;
 }

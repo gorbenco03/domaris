@@ -46,7 +46,13 @@ export class ListingService {
       priceEur: input.price, // Map price -> priceEur
       surfaceSqm: input.surface, // Map surface -> surfaceSqm
       rooms: Number(input.rooms), // Ensure number
+      bedrooms: input.bedrooms !== undefined ? Number(input.bedrooms) : undefined,
+      bathrooms: input.bathrooms !== undefined ? Number(input.bathrooms) : undefined,
       floor: input.floor !== undefined ? Number(input.floor) : undefined,
+      totalFloors: input.totalFloors !== undefined ? Number(input.totalFloors) : undefined,
+      yearBuilt: input.yearBuilt !== undefined ? Number(input.yearBuilt) : undefined,
+      transactionType: input.transactionType,
+      propertyType: input.propertyType,
       status: 'public',    // Default to public for now so it's visible
       
       // Location mapping
@@ -69,15 +75,27 @@ export class ListingService {
     offset?: number;
     city?: string;
     neighborhood?: string;
+    transactionType?: string;
+    propertyType?: string;
     minPrice?: number;
     maxPrice?: number;
     minRooms?: number;
     maxRooms?: number;
+    minBedrooms?: number;
+    maxBedrooms?: number;
+    minBathrooms?: number;
+    maxBathrooms?: number;
+    minFloor?: number;
+    maxFloor?: number;
+    minYearBuilt?: number;
+    maxYearBuilt?: number;
     minSurface?: number;
     maxSurface?: number;
     isFurnished?: boolean;
     hasCentralHeating?: boolean;
     isAgency?: boolean;
+    petFriendly?: boolean;
+    amenities?: string[];
     sortBy?: 'price' | 'createdAt' | 'postedAt';
     sortOrder?: 'ASC' | 'DESC';
   }) {
@@ -86,15 +104,27 @@ export class ListingService {
       offset = 0,
       city,
       neighborhood,
+      transactionType,
+      propertyType,
       minPrice,
       maxPrice,
       minRooms,
       maxRooms,
+      minBedrooms,
+      maxBedrooms,
+      minBathrooms,
+      maxBathrooms,
+      minFloor,
+      maxFloor,
+      minYearBuilt,
+      maxYearBuilt,
       minSurface,
       maxSurface,
       isFurnished,
       hasCentralHeating,
       isAgency,
+      petFriendly,
+      amenities,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
     } = params;
@@ -104,6 +134,8 @@ export class ListingService {
 
     if (city) where.city = city;
     if (neighborhood) where.neighborhood = neighborhood;
+    if (transactionType) where.transactionType = transactionType;
+    if (propertyType) where.propertyType = propertyType;
 
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.priceEur = {};
@@ -117,6 +149,30 @@ export class ListingService {
       if (maxRooms !== undefined) where.rooms[Op.lte] = maxRooms;
     }
 
+    if (minBedrooms !== undefined || maxBedrooms !== undefined) {
+      where.bedrooms = {};
+      if (minBedrooms !== undefined) where.bedrooms[Op.gte] = minBedrooms;
+      if (maxBedrooms !== undefined) where.bedrooms[Op.lte] = maxBedrooms;
+    }
+
+    if (minBathrooms !== undefined || maxBathrooms !== undefined) {
+      where.bathrooms = {};
+      if (minBathrooms !== undefined) where.bathrooms[Op.gte] = minBathrooms;
+      if (maxBathrooms !== undefined) where.bathrooms[Op.lte] = maxBathrooms;
+    }
+
+    if (minFloor !== undefined || maxFloor !== undefined) {
+      where.floor = {};
+      if (minFloor !== undefined) where.floor[Op.gte] = minFloor;
+      if (maxFloor !== undefined) where.floor[Op.lte] = maxFloor;
+    }
+
+    if (minYearBuilt !== undefined || maxYearBuilt !== undefined) {
+      where.yearBuilt = {};
+      if (minYearBuilt !== undefined) where.yearBuilt[Op.gte] = minYearBuilt;
+      if (maxYearBuilt !== undefined) where.yearBuilt[Op.lte] = maxYearBuilt;
+    }
+
     if (minSurface !== undefined || maxSurface !== undefined) {
       where.surfaceSqm = {};
       if (minSurface !== undefined) where.surfaceSqm[Op.gte] = minSurface;
@@ -126,6 +182,10 @@ export class ListingService {
     if (isFurnished !== undefined) where.isFurnished = isFurnished;
     if (hasCentralHeating !== undefined) where.hasCentralHeating = hasCentralHeating;
     if (isAgency !== undefined) where.isAgency = isAgency;
+    if (petFriendly !== undefined) where.petFriendly = petFriendly;
+    if (amenities && amenities.length > 0) {
+      where.amenities = { [Op.contains]: amenities };
+    }
 
     // Map 'price' to 'priceEur' for sorting
     const sortColumnMap: Record<string, string> = {

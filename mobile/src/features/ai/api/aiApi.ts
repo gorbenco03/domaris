@@ -11,6 +11,7 @@ import type {
   IAIGenerateDescriptionRequest,
   IAIGenerateDescriptionResponse,
   IAIPropertyAnalysis,
+  IAIPropertySummary,
   IAIPriceEstimateRequest,
   IAIPriceEstimateResponse,
 } from '@/core/api/types';
@@ -95,8 +96,34 @@ export const generatePropertyDescription = async (
 export const analyzeProperty = async (
   propertyId: number
 ): Promise<IAIPropertyAnalysis> => {
-  const response = await apiClient.get<IAIPropertyAnalysis>(
-    API_ENDPOINTS.AI.ANALYZE_LISTING.replace(':propertyId', String(propertyId))
+  const response = await apiClient.post<IAIPropertyAnalysis>(
+    API_ENDPOINTS.AI.ANALYZE_LISTING,
+    { propertyId }
+  );
+  return response.data;
+};
+
+export const analyzeListingDraft = async (payload: {
+  title?: string;
+  description?: string;
+  priceEur?: number;
+  city?: string;
+  rooms?: number;
+  surfaceSqm?: number;
+  photosCount?: number;
+}): Promise<IAIPropertyAnalysis> => {
+  const response = await apiClient.post<IAIPropertyAnalysis>(
+    API_ENDPOINTS.AI.ANALYZE_LISTING,
+    payload
+  );
+  return response.data;
+};
+
+export const getPropertySummary = async (
+  propertyId: number
+): Promise<IAIPropertySummary> => {
+  const response = await apiClient.get<IAIPropertySummary>(
+    API_ENDPOINTS.AI.PROPERTY_SUMMARY(String(propertyId))
   );
   return response.data;
 };
@@ -137,6 +164,8 @@ export const aiApi = {
 
   // Property Analysis (Level 2+)
   analyzeProperty,
+  analyzeListingDraft,
+  getPropertySummary,
 
   // Price Estimation (PUBLIC)
   estimatePrice,

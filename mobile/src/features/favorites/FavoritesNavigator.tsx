@@ -10,6 +10,7 @@ import { FavoritesStackParamList } from '@/app/navigation/types';
 import FavoritesListScreen from './screens/FavoritesListScreen';
 import PropertyCompareScreen from './screens/PropertyCompareScreen';
 import { PropertyDetailScreen } from '@/features/search/screens';
+import { PropertyInsightsScreen } from '@/features/ai';
 
 const Stack = createNativeStackNavigator<FavoritesStackParamList>();
 
@@ -26,6 +27,7 @@ const FavoritesNavigator: React.FC = () => {
     >
       <Stack.Screen name="Favorites" component={FavoritesListScreen} />
       <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} />
+      <Stack.Screen name="PropertyInsights" component={PropertyInsightsScreen} />
       <Stack.Screen 
         name="Compare" 
         component={PropertyCompareScreen}

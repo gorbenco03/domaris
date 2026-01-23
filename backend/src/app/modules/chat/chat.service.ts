@@ -7,6 +7,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
 import { Conversation } from '../../db/entities/conversation.entity';
 import { Message } from '../../db/entities/message.entity';
@@ -14,6 +15,7 @@ import { Listing } from '../../db/entities/listing.entity';
 import { ListingImage } from '../../db/entities/listingImage.entity';
 import { User } from '../../db/entities/user.entity';
 import { Op } from 'sequelize';
+import Redis from 'ioredis';
 
 interface GetConversationsParams {
   type?: 'all' | 'unread' | 'archived';
@@ -28,20 +30,20 @@ interface GetMessagesParams {
 
 @Injectable()
 export class ChatService {
+  constructor(
+    @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
+  ) {}
   // ============================================================================
   // CONVERSATIONS
   // ============================================================================
 
   async getUserConversations(userId: number, params: GetConversationsParams = {}) {
-    const { page = 1, limit = 20 } = params;
+    const { page = 1, limit = 20, type = 'all' } = params;
     const offset = (page - 1) * limit;
 
     const where: any = {
       [Op.or]: [{ participant1Id: userId }, { participant2Id: userId }],
     };
-
-    // Note: archived/unread would need additional columns in Conversation entity
-    // For now, return all
 
     const { rows, count } = await Conversation.findAndCountAll({
       where,
@@ -60,13 +62,45 @@ export class ChatService {
       offset,
     });
 
+    const mapped = await Promise.all(
+      rows.map(async (conv) => {
+        const unreadCount = await Message.count({
+          where: {
+            conversationId: conv.id,
+            senderId: { [Op.ne]: userId },
+            readAt: null,
+          },
+        });
+
+        const archivedBy = Array.isArray((conv as any).archivedBy) ? (conv as any).archivedBy : [];
+        const isArchived = archivedBy.includes(userId);
+
+        return await this.formatConversation(conv, userId, {
+          unreadCount,
+          isArchived,
+        });
+      })
+    );
+
+    const filtered = mapped.filter((conv) => {
+      if (type === 'archived') {
+        return conv.status === 'ARCHIVED';
+      }
+      if (type === 'unread') {
+        return conv.unreadCount > 0 && conv.status !== 'ARCHIVED';
+      }
+      return conv.status !== 'ARCHIVED';
+    });
+
+    const totalFiltered = filtered.length;
+
     return {
-      data: rows.map((conv) => this.formatConversation(conv, userId)),
+      data: filtered,
       meta: {
         page,
         limit,
-        total: count,
-        hasMore: offset + rows.length < count,
+        total: totalFiltered,
+        hasMore: offset + filtered.length < totalFiltered,
       },
     };
   }
@@ -121,7 +155,23 @@ export class ChatService {
       throw new ForbiddenException('Acces interzis');
     }
 
-    return this.formatConversation(conversation, userId);
+    const unreadCount = await Message.count({
+      where: {
+        conversationId,
+        senderId: { [Op.ne]: userId },
+        readAt: null,
+      },
+    });
+
+    const archivedBy = Array.isArray((conversation as any).archivedBy)
+      ? (conversation as any).archivedBy
+      : [];
+    const isArchived = archivedBy.includes(userId);
+
+    return await this.formatConversation(conversation, userId, {
+      unreadCount,
+      isArchived,
+    });
   }
 
   async startConversation(userId: number, propertyId: number, initialMessage?: string) {
@@ -273,7 +323,14 @@ export class ChatService {
       throw new ForbiddenException('Acces interzis');
     }
 
-    // TODO: Implement archive functionality
+    const archivedBy = Array.isArray((conversation as any).archivedBy)
+      ? (conversation as any).archivedBy
+      : [];
+
+    if (!archivedBy.includes(userId)) {
+      await conversation.update({ archivedBy: [...archivedBy, userId] });
+    }
+
     return { success: true, message: 'Conversație arhivată' };
   }
 
@@ -287,21 +344,53 @@ export class ChatService {
       throw new ForbiddenException('Acces interzis');
     }
 
-    // TODO: Implement unarchive functionality
+    const archivedBy = Array.isArray((conversation as any).archivedBy)
+      ? (conversation as any).archivedBy
+      : [];
+    const updated = archivedBy.filter((id: number) => id !== userId);
+
+    await conversation.update({ archivedBy: updated });
+
     return { success: true, message: 'Conversație dezarhivată' };
+  }
+
+  // ============================================================================
+  // ONLINE STATUS
+  // ============================================================================
+
+  /**
+   * Check if a user is currently online (has active socket connections)
+   */
+  async isUserOnline(userId: number): Promise<boolean> {
+    try {
+      const socketsCount = await this.redisClient.scard(`user:${userId}:sockets`);
+      return socketsCount > 0;
+    } catch {
+      return false;
+    }
   }
 
   // ============================================================================
   // FORMATTERS
   // ============================================================================
 
-  private formatConversation(conversation: any, userId: number) {
+  private async formatConversation(
+    conversation: any,
+    userId: number,
+    options?: { unreadCount?: number; isArchived?: boolean }
+  ) {
     // Determină celălalt participant (nu userId)
     // Use loose comparison or strict with Number() casting to be safe
     const otherParticipant =
       Number(conversation.participant1Id) === Number(userId)
         ? conversation.participant2 
         : conversation.participant1;
+
+    const lastMessage = conversation.messages?.[0];
+    const lastMessageCreatedAt = lastMessage?.createdAt;
+
+    // Check if other participant is online
+    const isOnline = otherParticipant ? await this.isUserOnline(otherParticipant.id) : false;
 
     return {
       id: conversation.id,
@@ -321,15 +410,21 @@ export class ChatService {
             lastName: otherParticipant.lastName,
             avatar: otherParticipant.avatar,
             isVerified: (otherParticipant.verificationLevel || 0) >= 2,
+            isOnline,
           }
         : null,
-      lastMessage: conversation.messages?.[0]
+      lastMessage: lastMessage
         ? {
-            content: conversation.messages[0].content,
-            createdAt: conversation.messages[0].createdAt,
-            isFromMe: conversation.messages[0].senderId === userId,
+            content: lastMessage.content,
+            text: lastMessage.content,
+            type: lastMessage.type || 'TEXT',
+            createdAt: lastMessageCreatedAt,
+            sentAt: lastMessageCreatedAt,
+            isFromMe: lastMessage.senderId === userId,
           }
         : null,
+      unreadCount: options?.unreadCount ?? 0,
+      status: options?.isArchived ? 'ARCHIVED' : 'ACTIVE',
       updatedAt: conversation.updatedAt,
     };
   }
@@ -337,7 +432,10 @@ export class ChatService {
   private formatMessage(message: any, userId: number) {
     return {
       id: message.id,
+      conversationId: message.conversationId,
+      senderId: message.senderId,
       content: message.content,
+      text: message.content,
       type: message.type || 'TEXT',
       isFromMe: message.senderId === userId,
       sender: message.sender
@@ -349,6 +447,8 @@ export class ChatService {
           }
         : null,
       createdAt: message.createdAt,
+      sentAt: message.createdAt,
+      readAt: message.readAt || null,
     };
   }
 }

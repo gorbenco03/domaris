@@ -374,6 +374,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const queryToken = client.handshake.query?.token as string;
     if (queryToken) return queryToken;
 
+    // Din auth payload (socket.io client auth)
+    const authToken = (client.handshake.auth as any)?.token;
+    if (authToken) return authToken;
+
     // Din header Authorization: Bearer xxx
     const authHeader = client.handshake.headers?.authorization;
     if (authHeader?.startsWith('Bearer ')) {
@@ -424,7 +428,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /**
-   * Notifică destinatarul offline despre mesaj nou
+   * Notifică destinatarul despre mesaj nou
    */
   private async notifyOfflineRecipient(
     senderId: number,
@@ -446,11 +450,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       preview: message.content?.substring(0, 100),
     });
 
-    // Verifică dacă destinatarul e conectat la WebSocket
-    const isOnline = await this.isUserOnline(recipientId);
-    
-    // Dacă nu e online, trimite push notification
-    if (!isOnline) {
+    // Verifică dacă destinatarul e în conversația respectivă (vede mesajele în timp real)
+    const conversationSockets = this.conversationSockets.get(conversationId);
+    const recipientSocketIds = await this.redisClient.smembers(`user:${recipientId}:sockets`);
+    const isInConversation = recipientSocketIds.some(socketId => conversationSockets?.has(socketId));
+
+    // Dacă destinatarul NU e în conversația respectivă, creăm notificare în baza de date
+    if (!isInConversation) {
       const sender = await User.findByPk(senderId, {
         attributes: ['firstName', 'lastName'],
       });
@@ -459,6 +465,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         ? `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || 'Utilizator'
         : 'Utilizator';
 
+      // Verifică dacă destinatarul e conectat la WebSocket
+      const isOnline = await this.isUserOnline(recipientId);
+
+      // notifyNewMessage salvează în DB și trimite push doar dacă user e offline
       await this.pushService.notifyNewMessage(
         recipientId,
         senderName,

@@ -61,7 +61,17 @@ export const getMessages = async (
       params: { before, limit },
     }
   );
-  return response.data.data;
+  const payload = response.data;
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (Array.isArray(payload?.data)) {
+    return payload.data;
+  }
+  if (Array.isArray(payload?.messages)) {
+    return payload.messages;
+  }
+  return [];
 };
 
 /**

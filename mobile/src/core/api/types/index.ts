@@ -15,6 +15,7 @@ export type {
   IAIGenerateDescriptionRequest,
   IAIGenerateDescriptionResponse,
   IAIPropertyAnalysis,
+  IAIPropertySummary,
   IAIRecommendation,
   IAIPriceEstimateRequest,
   IAIPriceEstimateResponse,

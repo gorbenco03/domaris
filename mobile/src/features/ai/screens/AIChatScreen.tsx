@@ -28,6 +28,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Button } from '@/shared/components';
+import { aiApi } from '../api/aiApi';
 
 interface Message {
   id: string;
@@ -44,6 +45,7 @@ interface PropertySuggestion {
   price: string;
   area: string;
   matchScore: number;
+  raw?: any;
 }
 
 const AIChatScreen: React.FC = () => {
@@ -84,36 +86,61 @@ const AIChatScreen: React.FC = () => {
     setInputText('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const history = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+      const response = await aiApi.chatWithAI({
+        message: userMessage.content,
+        conversationHistory: history,
+        context: {
+          tone: 'friendly',
+          language: 'ro',
+          maxResults: 5,
+        },
+      });
+
+      const mappedProperties: PropertySuggestion[] =
+        (response.properties || []).map((property: any, index: number) => ({
+          id: String(property.id),
+          title: property.title || 'Proprietate',
+          location: [property.neighborhood, property.city].filter(Boolean).join(', '),
+          price: property.priceEur
+            ? `${Number(property.priceEur).toLocaleString('ro-RO')} €`
+            : property.price
+              ? `${Number(property.price).toLocaleString('ro-RO')} €`
+              : '-',
+          area: property.surfaceSqm
+            ? `${property.surfaceSqm} mp`
+            : property.surface
+              ? `${property.surface} mp`
+              : property.area
+                ? `${property.area} mp`
+                : '-',
+          matchScore: 92 - index * 3,
+          raw: property,
+        })) || [];
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content:
-          'Am înțeles perfect!\n\nAm găsit 8 apartamente potrivite pentru criteriile tale.',
+        content: response.response || 'Am procesat cererea ta.',
         timestamp: new Date(),
-        properties: [
-          {
-            id: '1',
-            title: 'Apartament 3 camere',
-            location: 'Drumul Taberei',
-            price: '85.000€',
-            area: '68mp',
-            matchScore: 95,
-          },
-          {
-            id: '2',
-            title: 'Apartament 2 camere',
-            location: 'Titan',
-            price: '78.000€',
-            area: '55mp',
-            matchScore: 92,
-          },
-        ],
+        properties: mappedProperties,
       };
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Îmi pare rău, nu am putut procesa cererea acum. Încearcă din nou.',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleQuickSuggestion = (suggestion: string) => {
@@ -298,7 +325,7 @@ const AIChatScreen: React.FC = () => {
                                 },
                               ]}
                             >
-                              {property.location} • {property.area}
+                              {property.location || 'Locație'} • {property.area}
                             </Text>
                             <View
                               style={[
@@ -320,7 +347,12 @@ const AIChatScreen: React.FC = () => {
                               <View style={styles.propertyActions}>
                                 <Button
                                   title="Vezi"
-                                  onPress={() => {}}
+                                  onPress={() =>
+                                    // @ts-ignore - route exists in discovery stack
+                                    navigation.navigate('PropertyDetail', {
+                                      propertyId: property.id,
+                                    })
+                                  }
                                   variant="secondary"
                                   size="sm"
                                 />

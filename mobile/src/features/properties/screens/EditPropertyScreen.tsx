@@ -66,7 +66,7 @@ const EditPropertyScreen: React.FC = () => {
   const route = useRoute<EditPropertyRouteProp>();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const { propertyId } = route.params;
+  const { propertyId, property: routeProperty } = route.params;
 
   // API Hooks
   const { data: property, isLoading: isQueryLoading } = usePropertyDetail(propertyId);
@@ -81,57 +81,58 @@ const EditPropertyScreen: React.FC = () => {
 
   // Populate form data when property is loaded
   useEffect(() => {
-    if (property && !formData) {
+    const sourceProperty = routeProperty || property;
+    if (sourceProperty && !formData) {
       setFormData({
-        transactionType: property.transactionType as any,
-        propertyType: property.propertyType || 'APARTMENT', 
+        transactionType: sourceProperty.transactionType as any,
+        propertyType: sourceProperty.propertyType || 'APARTMENT', 
         location: {
           country: 'România', // Default
-          county: property.city, // Assuming city acts as main location for now
-          city: property.city,
-          neighborhood: property.neighborhood,
-          street: property.address?.street,
-          streetNumber: property.address?.number,
-          building: property.address?.building,
-          floor: property.floor,
-          apartment: property.address?.apartment,
-          coordinates: property.coordinates,
+          county: sourceProperty.city, // Assuming city acts as main location for now
+          city: sourceProperty.city,
+          neighborhood: sourceProperty.neighborhood,
+          street: sourceProperty.address?.street || sourceProperty.addressText,
+          streetNumber: sourceProperty.address?.number,
+          building: sourceProperty.address?.building,
+          floor: sourceProperty.floor,
+          apartment: sourceProperty.address?.apartment,
+          coordinates: sourceProperty.coordinates,
         },
         characteristics: {
-          totalArea: property.surface,
-          usableArea: property.surface, // fallback
-          rooms: property.rooms,
-          bedrooms: property.bedrooms,
-          bathrooms: property.bathrooms,
-          balconies: property.balconies,
-          yearBuilt: property.yearBuilt,
-          floor: property.floor,
-          totalFloors: property.totalFloors,
+          totalArea: sourceProperty.surfaceSqm ?? sourceProperty.surface,
+          usableArea: sourceProperty.surfaceSqm ?? sourceProperty.surface, // fallback
+          rooms: sourceProperty.rooms,
+          bedrooms: sourceProperty.bedrooms,
+          bathrooms: sourceProperty.bathrooms,
+          balconies: sourceProperty.balconies,
+          yearBuilt: sourceProperty.yearBuilt,
+          floor: sourceProperty.floor,
+          totalFloors: sourceProperty.totalFloors,
           orientation: [], // Not always in listing
-          amenities: property.amenities || [],
+          amenities: sourceProperty.amenities || [],
           utilities: [], // Not always in listing
           comfort: '',
           parking: {
-            type: property.parkingType || 'none',
-            spots: property.parkingSpots,
+            type: sourceProperty.parkingType || 'none',
+            spots: sourceProperty.parkingSpots,
           },
         },
-        photos: (property.photos || []).map((p: any) => ({
+        photos: ((sourceProperty.photos || sourceProperty.images) || []).map((p: any) => ({
           id: String(p.id),
           uri: p.url,
           isPrimary: p.isPrimary,
           caption: p.caption
         })),
         pricing: {
-          price: property.price,
-          currency: property.currency as any,
-          negotiable: property.isNegotiable,
+          price: sourceProperty.priceEur ?? sourceProperty.price,
+          currency: sourceProperty.currency as any,
+          negotiable: sourceProperty.isNegotiable,
         },
-        title: property.title,
-        description: property.description,
+        title: sourceProperty.title,
+        description: sourceProperty.description,
       });
     }
-  }, [property]);
+  }, [property, routeProperty, formData]);
 
   const handleBack = () => {
     if (currentStep > 1) {

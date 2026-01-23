@@ -3,7 +3,7 @@
  * Comprehensive property information view
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   SafeAreaView,
   Dimensions,
   Share,
+  Alert,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -58,6 +59,7 @@ import {
   Divider 
 } from '@/shared/components';
 import { usePropertyDetail } from '@/features/properties/hooks/useProperties';
+import { messagingApi } from '@/features/messaging/api/messagingApi';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { ActivityIndicator, Linking } from 'react-native';
 import { useNavigation, useRoute, CompositeNavigationProp } from '@react-navigation/native';
@@ -65,6 +67,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SearchStackParamList, MainTabParamList, ProfileStackParamList } from '@/app/navigation/types';
+import { useFavoriteStatus, useToggleFavorite } from '@/features/favorites/hooks/useFavorites';
 
 // Combined navigation type for cross-tab navigation
 type PropertyDetailNavigationProp = CompositeNavigationProp<
@@ -117,9 +120,21 @@ const PropertyDetailScreen: React.FC = () => {
   const { propertyId } = route.params;
   const { user } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isStartingChat, setIsStartingChat] = useState(false);
+  const propertyIdNumber = Number(propertyId);
 
   // Real data fetching
   const { data: property, isLoading, error } = usePropertyDetail(propertyId);
+  const { data: favoriteStatus } = useFavoriteStatus(
+    Number.isFinite(propertyIdNumber) ? propertyIdNumber : undefined
+  );
+  const toggleFavoriteMutation = useToggleFavorite();
+
+  useEffect(() => {
+    if (favoriteStatus) {
+      setIsFavorite(favoriteStatus.isFavorite);
+    }
+  }, [favoriteStatus]);
 
   const handleShare = async () => {
     if (!property) return;
@@ -129,6 +144,21 @@ const PropertyDetailScreen: React.FC = () => {
       });
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!Number.isFinite(propertyIdNumber) || toggleFavoriteMutation.isPending) return;
+    const currentValue = isFavorite;
+    setIsFavorite(!currentValue);
+    try {
+      await toggleFavoriteMutation.mutateAsync({
+        propertyId: propertyIdNumber,
+        currentlyFavorite: currentValue,
+      });
+    } catch (error) {
+      setIsFavorite(currentValue);
+      console.warn('Failed to toggle favorite', error);
     }
   };
 
@@ -206,7 +236,7 @@ const PropertyDetailScreen: React.FC = () => {
               />
               <IconButton
                 icon={<Heart size={22} color={isFavorite ? '#ef4444' : '#ffffff'} fill={isFavorite ? '#ef4444' : 'transparent'} />}
-                onPress={() => setIsFavorite(!isFavorite)}
+                onPress={handleToggleFavorite}
                 variant="ghost"
                 style={{ ...styles.headerIconButton, backgroundColor: 'rgba(0,0,0,0.3)' }}
               />
@@ -254,6 +284,11 @@ const PropertyDetailScreen: React.FC = () => {
           <TouchableOpacity 
             style={[styles.aiBanner, { backgroundColor: `${theme.colors.primary.main}10` }]}
             activeOpacity={0.9}
+            onPress={() => {
+              if (!property?.id) return;
+              // @ts-ignore - property insights in search/favorites stack
+              navigation.navigate('PropertyInsights', { propertyId: String(property.id) });
+            }}
           >
             <LinearGradient
               colors={[theme.colors.primary.main, theme.colors.primary.dark]}
@@ -341,15 +376,35 @@ const PropertyDetailScreen: React.FC = () => {
           <IconButton
             icon={<MessageCircle size={24} color={theme.colors.primary.main} />}
             onPress={() => {
-              // @ts-ignore - Temporary until we fix navigation types across stacks
-              navigation.navigate('MessagesTab', {
-                screen: 'Chat',
-                params: { 
-                  conversationId: 'new',
-                  propertyId: String(property.id),
-                  recipientName: `${owner?.firstName} ${owner?.lastName}`
-                }
-              });
+              if (isStartingChat || !property) return;
+              setIsStartingChat(true);
+              messagingApi
+                .startConversation({ propertyId: Number(property.id) })
+                .then((conversation) => {
+                  // @ts-ignore - Temporary until we fix navigation types across stacks
+                  navigation.navigate('MessagesTab', {
+                    screen: 'Chat',
+                    params: {
+                      conversationId: String(conversation.id),
+                      propertyId: String(property.id),
+                      recipientName: `${owner?.firstName || ''} ${owner?.lastName || ''}`.trim(),
+                    },
+                  });
+                })
+                .catch((error) => {
+                  const status = error?.response?.status;
+                  if (status === 403) {
+                    Alert.alert(
+                      'Verificare necesară',
+                      'Trebuie să confirmi emailul sau telefonul înainte să trimiți mesaje.'
+                    );
+                    return;
+                  }
+                  console.warn('Failed to start conversation', error);
+                })
+                .finally(() => {
+                  setIsStartingChat(false);
+                });
             }}
             variant="ghost"
             style={{ width: 56, height: 56, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.divider }}
