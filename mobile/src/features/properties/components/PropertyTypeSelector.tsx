@@ -9,7 +9,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Animated,
 } from 'react-native';
 import {
@@ -191,6 +190,7 @@ const TypeCard: React.FC<TypeCardProps> = ({ option, selected, onPress }) => {
               color: selected ? '#ffffff' : theme.colors.textPrimary,
             },
           ]}
+          numberOfLines={2}
         >
           {option.label}
         </Text>
@@ -241,23 +241,32 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 12,
   },
   typeCard: {
-    width: 100,
-    height: 90,
-    justifyContent: 'center',
+    flexBasis: '30%',
+    maxWidth: '30%',
+    minHeight: 120,
+    justifyContent: 'flex-start',
     alignItems: 'center',
     borderWidth: 1.5,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   iconContainer: {
-    marginBottom: 8,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    marginTop: 6,
   },
   typeLabel: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
     textAlign: 'center',
+    lineHeight: 16,
   },
 });
 

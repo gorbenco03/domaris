@@ -18,8 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { useAuth } from '@/app/providers/AuthProvider';
-import { Button, SocialButton, Divider } from '@/shared/components';
+import { Button } from '@/shared/components';
 import { Home } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -29,24 +28,6 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 const WelcomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
-  const { login } = useAuth();
-
-  const handleGoogleLogin = async () => {
-    try {
-      await login('google-user@example.com', 'social');
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    try {
-      await login('apple-user@example.com', 'social');
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -89,23 +70,6 @@ const WelcomeScreen: React.FC = () => {
 
         {/* Auth Buttons */}
         <View style={styles.authContainer}>
-          {/* Social Login First - Easiest path */}
-          <View style={styles.socialButtons}>
-            <SocialButton
-              provider="google"
-              onPress={handleGoogleLogin}
-              style={styles.socialButton}
-            />
-            <SocialButton
-              provider="apple"
-              onPress={handleAppleLogin}
-              style={styles.socialButton}
-            />
-          </View>
-
-          {/* Divider */}
-          <Divider text="sau" style={styles.divider} />
-
           {/* Email CTAs */}
           <Button
             title="Creează cont gratuit"
@@ -215,16 +179,6 @@ const styles = StyleSheet.create({
   },
   authContainer: {
     marginBottom: 16,
-  },
-  socialButtons: {
-    gap: 12,
-    marginBottom: 8,
-  },
-  socialButton: {
-    marginBottom: 0,
-  },
-  divider: {
-    marginVertical: 20,
   },
   primaryButton: {
     shadowColor: '#10b981',

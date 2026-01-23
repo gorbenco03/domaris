@@ -3,7 +3,7 @@
  * Phone/Email verification with OTP code
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,7 +33,7 @@ const OTPVerificationScreen: React.FC = () => {
   const { theme } = useTheme();
   const { verifyPhoneOtp, verifyEmailOtp } = useAuth();
 
-  const { email = '', phone = '', type, purpose } = route.params;
+  const { email = '', phone = '', type, purpose, registerData } = route.params;
   const destination = type === 'email' ? email : phone;
 
   const [otp, setOtp] = useState('');
@@ -42,6 +42,7 @@ const OTPVerificationScreen: React.FC = () => {
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(3);
   const [verified, setVerified] = useState(false);
+  const lastSubmittedCode = useRef<string | null>(null);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -58,6 +59,9 @@ const OTPVerificationScreen: React.FC = () => {
 
   const handleVerify = useCallback(async (code: string) => {
     if (code.length !== 6) return;
+    if (isVerifying || verified) return;
+    if (lastSubmittedCode.current === code) return;
+    lastSubmittedCode.current = code;
     setIsVerifying(true);
     setError('');
 
@@ -75,7 +79,6 @@ const OTPVerificationScreen: React.FC = () => {
 
       setVerified(true);
       console.log('OTP verified successfully');
-      // No need to navigate manually, RootNavigator will switch to MainNavigator
     } catch (error: any) {
       console.error('OTP verification error:', error);
       const apiError = error?.response?.data;
@@ -93,7 +96,7 @@ const OTPVerificationScreen: React.FC = () => {
     } finally {
       setIsVerifying(false);
     }
-  }, [destination, verifyPhoneOtp, attempts]);
+  }, [destination, verifyEmailOtp, verifyPhoneOtp, attempts, navigation, purpose, type, isVerifying, verified]);
 
   const handleResend = async () => {
     setError('');
@@ -102,15 +105,34 @@ const OTPVerificationScreen: React.FC = () => {
     try {
       if (type === 'phone') {
         if (purpose === 'register') {
-          // Note: for resend during register, we lose firstName/lastName if we don't pass them back.
-          // But usually we don't need them for resending the OTP code itself if it's already in pending register.
-          await authApi.registerWithPhone({ phone: destination });
-        } else if (purpose === 'login') {
-          await authApi.loginWithPhone({ phone: destination });
+          if (!registerData?.password) {
+            setError('Reintrodu parola în pasul anterior pentru a retrimite codul.');
+            setIsVerifying(false);
+            return;
+          }
+          await authApi.registerWithPhone({
+            phone: destination,
+            password: registerData?.password || '',
+            firstName: registerData?.firstName,
+            lastName: registerData?.lastName,
+          });
         }
-      } else {
-        // Handle email resend
-        await authApi.sendEmailVerification(destination);
+      } else if (type === 'email') {
+        if (purpose === 'register') {
+          if (!registerData?.password) {
+            setError('Reintrodu parola în pasul anterior pentru a retrimite codul.');
+            setIsVerifying(false);
+            return;
+          }
+          await authApi.registerWithEmail({
+            email: destination,
+            password: registerData?.password || '',
+            firstName: registerData?.firstName,
+            lastName: registerData?.lastName,
+          });
+        } else if (purpose === 'reset-password') {
+          await authApi.forgotPassword({ email: destination });
+        }
       }
       
       setOtp('');
@@ -168,7 +190,15 @@ const OTPVerificationScreen: React.FC = () => {
           )}
 
           <View style={styles.spacer} />
-          {!verified && <Button title="Verifică" onPress={() => handleVerify(otp)} loading={isVerifying} disabled={otp.length !== 6 || attempts === 0} fullWidth />}
+          {!verified && (
+            <Button
+              title="Verifică"
+              onPress={() => handleVerify(otp)}
+              loading={isVerifying}
+              disabled={otp.length !== 6 || attempts === 0 || isVerifying}
+              fullWidth
+            />
+          )}
           {!verified && <Text style={[styles.helpText, { color: theme.colors.textTertiary }]}>Nu ai primit codul? Verifică spam</Text>}
         </View>
       </KeyboardAvoidingView>

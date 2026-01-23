@@ -48,6 +48,9 @@ class TokenManager {
    */
   async setTokens(accessToken: string, refreshToken: string): Promise<void> {
     try {
+      if (typeof accessToken !== 'string' || typeof refreshToken !== 'string') {
+        throw new Error('Invalid token values');
+      }
       await Promise.all([
         SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, accessToken),
         SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, refreshToken),
@@ -133,7 +136,8 @@ class TokenManager {
       }
 
       const data = await response.json();
-      await this.setTokens(data.accessToken, data.refreshToken);
+      const nextRefreshToken = data.refreshToken || refreshToken;
+      await this.setTokens(data.accessToken, nextRefreshToken);
 
       return true;
     } catch (error) {

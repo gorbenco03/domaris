@@ -248,11 +248,13 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
               </Text>
             </View>
           )}
-          {formData.characteristics?.floor && (
+          {(formData.characteristics?.floor !== undefined && formData.characteristics?.floor !== null) && (
             <View style={styles.characteristicItem}>
               <Layers size={20} color={theme.colors.textSecondary} />
               <Text style={[styles.characteristicValue, { color: theme.colors.textPrimary }]}>
-                {formData.characteristics.floor}/{formData.characteristics.totalFloors}
+                {formData.characteristics.totalFloors
+                  ? `${formData.characteristics.floor}/${formData.characteristics.totalFloors}`
+                  : `${formData.characteristics.floor}`}
               </Text>
               <Text style={[styles.characteristicLabel, { color: theme.colors.textTertiary }]}>
                 Etaj

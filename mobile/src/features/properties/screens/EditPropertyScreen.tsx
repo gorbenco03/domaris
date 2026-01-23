@@ -194,7 +194,7 @@ const EditPropertyScreen: React.FC = () => {
         transactionType: formData.transactionType || 'SALE',
         propertyType: formData.propertyType || 'APARTMENT',
         // Optional params
-        floor: formData.location?.floor,
+        floor: formData.characteristics?.floor,
         totalFloors: formData.characteristics?.totalFloors,
         yearBuilt: formData.characteristics?.yearBuilt,
         amenities: formData.characteristics?.amenities,

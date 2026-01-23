@@ -87,12 +87,12 @@ export const loginWithEmail = async (
 };
 
 /**
- * Login with phone (sends OTP)
+ * Login with phone and password
  */
 export const loginWithPhone = async (
   data: ILoginPhoneRequest
-): Promise<IOtpSentResponse> => {
-  const response = await apiClient.post<IOtpSentResponse>(
+): Promise<IAuthResponseData> => {
+  const response = await apiClient.post<IAuthResponseData>(
     `${API_ENDPOINTS.AUTH.LOGIN}/phone`,
     data
   );
@@ -100,7 +100,7 @@ export const loginWithPhone = async (
 };
 
 /**
- * Verify phone OTP (completes login/register)
+ * Verify phone OTP (completes registration)
  */
 export const verifyPhoneOtp = async (
   data: IVerifyPhoneOtpRequest

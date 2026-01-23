@@ -76,8 +76,9 @@ export class AuthService {
 
     // Salvăm datele în Redis pentru a le recupera la pasul de verificare
     const pendingKey = `pending_register:email:${data.email}`;
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    
+
     await this.redisClient.setex(
       pendingKey,
       OTP_EXPIRY_SECONDS,
@@ -199,11 +200,14 @@ export class AuthService {
 
     // Store pending registration data
     const pendingKey = `pending_register:phone:${data.phone}`;
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
     await this.redisClient.setex(
       pendingKey,
       OTP_EXPIRY_SECONDS,
       JSON.stringify({
         phone: data.phone,
+        password: hashedPassword,
         firstName: data.firstName,
         lastName: data.lastName,
       }),
@@ -234,16 +238,25 @@ export class AuthService {
       });
     }
 
-    const code = await this.generateAndStoreOtp(`login:phone:${data.phone}`);
-    await this.smsService.sendOtpCode(data.phone, code);
+    if (!user.password) {
+      throw new BadRequestException({
+        code: 'PASSWORD_NOT_SET',
+        message: 'Setează o parolă înainte de autentificare cu telefon',
+      });
+    }
 
-    const isDev = process.env.NODE_ENV !== 'production';
-    return {
-      success: true,
-      message: 'Cod de autentificare trimis',
-      expiresIn: OTP_EXPIRY_SECONDS,
-      ...(isDev && { code }),
-    };
+    const isValid = await bcrypt.compare(data.password, user.password);
+    if (!isValid) {
+      throw new UnauthorizedException({
+        code: 'INVALID_CREDENTIALS',
+        message: 'Credențiale invalide',
+      });
+    }
+
+    user.lastActiveAt = new Date();
+    await user.save();
+
+    return this.createAuthResponse(user);
   }
 
 
@@ -251,66 +264,41 @@ export class AuthService {
    * Verificare OTP telefon (finalizare login/register)
    */
   async verifyPhoneOtp(data: VerifyPhoneOtpDto) {
-    // Încercăm ambele prefixe (login sau register) pentru a fi siguri
     const isRegister = await this.verifyOtp(`register:phone:${data.phone}`, data.code);
-    const isLogin = !isRegister && await this.verifyOtp(`login:phone:${data.phone}`, data.code);
-
-    if (!isRegister && !isLogin) {
+    if (!isRegister) {
       throw new BadRequestException({
         code: 'OTP_INVALID',
         message: 'Cod invalid sau expirat',
       });
     }
+    const pendingKey = `pending_register:phone:${data.phone}`;
+    const pendingData = await this.redisClient.get(pendingKey);
 
-    let user: User;
-
-    if (isRegister) {
-      // Flow de înregistrare
-      const pendingKey = `pending_register:phone:${data.phone}`;
-      const pendingData = await this.redisClient.get(pendingKey);
-
-      if (!pendingData) {
-        throw new BadRequestException('Sesiunea de înregistrare a expirat');
-      }
-
-      const { firstName, lastName } = JSON.parse(pendingData);
-
-      // Verificăm dacă nu cumva s-a creat între timp
-      const existing = await User.findOne({ where: { phone: data.phone } });
-      if (existing) {
-        user = existing;
-      } else {
-        user = await User.create({
-          phone: data.phone,
-          firstName,
-          lastName,
-          verificationLevel: 1,
-          phoneVerified: true,
-          emailVerified: false,
-          isAdmin: false,
-        });
-      }
-      
-      await this.redisClient.del(pendingKey);
-    } else {
-      // Flow de Login
-      const existingUser = await User.findOne({ where: { phone: data.phone } });
-      if (!existingUser) {
-        throw new NotFoundException('Utilizator negăsit');
-      }
-
-      if (!existingUser.phoneVerified) {
-        existingUser.phoneVerified = true;
-        if (existingUser.verificationLevel < 1) {
-          existingUser.verificationLevel = 1;
-        }
-        await existingUser.save();
-      }
-      user = existingUser;
+    if (!pendingData) {
+      throw new BadRequestException('Sesiunea de înregistrare a expirat');
     }
 
-    user.lastActiveAt = new Date();
-    await user.save();
+    const { password, firstName, lastName } = JSON.parse(pendingData);
+
+    const existing = await User.findOne({ where: { phone: data.phone } });
+    if (existing) {
+      await this.redisClient.del(pendingKey);
+      throw new BadRequestException('Contul a fost deja creat');
+    }
+
+    const user = await User.create({
+      phone: data.phone,
+      password,
+      firstName,
+      lastName,
+      verificationLevel: 1,
+      phoneVerified: true,
+      emailVerified: false,
+      isAdmin: false,
+    });
+
+    await this.redisClient.del(pendingKey);
+    await this.redisClient.del(`otp:register:phone:${data.phone}`);
 
     return this.createAuthResponse(user);
   }
@@ -489,6 +477,7 @@ export class AuthService {
 
     return { success: true, message: 'Parola a fost resetată cu succes' };
   }
+
 
   /**
    * Schimbare parolă (utilizator autentificat)
@@ -774,6 +763,7 @@ export class AuthService {
       user: sessionData,
     };
   }
+
 
   /**
    * Send OTP to phone

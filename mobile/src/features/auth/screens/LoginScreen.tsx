@@ -22,8 +22,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
-import { Button, Input, SocialButton, Divider } from '@/shared/components';
-import { ArrowLeft, Mail, Lock, Home } from 'lucide-react-native';
+import { Button, Input } from '@/shared/components';
+import { ArrowLeft, Mail, Lock, Home, Phone } from 'lucide-react-native';
 
 const { height } = Dimensions.get('window');
 
@@ -32,7 +32,7 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
-  const { login } = useAuth();
+  const { login, loginWithPhone } = useAuth();
   
   /* State */
   const [method, setMethod] = useState<'email' | 'phone'>('email');
@@ -60,6 +60,9 @@ const LoginScreen: React.FC = () => {
       } else if (!/^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ''))) {
         newErrors.phone = 'Format telefon invalid';
       }
+      if (!password) {
+        newErrors.password = 'Parola este obligatorie';
+      }
     }
 
     setErrors(newErrors);
@@ -75,48 +78,20 @@ const LoginScreen: React.FC = () => {
       if (method === 'email') {
         await login(email, password);
       } else {
-        // Phone Login - Step 1: Send OTP
-        const response = await import('@/features/auth/api').then(m => m.authApi.loginWithPhone({ phone }));
-        console.log('Login OTP sent:', response);
-        
-        // Navigate to OTP Verification
-        navigation.navigate('OTPVerification', {
-          phone,
-          type: 'phone',
-          purpose: 'login'
-        });
+        await loginWithPhone(phone, password);
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      const msg = error?.response?.data?.message || 'Eroare la autentificare';
-      
+      const isInvalidAuthResponse = error?.message === 'AUTH_RESPONSE_INVALID';
+      const msg = isInvalidAuthResponse
+        ? 'Serverul a trimis un răspuns OTP. Verifică dacă backend-ul este actualizat.'
+        : (error?.response?.data?.message || 'Eroare la autentificare');
+
       if (method === 'email') {
-        setErrors({ password: 'Email sau parolă incorectă' });
+        setErrors({ password: isInvalidAuthResponse ? msg : 'Email sau parolă incorectă' });
       } else {
         setErrors({ phone: msg });
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    try {
-      await login('google-user@example.com', 'social');
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    setIsLoading(true);
-    try {
-      await login('apple-user@example.com', 'social');
-    } catch (error) {
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -162,15 +137,6 @@ const LoginScreen: React.FC = () => {
 
           {/* Login Card */}
           <View style={[styles.card, { backgroundColor: theme.colors.surface, ...theme.shadows.xl }]}>
-            {/* Social Login - First */}
-            {/* Social Login - First */}
-            <View style={styles.socialSection}>
-              <SocialButton provider="google" onPress={handleGoogleLogin} style={styles.socialBtn} />
-              <SocialButton provider="apple" onPress={handleAppleLogin} style={styles.socialBtn} />
-            </View>
-
-            <Divider text="sau cu" style={styles.divider} />
-
             {/* Method Tabs */}
             <View style={styles.tabsContainer}>
               <TouchableOpacity
@@ -185,10 +151,7 @@ const LoginScreen: React.FC = () => {
                 style={[styles.tab, method === 'phone' && styles.activeTab, { borderColor: method === 'phone' ? theme.colors.primary.main : theme.colors.border }]}
                 onPress={() => setMethod('phone')}
               >
-                <View style={{ transform: [{ rotate: '0deg' }] }}>
-                  {/* Using a generic icon or Phone icon if imported */}
-                   <Text>📱</Text> 
-                </View>
+                <Phone size={18} color={method === 'phone' ? theme.colors.primary.main : theme.colors.textSecondary} />
                 <Text style={[styles.tabText, { color: method === 'phone' ? theme.colors.primary.main : theme.colors.textSecondary }]}>Telefon</Text>
               </TouchableOpacity>
             </View>
@@ -230,22 +193,41 @@ const LoginScreen: React.FC = () => {
                   </TouchableOpacity>
                 </>
               ) : (
-                <Input
-                  placeholder="Număr de telefon"
-                  value={phone}
-                  onChangeText={(t) => { setPhone(t); if (errors.phone) setErrors({ ...errors, phone: undefined }); }}
-                  keyboardType="phone-pad"
-                  autoComplete="tel"
-                  // Using Mail icon temporarily or import Phone
-                  leftIcon={<Text>📱</Text>}
-                  error={errors.phone}
-                  containerStyle={styles.input}
-                />
+                <>
+                  <Input
+                    placeholder="Număr de telefon"
+                    value={phone}
+                    onChangeText={(t) => { setPhone(t); if (errors.phone) setErrors({ ...errors, phone: undefined }); }}
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
+                    leftIcon={<Phone size={20} color={theme.colors.textTertiary} />}
+                    error={errors.phone}
+                    containerStyle={styles.input}
+                  />
+                  <Input
+                    placeholder="Parolă"
+                    value={password}
+                    onChangeText={(t) => { setPassword(t); if (errors.password) setErrors({ ...errors, password: undefined }); }}
+                    secureTextEntry
+                    autoComplete="password"
+                    leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
+                    error={errors.password}
+                    containerStyle={styles.input}
+                  />
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('ForgotPassword')} 
+                    style={styles.forgotBtn}
+                  >
+                    <Text style={[styles.forgotText, { color: theme.colors.accent.main }]}>
+                      Am uitat parola
+                    </Text>
+                  </TouchableOpacity>
+                </>
               )}
 
               {/* Login Button */}
               <Button
-                title={method === 'email' ? "Autentificare" : "Trimite cod OTP"}
+                title="Autentificare"
                 onPress={handleLogin}
                 loading={isLoading}
                 fullWidth
@@ -352,15 +334,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     marginBottom: 24,
-  },
-  socialSection: {
-    gap: 12,
-  },
-  socialBtn: {
-    marginBottom: 0,
-  },
-  divider: {
-    marginVertical: 20,
   },
   tabsContainer: {
     flexDirection: 'row',

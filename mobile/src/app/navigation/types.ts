@@ -22,7 +22,12 @@ export type AuthStackParamList = {
     email?: string;
     phone?: string;
     type: 'email' | 'phone';
-    purpose: 'register' | 'login' | 'reset-password' | 'verify';
+    purpose: 'register' | 'reset-password' | 'verify';
+    registerData?: {
+      firstName?: string;
+      lastName?: string;
+      password?: string;
+    };
   };
   UserTypeSelection: undefined;
 };

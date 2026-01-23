@@ -19,6 +19,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithPhone: (phone: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<any>;
   verifyEmailOtp: (email: string, code: string) => Promise<void>;
   verifyPhoneOtp: (phone: string, code: string) => Promise<void>;
@@ -49,6 +50,16 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const store = useAuthStore();
+
+  const ensureAuthTokens = (response: any) => {
+    if (
+      !response ||
+      typeof response.accessToken !== 'string' ||
+      typeof response.refreshToken !== 'string'
+    ) {
+      throw new Error('AUTH_RESPONSE_INVALID');
+    }
+  };
 
   // Initialize auth state on app start
   useEffect(() => {
@@ -83,6 +94,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       const response = await authApi.loginWithEmail({ email, password });
+      ensureAuthTokens(response);
+
+      await store.login(
+        response.user,
+        response.accessToken,
+        response.refreshToken
+      );
+    } catch (error) {
+      store.setLoading(false);
+      throw error;
+    }
+  };
+
+  /**
+   * Login with phone and password
+   */
+  const loginWithPhone = async (phone: string, password: string): Promise<void> => {
+    store.setLoading(true);
+
+    try {
+      const response = await authApi.loginWithPhone({ phone, password });
+      ensureAuthTokens(response);
 
       await store.login(
         response.user,
@@ -119,6 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       const response = await authApi.verifyEmailOtp({ email, code });
+      ensureAuthTokens(response);
 
       await store.login(
         response.user,
@@ -140,6 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       const response = await authApi.verifyPhoneOtp({ phone, code });
+      ensureAuthTokens(response);
 
       await store.login(
         response.user,
@@ -196,6 +231,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading: store.isLoading,
     isInitialized: store.isInitialized,
     login,
+    loginWithPhone,
     register,
     verifyEmailOtp,
     verifyPhoneOtp,

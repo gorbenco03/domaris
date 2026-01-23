@@ -61,8 +61,8 @@ export interface IUpdatePropertyRequest {
 export interface IPropertyListResponse {
   data: IPropertyListing[];
   total: number;
-  page: number;
-  limit: number;
+  page?: number;
+  limit?: number;
 }
 
 export interface IUploadPhotosResponse {
@@ -87,11 +87,21 @@ export type PropertyStatus = 'DRAFT' | 'ACTIVE' | 'RENTED' | 'SOLD' | 'HIDDEN';
 export const searchProperties = async (
   params?: IPropertySearchParams
 ): Promise<IPropertyListResponse> => {
-  const response = await apiClient.get<IPropertyListResponse>(
+  const response = await apiClient.get<any>(
     API_ENDPOINTS.PROPERTIES.LIST,
     { params }
   );
-  return response.data;
+  const payload = response.data || {};
+  if (Array.isArray(payload.data)) {
+    return payload as IPropertyListResponse;
+  }
+  if (Array.isArray(payload.items)) {
+    return {
+      data: payload.items,
+      total: payload.total ?? payload.items.length,
+    };
+  }
+  return { data: [], total: 0 };
 };
 
 /**

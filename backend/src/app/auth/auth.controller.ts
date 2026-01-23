@@ -5,8 +5,8 @@
  * - POST /auth/register - Înregistrare email/parolă
  * - POST /auth/register/phone - Înregistrare telefon (trimite OTP)
  * - POST /auth/login - Login email/parolă
- * - POST /auth/login/phone - Login telefon (trimite OTP)
- * - POST /auth/verify-phone-otp - Verificare OTP (finalizează login/register)
+ * - POST /auth/login/phone - Login telefon/parolă
+ * - POST /auth/verify-phone-otp - Verificare OTP (finalizează register)
  * - POST /auth/oauth/google - Login Google
  * - POST /auth/oauth/apple - Login Apple
  * - POST /auth/forgot-password - Cerere reset parolă
@@ -119,9 +119,9 @@ export class AuthController {
 
   @Public()
   @Post('login/phone')
-  @ApiOperation({ summary: 'Login with phone (sends OTP)' })
-  @ApiResponse({ status: 200, description: 'OTP sent', type: OtpSentResponseDto })
-  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiOperation({ summary: 'Login with phone and password' })
+  @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @HttpCode(HttpStatus.OK)
   async loginPhone(@Body() body: LoginPhoneDto) {
     return this.authService.loginPhone(body);
@@ -129,7 +129,7 @@ export class AuthController {
 
   @Public()
   @Post('verify-phone-otp')
-  @ApiOperation({ summary: 'Verify phone OTP (completes login/register)' })
+  @ApiOperation({ summary: 'Verify phone OTP (completes register)' })
   @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
   @HttpCode(HttpStatus.OK)

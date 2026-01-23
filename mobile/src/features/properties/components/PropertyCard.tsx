@@ -105,7 +105,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     onFavoritePress?.();
   };
 
-  const formatPrice = (value: number, curr: string) => {
+  const formatPrice = (value: number | undefined, curr: string) => {
+    if (typeof value !== 'number') {
+      return '-';
+    }
     if (curr === 'EUR') {
       return `${value.toLocaleString('ro-RO')} €`;
     }
@@ -141,9 +144,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Badges */}
         <View style={styles.badgesContainer}>
-          {isNew && (
-            <Badge label="NOU" variant="new" size="sm" />
-          )}
           {priceReduced && (
             <Badge label="REDUS" variant="warning" size="sm" />
           )}
@@ -222,9 +222,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               {characteristics.totalArea} m²
             </Text>
           </View>
-          {characteristics.floor && (
+          {(characteristics.floor !== undefined && characteristics.floor !== null) && (
             <Text style={[styles.floorText, { color: theme.colors.textTertiary }]}>
-              Etaj {characteristics.floor}/{characteristics.totalFloors}
+              {characteristics.totalFloors
+                ? `Etaj ${characteristics.floor}/${characteristics.totalFloors}`
+                : `Etaj ${characteristics.floor}`}
             </Text>
           )}
         </View>

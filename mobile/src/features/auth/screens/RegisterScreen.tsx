@@ -1,7 +1,7 @@
 /**
  * IMOBI - Register Screen
  * New user registration with email or phone
- * Step 1: Email/Password or Phone
+ * Step 1: Email or Phone
  */
 
 import React, { useState } from 'react';
@@ -24,12 +24,10 @@ import { authApi } from '@/features/auth/api';
 import {
   Button,
   Input,
-  SocialButton,
-  Divider,
   Checkbox,
   PasswordStrength,
 } from '@/shared/components';
-import { ArrowLeft, Mail, Lock, Phone, User } from 'lucide-react-native';
+import { ArrowLeft, Mail, Phone, User, Lock } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -107,6 +105,22 @@ const RegisterScreen: React.FC = () => {
       newErrors.phone = 'Format telefon invalid (ex: +40712345678)';
     }
 
+    if (!password) {
+      newErrors.password = 'Parola este obligatorie';
+    } else if (password.length < 8) {
+      newErrors.password = 'Minim 8 caractere';
+    } else if (!/[A-Z]/.test(password)) {
+      newErrors.password = 'Trebuie să conțină o literă mare';
+    } else if (!/[0-9]/.test(password)) {
+      newErrors.password = 'Trebuie să conțină o cifră';
+    } else if (!/[!@#$%^&*]/.test(password)) {
+      newErrors.password = 'Trebuie să conțină un caracter special';
+    }
+
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Parolele nu coincid';
+    }
+
     if (!acceptTerms) {
       newErrors.terms = 'Trebuie să accepți termenii și condițiile';
     }
@@ -135,15 +149,26 @@ const RegisterScreen: React.FC = () => {
           lastName,
         });
         console.log('OTP sent for email registration');
-        navigation.navigate('OTPVerification', { email, type: 'email', purpose: 'register' });
+        navigation.navigate('OTPVerification', {
+          email,
+          type: 'email',
+          purpose: 'register',
+          registerData: { firstName, lastName, password },
+        });
       } else {
         await authApi.registerWithPhone({
           phone,
+          password,
           firstName,
           lastName,
         });
         console.log('OTP sent for phone registration');
-        navigation.navigate('OTPVerification', { phone, type: 'phone', purpose: 'register' });
+        navigation.navigate('OTPVerification', {
+          phone,
+          type: 'phone',
+          purpose: 'register',
+          registerData: { firstName, lastName, password },
+        });
       }
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -161,14 +186,6 @@ const RegisterScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGoogleLogin = () => {
-    console.log('Google login');
-  };
-
-  const handleAppleLogin = () => {
-    console.log('Apple login');
   };
 
   return (
@@ -204,7 +221,7 @@ const RegisterScreen: React.FC = () => {
               Creează cont
             </Text>
             <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-              Înregistrează-te gratuit în mai puțin de 60 de secunde
+              Creezi parola acum, apoi confirmi contul prin cod
             </Text>
           </View>
 
@@ -309,7 +326,6 @@ const RegisterScreen: React.FC = () => {
                   containerStyle={styles.input}
                 />
 
-                {/* Password Strength */}
                 {password.length > 0 && (
                   <PasswordStrength password={password} showRequirements />
                 )}
@@ -330,19 +346,54 @@ const RegisterScreen: React.FC = () => {
                 />
               </>
             ) : (
-              <Input
-                label="Număr de telefon"
-                placeholder="+40 7XX XXX XXX"
-                value={phone}
-                onChangeText={(text) => {
-                  setPhone(text);
-                  if (errors.phone) setErrors({ ...errors, phone: '' });
-                }}
-                keyboardType="phone-pad"
-                leftIcon={<Phone size={20} color={theme.colors.textTertiary} />}
-                error={errors.phone}
-                containerStyle={styles.input}
-              />
+              <>
+                <Input
+                  label="Număr de telefon"
+                  placeholder="+40 7XX XXX XXX"
+                  value={phone}
+                  onChangeText={(text) => {
+                    setPhone(text);
+                    if (errors.phone) setErrors({ ...errors, phone: '' });
+                  }}
+                  keyboardType="phone-pad"
+                  leftIcon={<Phone size={20} color={theme.colors.textTertiary} />}
+                  error={errors.phone}
+                  containerStyle={styles.input}
+                />
+
+                <Input
+                  label="Parolă"
+                  placeholder="Minim 8 caractere"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) setErrors({ ...errors, password: '' });
+                  }}
+                  secureTextEntry
+                  leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
+                  error={errors.password}
+                  containerStyle={styles.input}
+                />
+
+                {password.length > 0 && (
+                  <PasswordStrength password={password} showRequirements />
+                )}
+
+                <Input
+                  label="Confirmă parola"
+                  placeholder="Repetă parola"
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (errors.confirmPassword)
+                      setErrors({ ...errors, confirmPassword: '' });
+                  }}
+                  secureTextEntry
+                  leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
+                  error={errors.confirmPassword}
+                  containerStyle={styles.confirmPasswordInput}
+                />
+              </>
             )}
 
             {/* Terms and Conditions */}
@@ -372,29 +423,12 @@ const RegisterScreen: React.FC = () => {
 
             {/* Register Button */}
             <Button
-              title={method === 'phone' ? 'Continuă' : 'Creează cont'}
+              title="Continuă"
               onPress={handleRegister}
               loading={isLoading}
               fullWidth
               style={styles.registerButton}
             />
-          </View>
-
-          {/* Social Login */}
-          <View style={styles.socialSection}>
-            <Divider text="sau continuă cu" style={styles.divider} />
-            <View style={styles.socialButtons}>
-              <SocialButton
-                provider="google"
-                onPress={handleGoogleLogin}
-                style={styles.socialButton}
-              />
-              <SocialButton
-                provider="apple"
-                onPress={handleAppleLogin}
-                style={styles.socialButton}
-              />
-            </View>
           </View>
 
           {/* Login Link */}
@@ -513,18 +547,6 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     marginTop: 24,
-  },
-  socialSection: {
-    marginTop: 8,
-  },
-  divider: {
-    marginVertical: 24,
-  },
-  socialButtons: {
-    gap: 12,
-  },
-  socialButton: {
-    marginBottom: 12,
   },
   loginContainer: {
     flexDirection: 'row',

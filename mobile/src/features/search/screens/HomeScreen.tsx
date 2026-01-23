@@ -28,7 +28,6 @@ import {
   Bookmark,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { SearchBar } from '@/features/search/components/SearchBar';
 import { QuickFilters } from '@/features/search/components/QuickFilters';
 import { PropertyCard } from '@/features/properties/components/PropertyCard';
 import { Card } from '@/shared/components/Card';
@@ -48,9 +47,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ============================================
 
 const QUICK_CATEGORIES = [
-  { id: 'apartment', label: 'Apartamente', icon: Building2, color: '#6366f1' },
-  { id: 'house', label: 'Case', icon: Home, color: '#10b981' },
-  { id: 'commercial', label: 'Comercial', icon: Store, color: '#f59e0b' },
+  { id: 'APARTMENT', label: 'Apartamente', icon: Building2, color: '#6366f1' },
+  { id: 'HOUSE', label: 'Case', icon: Home, color: '#10b981' },
+  { id: 'COMMERCIAL', label: 'Comercial', icon: Store, color: '#f59e0b' },
 ];
 
 // ============================================
@@ -60,17 +59,14 @@ const QUICK_CATEGORIES = [
 const HomeScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const [searchText, setSearchText] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [quickFilters, setQuickFilters] = useState<string[]>([]);
 
   // Tutorial target refs
-  const searchBarRef = useRef<View>(null);
   const categoriesRef = useRef<View>(null);
   const aiBannerRef = useRef<View>(null);
 
   // Register tutorial targets
-  useTutorialTarget('home-search-bar', searchBarRef);
   useTutorialTarget('home-categories', categoriesRef);
   useTutorialTarget('home-ai-banner', aiBannerRef);
 
@@ -89,7 +85,7 @@ const HomeScreen: React.FC = () => {
     refetch: refetchProperties 
   } = useProperties({ 
     limit: 6,
-    sortBy: 'postedAt' as any,
+    sortBy: 'createdAt' as any,
     sortOrder: 'DESC'
   });
 
@@ -106,10 +102,8 @@ const HomeScreen: React.FC = () => {
     count: f.count
   }));
 
-  const handleSearch = (city?: string) => {
-    navigation.navigate('SearchResults', { 
-      filters: city ? { city } : { query: searchText } 
-    });
+  const handleSearch = (filters: Record<string, unknown>) => {
+    navigation.navigate('SearchResults', { filters });
   };
 
   const handlePropertyPress = (propertyId: string) => {
@@ -169,23 +163,9 @@ const HomeScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer} ref={searchBarRef}>
-          <SearchBar
-            value={searchText}
-            onChangeText={setSearchText}
-            onSubmit={handleSearch}
-            placeholder="Caută după locație..."
-          />
-        </View>
-
         {/* Quick Categories */}
         <View style={styles.categoriesSection} ref={categoriesRef}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContainer}
-          >
+          <View style={styles.categoriesGrid}>
             {QUICK_CATEGORIES.map((category) => (
               <TouchableOpacity
                 key={category.id}
@@ -197,6 +177,7 @@ const HomeScreen: React.FC = () => {
                   }
                 ]}
                 activeOpacity={0.8}
+                onPress={() => handleSearch({ propertyType: category.id })}
               >
                 <View 
                   style={[
@@ -213,7 +194,7 @@ const HomeScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
         </View>
 
         {/* AI Chat Banner */}
@@ -285,7 +266,7 @@ const HomeScreen: React.FC = () => {
                     }
                   ]}
                   activeOpacity={0.8}
-                  onPress={() => handleSearch(location.name)}
+                  onPress={() => handleSearch({ city: location.name })}
                 >
                   <MapPin size={16} color={theme.colors.accent.main} />
                   <Text 
@@ -308,7 +289,7 @@ const HomeScreen: React.FC = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
-              🆕 Adăugate recent
+              Adăugate recent
             </Text>
             <TouchableOpacity>
               <Text style={[styles.seeAllText, { color: theme.colors.primary.main }]}>
@@ -323,7 +304,28 @@ const HomeScreen: React.FC = () => {
               properties.map((property) => (
                 <PropertyCard
                   key={property.id}
-                  {...property}
+                  id={String(property.id)}
+                  title={property.title}
+                  transactionType={property.transactionType || 'SALE'}
+                  price={(property as any).priceEur ?? property.price ?? 0}
+                  currency={property.currency || 'EUR'}
+                  location={{
+                    neighborhood: property.neighborhood || undefined,
+                    city: property.city || '',
+                  }}
+                  characteristics={{
+                    rooms: property.rooms,
+                    bedrooms: property.bedrooms,
+                    bathrooms: property.bathrooms,
+                    totalArea: (property as any).surfaceSqm ?? property.surface ?? 0,
+                    floor: property.floor,
+                    totalFloors: property.totalFloors,
+                  }}
+                  image={
+                    (property as any).images?.[0]?.url ||
+                    (property as any).photos?.[0]?.url ||
+                    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
+                  }
                   onPress={() => handlePropertyPress(String(property.id))}
                   onFavoritePress={() => {}}
                 />
@@ -401,24 +403,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter-Regular',
   },
-  searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
   categoriesSection: {
     marginBottom: 8,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    gap: 12,
     paddingHorizontal: 20,
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   categoryCard: {
+    flexBasis: '31%',
+    maxWidth: '31%',
     alignItems: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
     borderRadius: 16,
-    minWidth: 100,
+    aspectRatio: 1,
   },
   categoryIconContainer: {
     width: 48,

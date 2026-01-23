@@ -45,7 +45,7 @@ const LoadingScreen: React.FC = () => {
 import { useSocketUpdates } from '@/features/messaging/hooks/useMessaging';
 
 const RootNavigator: React.FC = () => {
-  const { isAuthenticated, isInitialized, isLoading } = useAuth();
+  const { isAuthenticated, isInitialized } = useAuth();
   const { theme, isDark } = useTheme();
   const { shouldShowPrompt, startTutorial, dismissPrompt } = useTutorial();
 
@@ -83,7 +83,7 @@ const RootNavigator: React.FC = () => {
   };
 
   // Show loading while auth is initializing
-  if (!isInitialized || isLoading) {
+  if (!isInitialized) {
     return <LoadingScreen />;
   }
 

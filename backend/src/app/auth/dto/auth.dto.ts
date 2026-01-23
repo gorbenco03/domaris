@@ -76,6 +76,14 @@ export class RegisterPhoneDto {
   @Matches(/^\+?[1-9]\d{7,14}$/, { message: 'Număr de telefon invalid' })
   phone!: string;
 
+  @ApiProperty({ minLength: 8 })
+  @IsString()
+  @MinLength(8, { message: 'Parola trebuie să aibă minim 8 caractere' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
+    message: 'Parola trebuie să conțină cel puțin o literă mare, una mică și o cifră',
+  })
+  password!: string;
+
   @ApiPropertyOptional({ example: 'Ion' })
   @IsString()
   @IsOptional()
@@ -114,6 +122,11 @@ export class LoginPhoneDto {
   @IsNotEmpty()
   @Matches(/^\+?[1-9]\d{7,14}$/, { message: 'Număr de telefon invalid' })
   phone!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty({ message: 'Parola este obligatorie' })
+  password!: string;
 }
 
 /**
@@ -221,6 +234,10 @@ export class ResetPasswordDto {
   })
   newPassword!: string;
 }
+
+/**
+ * Setare parolă după verificare OTP (token temporar)
+ */
 
 /**
  * Schimbare parolă (utilizator autentificat)
@@ -395,3 +412,7 @@ export class OtpSentResponseDto {
   @ApiPropertyOptional({ description: 'For testing only - not in production' })
   code?: string;
 }
+
+/**
+ * Răspuns pentru verificare OTP (token temporar pentru setare parolă)
+ */

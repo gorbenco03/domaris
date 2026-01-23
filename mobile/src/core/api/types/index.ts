@@ -70,12 +70,14 @@ export interface IRegisterEmailRequest {
 
 export interface IRegisterPhoneRequest {
   phone: string;
+  password: string;
   firstName?: string;
   lastName?: string;
 }
 
 export interface ILoginPhoneRequest {
   phone: string;
+  password: string;
 }
 
 export interface IVerifyPhoneOtpRequest {
@@ -139,6 +141,7 @@ export interface IAuthResponseData {
   expiresIn: number;
   user: IUserSession;
 }
+
 
 export interface IOtpSentResponse {
   success: boolean;
