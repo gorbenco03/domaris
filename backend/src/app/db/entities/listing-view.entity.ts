@@ -39,5 +39,11 @@ export class ListingView extends ExtModel {
     })
     ip?: string;
 
+    @Column({
+        type: DataType.STRING,
+        allowNull: true,
+    })
+    anonymousId?: string;
+
     // Potential future field: userAgent, source, etc.
 }

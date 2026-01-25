@@ -10,6 +10,7 @@ import { Listing } from '../../db/entities/listing.entity.js';
 import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { User } from '../../db/entities/user.entity.js';
 import { S3Service } from '../../s3/s3.service.js';
+import { Sequelize } from 'sequelize-typescript';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -248,6 +249,22 @@ export class ListingService {
     const listings = await Listing.findAll({
       where: { ownerId },
       order: [['createdAt', 'DESC']],
+      attributes: {
+        include: [
+          [
+            Sequelize.literal(
+              `(SELECT COUNT(*) FROM listing_views lv WHERE lv.listing_id = "Listing"."id")`
+            ),
+            'viewsCount',
+          ],
+          [
+            Sequelize.literal(
+              `(SELECT COUNT(*) FROM conversations c WHERE c.property_id = "Listing"."id")`
+            ),
+            'leadsCount',
+          ],
+        ],
+      },
       include: [{ model: ListingImage, as: 'images' }],
     });
     this.logger.log(`Found ${listings.length} listings for ownerId: ${ownerId}`);

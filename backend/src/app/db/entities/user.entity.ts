@@ -9,9 +9,9 @@ import { ExtModel } from './extend.model.js';
  *
  * Verification Levels:
  * 0 = Cont nou (acces de bază - căutare, filtre, hartă)
- * 1 = Email/Telefon verificat (poate contacta, programa vizionări)
- * 2 = Identitate verificată (POATE POSTA ANUNȚURI, KYC complet)
- * 3 = Proprietar verificat cu documente (badge special, promovare)
+ * 1 = Email/Telefon verificat (acces de bază)
+ * 2 = Identitate verificată (poate contacta, programa vizionări)
+ * 3 = Proprietar verificat cu documente (POATE POSTA ANUNȚURI)
  */
 @Table({
   tableName: 'users',
@@ -82,9 +82,9 @@ export class User extends ExtModel {
    * Nivel de verificare - SINGURA "poartă" pentru acces la funcționalități
    *
    * 0 = Cont nou (poate: căutare, filtre, hartă, favorite)
-   * 1 = Email/Telefon verificat (+ poate contacta, programa vizionări)
-   * 2 = Identitate verificată (+ POATE POSTA ANUNȚURI)
-   * 3 = Proprietar verificat (+ badge special, promovare plătită)
+   * 1 = Email/Telefon verificat (+ acces de bază)
+   * 2 = Identitate verificată (+ poate contacta, programa vizionări)
+   * 3 = Proprietar verificat (+ POATE POSTA ANUNȚURI)
    */
   @Column({
     type: DataType.INTEGER,
@@ -229,14 +229,14 @@ export class User extends ExtModel {
    * Verifică dacă utilizatorul poate posta anunțuri
    */
   canPostListings(): boolean {
-    return this.verificationLevel >= 2;
+    return this.verificationLevel >= 3;
   }
 
   /**
    * Verifică dacă utilizatorul poate contacta alți utilizatori
    */
   canContact(): boolean {
-    return this.verificationLevel >= 1;
+    return this.verificationLevel >= 2;
   }
 
   /**

@@ -2,7 +2,7 @@
  * 💬 CHAT CONTROLLER - Messaging/Conversations
  *
  * Conform ADR-001: Model de Cont Unificat
- * - Trimiterea mesajelor necesită Level 1 (email/phone verified)
+ * - Trimiterea mesajelor necesită Level 2 (identitate verificată)
  * - Vizualizare conversații necesită doar autentificare
  */
 
@@ -97,15 +97,15 @@ export class ChatController {
   }
 
   // ============================================================================
-  // START CONVERSATION (requires Level 1)
+  // START CONVERSATION (requires Level 2)
   // ============================================================================
 
   @UseGuards(VerificationGuard)
-  @MinVerificationLevel(1)
+  @MinVerificationLevel(2)
   @Post()
   @ApiOperation({
     summary: 'Start or get existing conversation',
-    description: 'Requires email/phone verification (Level 1)',
+    description: 'Requires identity verification (Level 2)',
   })
   @ApiBody({
     schema: {
@@ -118,7 +118,7 @@ export class ChatController {
     },
   })
   @ApiResponse({ status: 200, description: 'Conversation created/retrieved' })
-  @ApiForbiddenResponse({ description: 'Email/phone verification required' })
+  @ApiForbiddenResponse({ description: 'Identity verification required' })
   async startConversation(
     @CurrentUserId() userId: number,
     @Body('propertyId') propertyId: number,
@@ -128,15 +128,15 @@ export class ChatController {
   }
 
   // ============================================================================
-  // SEND MESSAGE (requires Level 1)
+  // SEND MESSAGE (requires Level 2)
   // ============================================================================
 
   @UseGuards(VerificationGuard)
-  @MinVerificationLevel(1)
+  @MinVerificationLevel(2)
   @Post(':id/messages')
   @ApiOperation({
     summary: 'Send message',
-    description: 'Requires email/phone verification (Level 1)',
+    description: 'Requires identity verification (Level 2)',
   })
   @ApiBody({
     schema: {
@@ -153,7 +153,7 @@ export class ChatController {
     },
   })
   @ApiResponse({ status: 200, description: 'Message sent' })
-  @ApiForbiddenResponse({ description: 'Email/phone verification required' })
+  @ApiForbiddenResponse({ description: 'Identity verification required' })
   async sendMessage(
     @CurrentUserId() userId: number,
     @Param('id', ParseIntPipe) conversationId: number,

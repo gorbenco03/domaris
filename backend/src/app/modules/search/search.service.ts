@@ -105,7 +105,16 @@ export class SearchService {
   private readonly logger = new Logger(SearchService.name);
 
   private normalizeDiacritics(value: string) {
+    // First, handle Romanian/Moldovan specific characters that NFD doesn't decompose properly
+    // ș (U+0219) and ş (U+015F) -> s
+    // ț (U+021B) and ţ (U+0163) -> t
+    // ă (U+0103) -> a
+    // â (U+00E2) and î (U+00EE) -> a/i
     return value
+      .replace(/[șş]/gi, 's')
+      .replace(/[țţ]/gi, 't')
+      .replace(/[ăâ]/gi, 'a')
+      .replace(/[î]/gi, 'i')
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
@@ -138,49 +147,16 @@ export class SearchService {
       );
     }
 
-    // City filter
+    // City filter - simple ILIKE search (works well for Moldovan cities)
     if (filters.city) {
-      const normalizedCity = this.normalizeDiacritics(filters.city);
-      const cityOr: any[] = [
-        { city: { [Op.iLike]: `%${filters.city}%` } },
-        where(
-          fn(
-            'translate',
-            fn('lower', col('city')),
-            'ăâîșşțţĂÂÎȘŞȚŢ',
-            'aaisstAAISST'
-          ),
-          { [Op.like]: `%${normalizedCity}%` }
-        ),
-      ];
-
-      if (normalizedCity.includes('bucuresti')) {
-        cityOr.push({ city: { [Op.iLike]: 'Sector %' } });
-        if (filters.neighborhood) {
-          cityOr.push({ city: { [Op.iLike]: `%${filters.neighborhood}%` } });
-        }
-      }
-
-      whereConditions.push({ [Op.or]: cityOr });
+      this.logger.log(`City filter: "${filters.city}"`);
+      whereConditions.push({ city: { [Op.iLike]: `%${filters.city}%` } });
     }
 
-    // Neighborhood filter
+    // Neighborhood filter - simple ILIKE search
     if (filters.neighborhood) {
-      const normalizedNeighborhood = this.normalizeDiacritics(filters.neighborhood);
-      whereConditions.push({
-        [Op.or]: [
-          { neighborhood: { [Op.iLike]: `%${filters.neighborhood}%` } },
-          where(
-            fn(
-              'translate',
-              fn('lower', col('neighborhood')),
-              'ăâîșşțţĂÂÎȘŞȚŢ',
-              'aaisstAAISST'
-            ),
-            { [Op.like]: `%${normalizedNeighborhood}%` }
-          ),
-        ],
-      });
+      this.logger.log(`Neighborhood filter: "${filters.neighborhood}"`);
+      whereConditions.push({ neighborhood: { [Op.iLike]: `%${filters.neighborhood}%` } });
     }
 
     // Bounding box for map
@@ -191,92 +167,85 @@ export class SearchService {
       });
     }
 
-    // Price range
+    // Transaction and property type
     if (filters.transactionType) {
       whereConditions.push({ transactionType: filters.transactionType });
     }
     if (filters.propertyType) {
       whereConditions.push({ propertyType: filters.propertyType });
     }
-    if (filters.priceMin !== undefined) {
+
+    // Price range (use != null to check both null and undefined)
+    if (filters.priceMin != null) {
       whereConditions.push({ priceEur: { [Op.gte]: filters.priceMin } });
     }
-    if (filters.priceMax !== undefined) {
+    if (filters.priceMax != null) {
       whereConditions.push({ priceEur: { [Op.lte]: filters.priceMax } });
     }
 
-    if (filters.transactionType) {
-      whereConditions.push({ transactionType: filters.transactionType });
-    }
-
-    if (filters.propertyType) {
-      whereConditions.push({ propertyType: filters.propertyType });
-    }
-
     // Rooms
-    if (filters.rooms !== undefined) {
+    if (filters.rooms != null) {
       whereConditions.push({ rooms: filters.rooms });
     }
-    if (filters.bedroomsMin !== undefined) {
-      whereConditions.push({ bedrooms: { [Op.gte]: filters.bedroomsMin } });
-    }
-    if (filters.bedroomsMax !== undefined) {
-      whereConditions.push({ bedrooms: { [Op.lte]: filters.bedroomsMax } });
-    }
-    if (filters.roomsMin !== undefined) {
+    if (filters.roomsMin != null) {
       whereConditions.push({ rooms: { [Op.gte]: filters.roomsMin } });
     }
-    if (filters.roomsMax !== undefined) {
+    if (filters.roomsMax != null) {
       whereConditions.push({ rooms: { [Op.lte]: filters.roomsMax } });
     }
 
-    if (filters.bedroomsMin !== undefined) {
+    // Bedrooms
+    if (filters.bedroomsMin != null) {
       whereConditions.push({ bedrooms: { [Op.gte]: filters.bedroomsMin } });
     }
-    if (filters.bedroomsMax !== undefined) {
+    if (filters.bedroomsMax != null) {
       whereConditions.push({ bedrooms: { [Op.lte]: filters.bedroomsMax } });
     }
 
-    if (filters.bathroomsMin !== undefined) {
+    // Bathrooms
+    if (filters.bathroomsMin != null) {
       whereConditions.push({ bathrooms: { [Op.gte]: filters.bathroomsMin } });
     }
-    if (filters.bathroomsMax !== undefined) {
+    if (filters.bathroomsMax != null) {
       whereConditions.push({ bathrooms: { [Op.lte]: filters.bathroomsMax } });
     }
 
-    if (filters.floorMin !== undefined) {
+    // Floor
+    if (filters.floorMin != null) {
       whereConditions.push({ floor: { [Op.gte]: filters.floorMin } });
     }
-    if (filters.floorMax !== undefined) {
+    if (filters.floorMax != null) {
       whereConditions.push({ floor: { [Op.lte]: filters.floorMax } });
     }
 
-    if (filters.yearBuiltMin !== undefined) {
+    // Year built
+    if (filters.yearBuiltMin != null) {
       whereConditions.push({ yearBuilt: { [Op.gte]: filters.yearBuiltMin } });
     }
-    if (filters.yearBuiltMax !== undefined) {
+    if (filters.yearBuiltMax != null) {
       whereConditions.push({ yearBuilt: { [Op.lte]: filters.yearBuiltMax } });
     }
 
     // Surface
-    if (filters.surfaceMin !== undefined) {
+    if (filters.surfaceMin != null) {
       whereConditions.push({ surfaceSqm: { [Op.gte]: filters.surfaceMin } });
     }
-    if (filters.surfaceMax !== undefined) {
+    if (filters.surfaceMax != null) {
       whereConditions.push({ surfaceSqm: { [Op.lte]: filters.surfaceMax } });
     }
 
-    // Boolean features
-    if (filters.isFurnished !== undefined) {
+    // Boolean features (check for explicit true/false, not null)
+    if (filters.isFurnished === true || filters.isFurnished === false) {
       whereConditions.push({ isFurnished: filters.isFurnished });
     }
-    if (filters.hasCentralHeating !== undefined) {
+    if (filters.hasCentralHeating === true || filters.hasCentralHeating === false) {
       whereConditions.push({ hasCentralHeating: filters.hasCentralHeating });
     }
-    if (filters.petFriendly !== undefined) {
+    if (filters.petFriendly === true || filters.petFriendly === false) {
       whereConditions.push({ petFriendly: filters.petFriendly });
     }
 
+    // Amenities
     if (filters.amenities && filters.amenities.length > 0) {
       whereConditions.push({ amenities: { [Op.contains]: filters.amenities } });
     }
@@ -293,6 +262,8 @@ export class SearchService {
 
     // Build ORDER clause
     const order = this.buildOrderClause(filters.sortBy, filters.query);
+
+    this.logger.log(`Search whereConditions count: ${whereConditions.length}`);
 
     // Execute query
     const { count, rows } = await Listing.findAndCountAll({

@@ -221,6 +221,16 @@ export class UserController {
   // PUBLIC PROFILE
   // ============================================================================
 
+  // IMPORTANT: More specific routes must come before generic :id route
+  @Public()
+  @Get(':id/listings')
+  @ApiOperation({ summary: 'Get public listings for a user' })
+  @ApiResponse({ status: 200, description: 'User listings' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getUserListings(@Param('id') id: string) {
+    return this.userService.getUserListings(id);
+  }
+
   @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get public user profile' })

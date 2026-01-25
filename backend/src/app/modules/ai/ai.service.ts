@@ -178,6 +178,14 @@ export class AIService {
       if (intent.intent === 'search' && !intent.params) {
         intent.params = {};
       }
+      // Heuristic: if we have search params (city, price, rooms, etc.) but intent is general, treat as search
+      if (intent.intent === 'general' && intent.params && 
+          (intent.params.city || intent.params.neighborhood || intent.params.priceMin || 
+           intent.params.priceMax || intent.params.rooms || intent.params.roomsMin || 
+           intent.params.roomsMax || intent.params.surfaceMin || intent.params.surfaceMax)) {
+        intent.intent = 'search';
+      }
+
       this.logger.log(
         `AI Chat intent=${intent.intent} params=${JSON.stringify(intent.params || {})}`
       );
@@ -261,14 +269,44 @@ export class AIService {
     const next = { ...params };
     const normalizedMessage = message.toLowerCase();
 
-    const sectorMatch = normalizedMessage.match(/sector\s*([1-6])/);
-    if (sectorMatch) {
-      if (!next.city) next.city = 'București';
-      if (!next.neighborhood) next.neighborhood = `Sector ${sectorMatch[1]}`;
+    // Chișinău neighborhoods
+    const chisinauNeighborhoods = ['botanica', 'buiucani', 'ciocana', 'riscani', 'rîșcani', 'centru'];
+    for (const neighborhood of chisinauNeighborhoods) {
+      if (normalizedMessage.includes(neighborhood)) {
+        if (!next.city) next.city = 'Chișinău';
+        if (!next.neighborhood) {
+          // Capitalize first letter
+          next.neighborhood = neighborhood.charAt(0).toUpperCase() + neighborhood.slice(1);
+          // Fix Rîșcani spelling
+          if (next.neighborhood.toLowerCase() === 'riscani') {
+            next.neighborhood = 'Rîșcani';
+          }
+        }
+        break;
+      }
     }
 
-    if (normalizedMessage.includes('bucuresti') && !next.city) {
-      next.city = 'București';
+    // Bălți neighborhoods
+    const baltiNeighborhoods = ['dacia', 'slobozia', 'pamanteni', 'pământeni'];
+    for (const neighborhood of baltiNeighborhoods) {
+      if (normalizedMessage.includes(neighborhood)) {
+        if (!next.city) next.city = 'Bălți';
+        if (!next.neighborhood) {
+          next.neighborhood = neighborhood.charAt(0).toUpperCase() + neighborhood.slice(1);
+          if (next.neighborhood.toLowerCase() === 'pamanteni') {
+            next.neighborhood = 'Pământeni';
+          }
+        }
+        break;
+      }
+    }
+
+    // Main cities detection
+    if (normalizedMessage.includes('chisinau') || normalizedMessage.includes('chișinău')) {
+      if (!next.city) next.city = 'Chișinău';
+    }
+    if (normalizedMessage.includes('balti') || normalizedMessage.includes('bălți')) {
+      if (!next.city) next.city = 'Bălți';
     }
 
     return next;
@@ -295,7 +333,7 @@ export class AIService {
 - Deal breakers: ${userPreferences.dealBreakers?.join(', ') || 'nespecificate'}`
       : '';
 
-    const systemPrompt = `Ești un asistent imobiliar care parsează cereri de căutare în limba română.
+    const systemPrompt = `Ești un asistent imobiliar care parsează cereri de căutare în limba română pentru platforma IMOBI din Republica Moldova.
     
 Extrage parametrii de căutare din mesajul utilizatorului și returnează un JSON cu structura:
 {
@@ -315,14 +353,26 @@ Extrage parametrii de căutare din mesajul utilizatorului și returnează un JSO
   }
 }
 
-Reguli:
+CONTEXT: Aplicația funcționează DOAR în Republica Moldova. Orașele principale sunt: Chișinău, Bălți, Cahul, Ungheni, Orhei, Soroca, Edineț, Comrat, etc.
+
+REGULI PENTRU INTENT (FOARTE IMPORTANT):
+- "search": ORICE mesaj care menționează un oraș, zonă, preț, camere, suprafață sau tip de proprietate
+- "search": "apartament în Chișinău", "vreau ceva în Bălți", "caut în Botanica" = ÎNTOTDEAUNA search
+- "search": Dacă utilizatorul menționează O LOCAȚIE din Moldova, este ÎNTOTDEAUNA "search"
+- "info": Întrebări despre o proprietate specifică sau despre cum funcționează platforma
+- "comparison": Când utilizatorul vrea să compare proprietăți
+- "general": DOAR pentru salutări simple ("bună", "salut") sau întrebări complet nerelatate de imobiliare
+
+Reguli pentru params:
 - "apartament cu 2 camere" → rooms: 2
 - "între 300 și 500 euro" → priceMin: 300, priceMax: 500
 - "maxim 400 euro" → priceMax: 400
 - "minim 50mp" → surfaceMin: 50
-- "în Cluj" sau "în zona Cluj-Napoca" → city: "Cluj-Napoca"
-- "Florești" sau "în Florești" → city: "Florești"
-- Dacă nu e o cerere de căutare imobiliară, returnează intent: "general"${preferencesContext}`;
+- "în Chișinău" sau "Chișinău" → city: "Chișinău"
+- "Botanica" sau "în Botanica" → city: "Chișinău", neighborhood: "Botanica"
+- "Buiucani", "Ciocana", "Rîșcani", "Centru" → city: "Chișinău", neighborhood: "<cartierul>"
+- "în Bălți" sau "Bălți" → city: "Bălți"
+- "Orhei", "Ungheni", "Cahul", etc. → city: "<numele orașului>"${preferencesContext}`;
 
     try {
       const completion = await this.openai.chat.completions.create({
@@ -372,15 +422,18 @@ Reguli:
       ? `\n\nInstrucțiuni speciale: ${contextOptions.customInstructions}`
       : '';
 
-    const systemPrompt = `Ești IMOBI Assistant, un asistent imobiliar pentru platforma IMOBI din România.
+    const systemPrompt = `Ești IMOBI Assistant, un asistent imobiliar pentru platforma IMOBI din Republica Moldova.
     
 Regulile tale:
 1. ${languageGuide}
 2. ${toneGuide[contextOptions?.tone || 'friendly']}
-3. Dacă ai găsit proprietăți, menționează pe scurt ce ai găsit
-4. Sugerează cum poate rafina căutarea
-5. Nu inventa informații despre proprietăți
-6. Dacă nu ai găsit nimic, sugerează alternative${customInstructions}`;
+3. NU folosi markdown (fără **, *, _, #, \`, etc.) - răspunde cu text simplu
+4. Dacă ai găsit proprietăți, menționează pe scurt ce ai găsit și oferă detalii relevante
+5. Dacă utilizatorul vrea să discute despre o proprietate menționată anterior în conversație, oferă detalii despre ea bazându-te pe istoricul conversației
+6. Sugerează cum poate rafina căutarea sau ce informații suplimentare poate cere
+7. Nu inventa informații despre proprietăți - folosește doar datele disponibile
+8. Dacă nu ai găsit nimic, sugerează alternative
+9. Fii proactiv și oferă informații utile despre proprietățile discutate${customInstructions}`;
 
     try {
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -395,11 +448,21 @@ Regulile tale:
           
 Intent detectat: ${intent.intent}
 Parametri căutare: ${JSON.stringify(intent.params || {})}
-Proprietăți găsite: ${properties.length}
+Proprietăți găsite în această căutare: ${properties.length}
 
-${properties.length > 0 ? `Primele proprietăți: ${properties.map((p) => `- ${p.title} (${p.priceEur}€, ${p.rooms} camere, ${p.city})`).join('\n')}` : 'Nu am găsit proprietăți care să corespundă criteriilor.'}
+${properties.length > 0 ? `DETALII PROPRIETĂȚI GĂSITE:
+${properties.map((p, i) => `
+${i + 1}. ${p.title}
+   - Preț: ${p.priceEur}€${p.transactionType === 'RENT' ? '/lună' : ''}
+   - Locație: ${[p.neighborhood, p.city].filter(Boolean).join(', ')}
+   - Camere: ${p.rooms || 'N/A'}, Suprafață: ${p.surfaceSqm || 'N/A'} mp
+   - Etaj: ${p.floor ?? 'N/A'}${p.totalFloors ? `/${p.totalFloors}` : ''}
+   - Anul construcției: ${p.yearBuilt || 'N/A'}
+   - Facilități: ${(p.amenities || []).slice(0, 5).join(', ') || 'N/A'}
+   - Descriere: ${(p.description || '').substring(0, 200)}${(p.description || '').length > 200 ? '...' : ''}
+`).join('')}` : 'Nu am găsit proprietăți noi în această căutare. Verifică istoricul conversației pentru proprietăți menționate anterior.'}
 
-Generează un răspuns conversațional.`,
+Generează un răspuns conversațional prietenos. Dacă utilizatorul vrea detalii despre o proprietate, oferă informațiile disponibile mai sus.`,
         },
       ];
 

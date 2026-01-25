@@ -3,17 +3,17 @@
  *
  * Folosește VerificationGuard pentru a controla accesul:
  * - Căutare/vizualizare: Public (level 0)
- * - Creare/editare/ștergere: Necesită level 2+ (identitate verificată)
+ * - Creare/editare/ștergere: Necesită level 3+ (proprietar verificat)
  *
  * Endpoints:
  * - GET /properties - List/search properties (public)
  * - GET /properties/:id - Get property details (public)
- * - POST /properties - Create property (requires level 2)
- * - PATCH /properties/:id - Update property (requires level 2 + owner)
- * - DELETE /properties/:id - Delete property (requires level 2 + owner)
- * - GET /properties/me/all - Get my properties (requires level 2)
- * - POST /properties/:id/photos - Upload photos (requires level 2 + owner)
- * - PATCH /properties/:id/status - Update status (requires level 2 + owner)
+ * - POST /properties - Create property (requires level 3)
+ * - PATCH /properties/:id - Update property (requires level 3 + owner)
+ * - DELETE /properties/:id - Delete property (requires level 3 + owner)
+ * - GET /properties/me/all - Get my properties (requires level 3)
+ * - POST /properties/:id/photos - Upload photos (requires level 3 + owner)
+ * - PATCH /properties/:id/status - Update status (requires level 3 + owner)
  */
 
 import {
@@ -25,6 +25,7 @@ import {
   Delete,
   Param,
   Query,
+  Req,
   UploadedFiles,
   UseInterceptors,
   UseGuards,
@@ -66,16 +67,16 @@ export class ListingController {
 
   /**
    * Get my properties
-   * ADR-001: Requires level 2+ to see "my listings"
-   * (Users without level 2 can't post, so they have no listings)
+   * ADR-001: Requires level 3+ to see "my listings"
+   * (Users without level 3 can't post, so they have no listings)
    */
   @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(3)
   @Get('my')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get my properties',
-    description: 'Requires identity verification (level 2)',
+    description: 'Requires ownership verification (level 3)',
   })
   @ApiForbiddenResponse({ description: 'Identity verification required' })
   async findMyProperties(@CurrentUserId() userId: number) {
@@ -185,12 +186,36 @@ export class ListingController {
       throw new NotFoundException('Invalid property ID');
     }
 
-    // Track view asynchronously
-    this.analyticsService
-      .trackView(numericId, user?.id)
-      .catch((err) => console.error('View tracking failed', err));
-
     return this.listingService.findOne(numericId);
+  }
+
+  /**
+   * Track property view (public)
+   */
+  @Public()
+  @Post(':id/view')
+  @ApiOperation({
+    summary: 'Track property view',
+    description: 'Public endpoint - counts view after client-side delay',
+  })
+  @ApiResponse({ status: 200, description: 'View tracked' })
+  async trackView(@Param('id') id: string, @Req() req: any, @CurrentUser() user?: any) {
+    const numericId = parseInt(id, 10);
+
+    if (isNaN(numericId)) {
+      throw new NotFoundException('Invalid property ID');
+    }
+
+    const forwardedFor = req?.headers?.['x-forwarded-for'];
+    const ip =
+      (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)?.split?.(',')?.[0]?.trim?.() ||
+      req?.ip;
+    const anonymousHeader = req?.headers?.['x-anonymous-id'];
+    const anonymousId = Array.isArray(anonymousHeader) ? anonymousHeader[0] : anonymousHeader;
+
+    await this.analyticsService.trackView(numericId, user?.id, anonymousId, ip);
+
+    return { success: true };
   }
 
   // ============================================================================
@@ -199,19 +224,19 @@ export class ListingController {
 
   /**
    * Create new property
-   * ADR-001: Requires level 2+ (identity verified)
+   * ADR-001: Requires level 3+ (ownership verified)
    */
   @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(3)
   @Post()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create new property',
-    description: 'Requires identity verification (level 2). This is the core of ADR-001.',
+    description: 'Requires ownership verification (level 3).',
   })
   @ApiResponse({ status: 201, description: 'Property created' })
   @ApiForbiddenResponse({
-    description: 'Identity verification required to post listings',
+    description: 'Ownership verification required to post listings',
   })
   async create(@CurrentUserId() userId: number, @Body() dto: CreateListingDto) {
     return this.listingService.create(userId, dto);
@@ -219,15 +244,15 @@ export class ListingController {
 
   /**
    * Update property
-   * ADR-001: Requires level 2+ and must be owner
+   * ADR-001: Requires level 3+ and must be owner
    */
   @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(3)
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update property',
-    description: 'Requires identity verification and ownership',
+    description: 'Requires ownership verification and ownership',
   })
   @ApiResponse({ status: 200, description: 'Property updated' })
   @ApiForbiddenResponse({ description: 'Not owner or not verified' })
@@ -241,15 +266,15 @@ export class ListingController {
 
   /**
    * Delete property
-   * ADR-001: Requires level 2+ and must be owner
+   * ADR-001: Requires level 3+ and must be owner
    */
   @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(3)
   @Delete(':id')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Delete property',
-    description: 'Requires identity verification and ownership',
+    description: 'Requires ownership verification and ownership',
   })
   @ApiResponse({ status: 200, description: 'Property deleted' })
   @ApiForbiddenResponse({ description: 'Not owner or not verified' })
@@ -260,10 +285,10 @@ export class ListingController {
 
   /**
    * Upload property photos
-   * ADR-001: Requires level 2+ and must be owner
+   * ADR-001: Requires level 3+ and must be owner
    */
   @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(3)
   @Post(':id/photos')
   @UseInterceptors(
     FileFieldsInterceptor([{ name: 'photos', maxCount: 20 }]),
@@ -272,7 +297,7 @@ export class ListingController {
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Upload property photos',
-    description: 'Requires identity verification and ownership',
+    description: 'Requires ownership verification and ownership',
   })
   @ApiBody({
     schema: {
@@ -297,15 +322,15 @@ export class ListingController {
 
   /**
    * Update property status
-   * ADR-001: Requires level 2+ and must be owner
+   * ADR-001: Requires level 3+ and must be owner
    */
   @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(3)
   @Patch(':id/status')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update property status',
-    description: 'Requires identity verification and ownership',
+    description: 'Requires ownership verification and ownership',
   })
   @ApiBody({
     schema: {
@@ -334,10 +359,10 @@ export class ListingController {
 
   /**
    * Get property analytics
-   * ADR-001: Requires level 2+ and must be owner
+   * ADR-001: Requires level 3+ and must be owner
    */
   @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(3)
   @Get(':id/analytics')
   @ApiBearerAuth()
   @ApiOperation({
@@ -349,6 +374,12 @@ export class ListingController {
     @Param('id') id: string,
     @Query('period') period: '7d' | '30d' | 'all' = '30d',
   ) {
-    return this.analyticsService.getPropertyAnalytics(Number(id), period);
+    const numericId = parseInt(id, 10);
+
+    if (isNaN(numericId)) {
+      throw new NotFoundException('Invalid property ID');
+    }
+
+    return this.analyticsService.getPropertyAnalytics(numericId, period);
   }
 }
