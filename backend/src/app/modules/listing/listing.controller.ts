@@ -88,6 +88,45 @@ export class ListingController {
   // ============================================================================
 
   /**
+   * Map search - get properties in bounding box
+   * Public endpoint for map view
+   */
+  @Public()
+  @Get('map-search')
+  @ApiOperation({
+    summary: 'Search properties by map bounds',
+    description: 'Returns properties within visible map area (bounding box). Public endpoint.',
+  })
+  @ApiResponse({ status: 200, description: 'Properties in bounds' })
+  async findInBounds(
+    @Query('neLat') neLat: string,
+    @Query('neLng') neLng: string,
+    @Query('swLat') swLat: string,
+    @Query('swLng') swLng: string,
+    @Query('limit') limit?: string,
+    @Query('transactionType') transactionType?: string,
+    @Query('propertyType') propertyType?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+    @Query('minRooms') minRooms?: string,
+    @Query('maxRooms') maxRooms?: string,
+  ) {
+    return this.listingService.findInBounds({
+      neLat: parseFloat(neLat),
+      neLng: parseFloat(neLng),
+      swLat: parseFloat(swLat),
+      swLng: parseFloat(swLng),
+      limit: limit ? parseInt(limit) : undefined,
+      transactionType,
+      propertyType,
+      minPrice: minPrice ? parseFloat(minPrice) : undefined,
+      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+      minRooms: minRooms ? parseInt(minRooms) : undefined,
+      maxRooms: maxRooms ? parseInt(maxRooms) : undefined,
+    });
+  }
+
+  /**
    * Search/list properties - public access
    */
   @Public()
