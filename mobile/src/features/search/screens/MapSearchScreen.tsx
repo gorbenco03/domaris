@@ -1,95 +1,77 @@
 /**
  * IMOBI - Map Search Screen
- * Interactive map discovery for properties
+ * Interactive map discovery for properties with Mapbox
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
-  Dimensions,
+  ActivityIndicator,
 } from 'react-native';
-import { 
-  X, 
-  Search, 
-  Filter, 
+import {
+  X,
+  Search,
+  Filter,
   List,
   Navigation,
-  ArrowLeft
+  ArrowLeft,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton } from '@/shared/components';
 import { PropertyCard } from '@/shared/components';
 import { useNavigation } from '@react-navigation/native';
-import { useMapData, useSearch } from '@/features/search/services';
-import { ActivityIndicator } from 'react-native';
-import type { IPropertyListing } from '@/core/api/types';
-
-const { width } = Dimensions.get('window');
-
-
-
-// ============================================
-// COMPONENT
-// ============================================
+import { MapViewComponent } from '@/features/maps/components';
+import { useMapProperties } from '@/features/maps/hooks/useMapProperties';
+import { getUserLocation } from '@/features/maps/services/mapService';
+import type { MapProperty } from '@/features/maps/hooks/useMapProperties';
 
 const MapSearchScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<any>();
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
-  const [filters, setFilters] = useState<any>({ city: 'București' });
 
-  // Real data fetching
-  const { data: mapData, isLoading: mapLoading } = useMapData(filters);
-  const { data: propertyData } = useSearch({ 
-    ...filters, 
-    limit: 10 // For preview cards
-  });
+  const [selectedProperty, setSelectedProperty] = useState<MapProperty | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([24.7536, 45.9432]); // Bucharest
+  const [mapBounds, setMapBounds] = useState<{
+    neLat: number;
+    neLng: number;
+    swLat: number;
+    swLng: number;
+  } | null>(null);
 
-  const markers = mapData?.features || [];
-  const selectedProperty = propertyData?.data.find(p => p.id === selectedPropertyId);
+  // Fetch properties in current map bounds
+  const { data: properties = [], isLoading } = useMapProperties(mapBounds);
 
-  const formatPriceShort = (price: number) => {
-    if (price >= 1000000) return `${(price / 1000000).toFixed(1)}M`;
-    if (price >= 1000) return `${(price / 1000).toFixed(0)}k`;
-    return `${price}`;
-  };
+  // Handle map region change
+  const handleRegionChange = useCallback((bounds: typeof mapBounds) => {
+    setMapBounds(bounds);
+  }, []);
 
-  const renderMarker = (feature: any) => {
-    const { id, price } = feature.properties;
-    const [longitude, latitude] = feature.geometry.coordinates;
-    const isSelected = selectedPropertyId === id;
-    
-    return (
-      <TouchableOpacity
-        key={id}
-        style={[
-          styles.marker,
-          { 
-            backgroundColor: isSelected ? theme.colors.primary.main : theme.colors.surface,
-            borderColor: isSelected ? '#ffffff' : theme.colors.primary.main,
-            // Mock transformation for visualization without real Google Maps
-            top: 400 + (latitude - 44.4) * 8000,
-            left: 200 + (longitude - 26.1) * 4000,
-          }
-        ]}
-        onPress={() => setSelectedPropertyId(id)}
-      >
-        <Text style={[
-          styles.markerText, 
-          { color: isSelected ? '#ffffff' : theme.colors.primary.main }
-        ]}>
-          {formatPriceShort(price)}
-        </Text>
-      </TouchableOpacity>
-    );
+  // Handle property marker press
+  const handlePropertyPress = useCallback((property: MapProperty) => {
+    setSelectedProperty(property);
+  }, []);
+
+  // Center map on user's location
+  const handleMyLocation = async () => {
+    const location = await getUserLocation();
+    setMapCenter(location);
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Mapbox Map */}
+      <MapViewComponent
+        properties={properties}
+        onPropertyPress={handlePropertyPress}
+        onRegionChange={handleRegionChange}
+        initialCenter={mapCenter}
+        initialZoom={12}
+      />
+
       {/* Search Header */}
       <SafeAreaView style={styles.headerOverlay}>
         <View style={styles.headerContent}>
@@ -98,74 +80,88 @@ const MapSearchScreen: React.FC = () => {
             onPress={() => navigation.goBack()}
             variant="surface"
             size="md"
-            style={{ ...styles.backButton, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}
+            style={{
+              ...styles.backButton,
+              backgroundColor: theme.colors.surface,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            }}
           />
-          <View style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}>
+          <TouchableOpacity
+            style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}
+            onPress={() => navigation.navigate('Filters')}
+          >
             <Search size={20} color={theme.colors.textTertiary} />
             <Text style={[styles.searchText, { color: theme.colors.textSecondary }]}>
               București, România
             </Text>
-          </View>
+          </TouchableOpacity>
           <IconButton
             icon={<Filter size={20} color={theme.colors.textPrimary} />}
-            onPress={() => {}}
+            onPress={() => navigation.navigate('Filters')}
             variant="ghost"
             style={{ backgroundColor: theme.colors.surface }}
           />
         </View>
       </SafeAreaView>
 
-      {/* Mock Map Background */}
-      <View style={[styles.mapMock, { backgroundColor: theme.colors.divider }]}>
-        <View style={styles.gridLineH} />
-        <View style={styles.gridLineH} />
-        <View style={styles.gridLineV} />
-        <View style={styles.gridLineV} />
-        
-        {/* Markers */}
-        {mapLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary.main} />
-          </View>
-        ) : (
-          markers.map(renderMarker)
-        )}
-      </View>
+      {/* Loading Indicator */}
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        </View>
+      )}
 
       {/* Action Buttons */}
       <View style={styles.mapActions}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: theme.colors.surface }]}
           onPress={() => navigation.goBack()}
         >
           <List size={20} color={theme.colors.primary.main} />
-          <Text style={[styles.actionBtnText, { color: theme.colors.textPrimary }]}>Listă</Text>
+          <Text style={[styles.actionBtnText, { color: theme.colors.textPrimary }]}>
+            Listă
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: theme.colors.surface }]}
+          onPress={handleMyLocation}
         >
           <Navigation size={20} color={theme.colors.primary.main} />
         </TouchableOpacity>
       </View>
 
-      {/* Property Preview Carousel */}
+      {/* Property Preview Card */}
       {selectedProperty && (
         <View style={styles.previewContainer}>
           <PropertyCard
-            {...selectedProperty}
-            onPress={() => navigation.navigate('PropertyDetail', { propertyId: String(selectedProperty.id) })}
+            id={selectedProperty.id}
+            title={selectedProperty.title}
+            price={selectedProperty.priceEur}
+            surface={selectedProperty.surfaceSqm}
+            rooms={selectedProperty.rooms}
+            city={selectedProperty.city}
+            neighborhood={selectedProperty.neighborhood}
+            transactionType={selectedProperty.transactionType}
+            propertyType={selectedProperty.propertyType}
+            images={selectedProperty.images?.map((img) => img.url) || []}
+            onPress={() =>
+              navigation.navigate('PropertyDetail', {
+                propertyId: String(selectedProperty.id),
+              })
+            }
           />
           <IconButton
             icon={<X size={20} color="#ffffff" />}
-            onPress={() => setSelectedPropertyId(null)}
+            onPress={() => setSelectedProperty(null)}
             variant="ghost"
-            style={{ 
-              ...styles.closePreview, 
+            style={{
+              ...styles.closePreview,
               backgroundColor: theme.colors.primary.main,
               width: 36,
               height: 36,
-              borderRadius: 18
+              borderRadius: 18,
             }}
           />
         </View>
@@ -208,39 +204,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter-Medium',
   },
-  mapMock: {
-    flex: 1,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  gridLineH: {
+  loadingOverlay: {
     position: 'absolute',
-    width: '100%',
-    height: 2,
-    backgroundColor: '#cbd5e1',
-    top: '33%',
-    opacity: 0.2,
-  },
-  gridLineV: {
-    position: 'absolute',
-    width: 2,
-    height: '100%',
-    backgroundColor: '#cbd5e1',
-    left: '50%',
-    opacity: 0.2,
-  },
-  marker: {
-    position: 'absolute',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 2,
+    top: 100,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markerText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Bold',
+    zIndex: 5,
   },
   mapActions: {
     position: 'absolute',
@@ -250,6 +220,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 12,
+    zIndex: 10,
   },
   actionBtn: {
     flexDirection: 'row',
@@ -258,6 +229,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 30,
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   actionBtnText: {
     fontSize: 15,
@@ -275,11 +251,6 @@ const styles = StyleSheet.create({
     top: -10,
     right: -10,
     zIndex: 30,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
 

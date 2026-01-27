@@ -60,7 +60,13 @@
           "color": "#1e3a5f"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "IMOBI folosește locația pentru a găsi proprietăți în apropiere"
+        }
+      ]
     ],
     "extra": {
       "eas": {
