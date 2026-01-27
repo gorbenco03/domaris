@@ -9,8 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { FavoritesStackParamList } from '@/app/navigation/types';
 import FavoritesListScreen from './screens/FavoritesListScreen';
 import PropertyCompareScreen from './screens/PropertyCompareScreen';
-import { PropertyDetailScreen } from '@/features/search/screens';
-import { PropertyInsightsScreen } from '@/features/ai';
+import { PropertyDetailScreen, PropertyInsightsScreen } from '@/app/navigation/screens';
 
 const Stack = createNativeStackNavigator<FavoritesStackParamList>();
 

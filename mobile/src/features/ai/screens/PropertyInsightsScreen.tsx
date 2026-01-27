@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { IconButton } from '@/shared/components';
 import { aiApi } from '../api/aiApi';
 import { QUERY_KEYS } from '@/config/constants';
 
@@ -46,9 +47,13 @@ const PropertyInsightsScreen: React.FC = () => {
           },
         ]}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+        <IconButton
+          icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
+          onPress={() => navigation.goBack()}
+          variant="surface"
+          size="md"
+          style={[styles.backButton, { borderWidth: 1, borderColor: theme.colors.border }]}
+        />
         <View style={styles.headerCenter}>
           <LinearGradient
             colors={['#6366f1', '#8b5cf6', '#10b981']}

@@ -37,12 +37,13 @@ export const usePropertyDetail = (id: string | number | undefined) => {
 };
 
 /**
- * Get my properties (Level 2+ required)
+ * Get my properties (Level 3+ required)
  */
-export const useMyProperties = () => {
+export const useMyProperties = (enabled: boolean = true) => {
   return useQuery({
     queryKey: [QUERY_KEYS.MY_PROPERTIES],
     queryFn: propertiesApi.getMyProperties,
+    enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };

@@ -10,9 +10,9 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { authApi } from '@/features/auth/api';
-import { Button, Input } from '@/shared/components';
-import { ArrowLeft, Mail, Send, Check } from 'lucide-react-native';
+import { authApi } from '@/features/auth/services';
+import { Button, Input, ScreenHeader } from '@/shared/components';
+import { Mail, Send, Check } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 
@@ -66,11 +66,7 @@ const ForgotPasswordScreen: React.FC = () => {
   if (emailSent) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.surface }]}>
-            <ArrowLeft size={24} color={theme.colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader title="" />
 
         <View style={styles.successContent}>
           <View style={[styles.successIcon, { backgroundColor: theme.colors.accent.main }]}>
@@ -99,11 +95,7 @@ const ForgotPasswordScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.surface }]}>
-            <ArrowLeft size={24} color={theme.colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader title="" />
 
         <View style={styles.content}>
           <View style={[styles.iconContainer, { backgroundColor: `${theme.colors.primary.main}15` }]}>

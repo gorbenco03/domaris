@@ -10,14 +10,18 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Shield, CheckCircle, Clock, AlertCircle, Lock, ChevronRight } from 'lucide-react-native';
+import { Shield, CheckCircle, Clock, AlertCircle, Lock, ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Button } from '@/shared/components';
+import { useAuth } from '@/app/providers/AuthProvider';
+import { useKycStatus } from '@/features/kyc/hooks/useKyc';
+import { Button, ScreenHeader } from '@/shared/components';
 
 interface VerificationLevel {
   level: 0 | 1 | 2 | 3;
@@ -32,10 +36,58 @@ interface VerificationLevel {
 const VerificationHubScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const { data: kycStatus, isLoading } = useKycStatus();
 
-  // Mock verification status - in production, this would come from backend
-  const currentLevel = 1;
+  const currentLevel = kycStatus?.currentLevel ?? user?.verificationLevel ?? 0;
+  const activeStatus = kycStatus?.status ?? 'NOT_STARTED';
+  const targetLevel = kycStatus?.targetLevel ?? null;
+  const rejectionReason = kycStatus?.rejectionReason ?? null;
   
+  const resolveStatus = (level: VerificationLevel['level']): VerificationLevel['status'] => {
+    if (level === 0) {
+      return 'verified';
+    }
+
+    if (level === 1) {
+      return currentLevel >= 1 ? 'verified' : 'available';
+    }
+
+    if (currentLevel >= level) {
+      return 'verified';
+    }
+
+    if (targetLevel === level && ['PENDING', 'IN_REVIEW'].includes(activeStatus)) {
+      return 'pending';
+    }
+
+    if (targetLevel === level && activeStatus === 'REJECTED') {
+      return 'rejected';
+    }
+
+    if (level === 2 && currentLevel >= 1) {
+      return 'available';
+    }
+
+    if (level === 3 && currentLevel >= 2) {
+      return 'available';
+    }
+
+    return 'locked';
+  };
+
+  const handleStartVerification = (level: number) => {
+    if (level === 2) {
+      navigation.navigate('IdentityVerification' as never);
+      return;
+    }
+    if (level === 3) {
+      navigation.navigate('OwnershipVerification' as never);
+      return;
+    }
+    Alert.alert('Info', 'Acest nivel se activează automat după OTP.');
+  };
+
   const verificationLevels: VerificationLevel[] = [
     {
       level: 0,
@@ -44,7 +96,7 @@ const VerificationHubScreen: React.FC = () => {
       badge: '',
       requirements: ['Cont creat'],
       capabilities: ['Vizualizare proprietăți'],
-      status: currentLevel >= 0 ? 'verified' : 'locked',
+      status: resolveStatus(0),
     },
     {
       level: 1,
@@ -52,26 +104,26 @@ const VerificationHubScreen: React.FC = () => {
       description: 'Verificare de bază completată',
       badge: '✓ Verificat',
       requirements: ['Email verificat', 'Telefon verificat'],
-      capabilities: ['Căutare', 'Favorite', 'Contact proprietari'],
-      status: currentLevel >= 1 ? 'verified' : (currentLevel >= 0 ? 'available' : 'locked'),
+      capabilities: ['Căutare', 'Favorite'],
+      status: resolveStatus(1),
     },
     {
       level: 2,
       label: 'Identitate Verificată',
       description: 'Verificare completă a identității',
       badge: '✓✓ Identitate',
-      requirements: ['Document identitate', 'Selfie verificare', 'Matching facial'],
-      capabilities: ['Postare anunțuri', 'Aprobare rapidă', 'Încredere maximă'],
-      status: currentLevel >= 2 ? 'verified' : (currentLevel >= 1 ? 'available' : 'locked'),
+      requirements: ['Document identitate', 'Selfie verificare'],
+      capabilities: ['Contact proprietari', 'Mesaje', 'Cereri vizionare'],
+      status: resolveStatus(2),
     },
     {
       level: 3,
       label: 'Proprietar Verificat',
       description: 'Proprietar confirmat cu documente',
       badge: 'Proprietar Verificat',
-      requirements: ['Nivel 2 completat', 'Document proprietate', 'Extras CF sau Contract'],
-      capabilities: ['Badge special', 'Prioritate în căutări', 'Încredere premium'],
-      status: currentLevel >= 3 ? 'verified' : (currentLevel >= 2 ? 'available' : 'locked'),
+      requirements: ['Nivel 2 completat', 'Document proprietate'],
+      capabilities: ['Postare anunțuri', 'Badge special', 'Încredere premium'],
+      status: resolveStatus(3),
     },
   ];
 
@@ -112,41 +164,18 @@ const VerificationHubScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.border,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text
-          style={[
-            styles.headerTitle,
-            {
-              color: theme.colors.textPrimary,
-              fontSize: theme.typography.fontSize.lg,
-            },
-          ]}
-        >
-          Verificare Identitate
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+      <ScreenHeader title="Verificare Identitate" />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {isLoading && (
+          <View style={{ alignItems: 'center', marginBottom: theme.spacing[4] }}>
+            <ActivityIndicator color={theme.colors.primary.main} />
+          </View>
+        )}
         {/* Hero Section */}
         <View style={[styles.heroSection, { paddingHorizontal: theme.spacing[4] }]}>
           <View style={[styles.heroIcon, { backgroundColor: theme.colors.primary.main + '15' }]}>
@@ -213,6 +242,7 @@ const VerificationHubScreen: React.FC = () => {
             const isVerified = level.status === 'verified';
             const isAvailable = level.status === 'available';
             const isPending = level.status === 'pending';
+            const isRejected = level.status === 'rejected';
 
             return (
               <View
@@ -324,7 +354,17 @@ const VerificationHubScreen: React.FC = () => {
                     {isAvailable && (
                       <Button
                         title="Începe Verificarea"
-                        onPress={() => {/* Navigate to verification flow */}}
+                        onPress={() => handleStartVerification(level.level)}
+                        variant="primary"
+                        fullWidth
+                        style={{ marginTop: theme.spacing[4] }}
+                      />
+                    )}
+
+                    {isRejected && (
+                      <Button
+                        title="Retrimite Documente"
+                        onPress={() => handleStartVerification(level.level)}
                         variant="primary"
                         fullWidth
                         style={{ marginTop: theme.spacing[4] }}
@@ -353,6 +393,31 @@ const VerificationHubScreen: React.FC = () => {
                           ]}
                         >
                           În curs de verificare
+                        </Text>
+                      </View>
+                    )}
+
+                    {isRejected && rejectionReason && (
+                      <View
+                        style={[
+                          styles.statusBanner,
+                          {
+                            backgroundColor: theme.colors.secondary.error + '10',
+                            marginTop: theme.spacing[3],
+                          },
+                        ]}
+                      >
+                        <AlertCircle size={14} color={theme.colors.secondary.error} />
+                        <Text
+                          style={[
+                            styles.statusText,
+                            {
+                              color: theme.colors.secondary.error,
+                              fontSize: theme.typography.fontSize.xs,
+                            },
+                          ]}
+                        >
+                          {rejectionReason}
                         </Text>
                       </View>
                     )}
@@ -424,23 +489,6 @@ const VerificationHubScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

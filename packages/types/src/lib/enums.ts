@@ -13,9 +13,9 @@
  * Niveluri de verificare utilizator - SINGURA "poartă" pentru acces la funcționalități
  *
  * 0 = Cont nou (acces de bază - căutare, filtre, hartă)
- * 1 = Email/Telefon verificat (poate contacta, programa vizionări)
- * 2 = Identitate verificată (POATE POSTA ANUNȚURI, KYC complet)
- * 3 = Proprietar verificat cu documente (badge special, promovare)
+ * 1 = Email/Telefon verificat (acces de bază)
+ * 2 = Identitate verificată (poate contacta, programa vizionări)
+ * 3 = Proprietar verificat cu documente (POATE POSTA ANUNȚURI)
  */
 export type VerificationLevel = 0 | 1 | 2 | 3;
 
@@ -31,13 +31,13 @@ export const VERIFICATION_LEVEL_INFO = {
     name: 'Verificat Bază',
     description: 'Email sau telefon confirmat',
     canPost: false,
-    canContact: true,
+    canContact: false,
     badge: null,
   },
   2: {
     name: 'Identitate Verificată',
     description: 'Document de identitate validat',
-    canPost: true,
+    canPost: false,
     canContact: true,
     badge: '✓ Verificat',
   },
@@ -68,20 +68,20 @@ export const PERMISSIONS = {
   USE_AI_SEARCH: 0,
 
   // Nivel 1+ (email/telefon verificat)
-  CONTACT_OWNER: 1,
-  START_CONVERSATION: 1,
-  REQUEST_VIEWING: 1,
+  CONTACT_OWNER: 2,
+  START_CONVERSATION: 2,
+  REQUEST_VIEWING: 2,
   RECEIVE_ALERTS: 1,
 
-  // Nivel 2+ (identitate verificată - POATE POSTA)
-  CREATE_LISTING: 2,
-  EDIT_OWN_LISTING: 2,
-  DELETE_OWN_LISTING: 2,
-  VIEW_LISTING_ANALYTICS: 2,
+  // Nivel 2+ (identitate verificată)
   RESPOND_TO_MESSAGES: 2,
   MANAGE_VIEWINGS: 2,
 
-  // Nivel 3 (proprietar verificat cu documente)
+  // Nivel 3 (proprietar verificat cu documente - POATE POSTA)
+  CREATE_LISTING: 3,
+  EDIT_OWN_LISTING: 3,
+  DELETE_OWN_LISTING: 3,
+  VIEW_LISTING_ANALYTICS: 3,
   BOOST_LISTING: 3,
   VERIFIED_BADGE: 3,
 } as const;
@@ -224,7 +224,8 @@ export type KycDocumentType =
   | 'DRIVING_LICENSE'
   | 'PROPERTY_DEED'
   | 'UTILITY_BILL'
-  | 'SELFIE';
+  | 'SELFIE'
+  | 'OTHER';
 
 export const KYC_DOCUMENT_TYPES: KycDocumentType[] = [
   'ID_CARD',
@@ -233,6 +234,7 @@ export const KYC_DOCUMENT_TYPES: KycDocumentType[] = [
   'PROPERTY_DEED',
   'UTILITY_BILL',
   'SELFIE',
+  'OTHER',
 ];
 
 // ============================================================================

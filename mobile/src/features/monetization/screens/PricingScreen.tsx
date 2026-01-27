@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
   Check,
   X,
   Crown,
@@ -25,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Button } from '@/shared/components';
+import { Button, ScreenHeader } from '@/shared/components';
 
 interface PricingPlan {
   id: string;
@@ -109,35 +108,7 @@ const PricingScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.border,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text
-          style={[
-            styles.headerTitle,
-            {
-              color: theme.colors.textPrimary,
-              fontSize: theme.typography.fontSize.lg,
-            },
-          ]}
-        >
-          Planuri și Prețuri
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+      <ScreenHeader title="Planuri și Prețuri" />
 
       <ScrollView
         style={styles.scrollView}
@@ -457,23 +428,6 @@ const PricingScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

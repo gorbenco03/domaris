@@ -14,6 +14,7 @@ import {
 import { ArrowLeft, Phone, MoreVertical, User, Home } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { IconButton } from '@/shared/components';
 import { Participant, PropertyPreview } from '../types';
 
 // ============================================
@@ -64,13 +65,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
       {/* Main header row */}
       <View style={styles.mainRow}>
         {/* Back button */}
-        <TouchableOpacity
+        <IconButton
+          icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
           onPress={onBackPress}
-          style={styles.backButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+          variant="surface"
+          size="md"
+          style={[styles.backButton, { borderWidth: 1, borderColor: theme.colors.border }]}
+        />
 
         {/* Avatar */}
         <View style={styles.avatarContainer}>

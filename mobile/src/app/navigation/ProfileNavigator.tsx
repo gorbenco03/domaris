@@ -15,7 +15,11 @@ import {
   ReviewsScreen,
   PublicProfileScreen,
 } from '@/features/profile/screens';
-import { VerificationHubScreen } from '@/features/profile/screens/verification';
+import {
+  VerificationHubScreen,
+  IdentityVerificationScreen,
+  OwnershipVerificationScreen,
+} from '@/features/profile/screens/verification';
 import { CreatePropertyWizard, MyPropertiesScreen, EditPropertyScreen } from '@/features/properties/screens';
 import { ViewingsListScreen, ViewingDetailScreen, RequestViewingScreen, AvailabilitySettingsScreen } from '@/features/viewings';
 import { NotificationsCenterScreen, NotificationPreferencesScreen } from '@/features/notifications';
@@ -42,6 +46,8 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Screen name="NotificationSettings" component={NotificationPreferencesScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="VerificationHub" component={VerificationHubScreen} />
+      <Stack.Screen name="IdentityVerification" component={IdentityVerificationScreen} />
+      <Stack.Screen name="OwnershipVerification" component={OwnershipVerificationScreen} />
       {/* Properties */}
       <Stack.Screen name="MyProperties" component={MyPropertiesScreen} />
       <Stack.Screen name="CreateProperty" component={CreatePropertyWizard} />

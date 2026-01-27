@@ -18,9 +18,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
-import { authApi } from '@/features/auth/api';
-import { Button, OTPInput } from '@/shared/components';
-import { ArrowLeft, Mail, Phone, RefreshCw, Check } from 'lucide-react-native';
+import { authApi } from '@/features/auth/services';
+import { Button, OTPInput, ScreenHeader } from '@/shared/components';
+import { Mail, Phone, RefreshCw, Check } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'OTPVerification'>;
 type RoutePropType = RouteProp<AuthStackParamList, 'OTPVerification'>;
@@ -79,6 +79,10 @@ const OTPVerificationScreen: React.FC = () => {
 
       setVerified(true);
       console.log('OTP verified successfully');
+      navigation.getParent()?.reset({
+        index: 0,
+        routes: [{ name: 'Main' as never }],
+      });
     } catch (error: any) {
       console.error('OTP verification error:', error);
       const apiError = error?.response?.data;
@@ -150,16 +154,16 @@ const OTPVerificationScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.surface }]}>
-            <ArrowLeft size={24} color={theme.colors.textPrimary} />
-          </TouchableOpacity>
-          <View style={styles.progressContainer}>
-            <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
-            <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
-            <View style={[styles.progressStep, { backgroundColor: theme.colors.divider }]} />
-          </View>
-        </View>
+        <ScreenHeader
+          title=""
+          rightSlot={
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
+              <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
+              <View style={[styles.progressStep, { backgroundColor: theme.colors.divider }]} />
+            </View>
+          }
+        />
 
         <View style={styles.content}>
           <View style={[styles.iconContainer, { backgroundColor: verified ? theme.colors.accent.main : `${theme.colors.primary.main}15` }]}>
@@ -209,8 +213,6 @@ const OTPVerificationScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   keyboardView: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, marginBottom: 32 },
-  backButton: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   progressContainer: { flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 8, marginRight: 44 },
   progressStep: { width: 32, height: 4, borderRadius: 2 },
   content: { flex: 1, paddingHorizontal: 24, alignItems: 'center' },

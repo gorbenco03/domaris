@@ -11,6 +11,7 @@ import { Home, Search, MessageCircle, Heart, User } from 'lucide-react-native';
 
 import { MainTabParamList } from './types';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
 import ProfileNavigator from './ProfileNavigator';
 import DiscoveryNavigator from './DiscoveryNavigator';
 import SearchNavigator from './SearchNavigator';
@@ -18,6 +19,7 @@ import { FavoritesNavigator } from '@/features/favorites';
 import { MessagingNavigator } from '@/features/messaging';
 import { useUnreadCount } from '@/features/messaging/hooks/useMessaging';
 import { useTutorialTarget } from '@/features/tutorial';
+import { AuthRequiredScreen } from '@/shared/components';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -58,10 +60,11 @@ const TabIcon: React.FC<TabIconProps> = ({ focused, color, size, IconComponent, 
 
 const MainNavigator: React.FC = () => {
   const { theme } = useTheme();
+  const { isAuthenticated } = useAuth();
   const insets = useSafeAreaInsets();
   
   // Get unread count for badge
-  const { data: unreadData } = useUnreadCount();
+  const { data: unreadData } = useUnreadCount(isAuthenticated);
   const unreadCount = unreadData?.count || 0;
 
   return (
@@ -101,6 +104,22 @@ const MainNavigator: React.FC = () => {
             />
           ),
         }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (event) => {
+            const state = route.state;
+            
+            // If already on Home screen, do nothing
+            if (state && state.index === 0 && state.routes[0].name === 'Home') {
+              return;
+            }
+            
+            // Otherwise, reset to Home screen
+            event.preventDefault();
+            navigation.navigate('HomeTab', {
+              screen: 'Home',
+            });
+          },
+        })}
       />
       <Tab.Screen
         name="SearchTab"
@@ -116,13 +135,28 @@ const MainNavigator: React.FC = () => {
             />
           ),
         }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (event) => {
+            const state = route.state;
+            
+            // If already on SearchResults screen, do nothing
+            if (state && state.index === 0) {
+              return;
+            }
+            
+            // Otherwise, reset to initial screen
+            event.preventDefault();
+            navigation.navigate('SearchTab', {
+              screen: 'SearchResults',
+            });
+          },
+        })}
       />
       <Tab.Screen
         name="MessagesTab"
-        component={MessagingNavigator}
         options={{
           tabBarLabel: 'Mesaje',
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadge: isAuthenticated && unreadCount > 0 ? unreadCount : undefined,
           tabBarBadgeStyle: {
             backgroundColor: theme.colors.primary.main,
             color: '#ffffff',
@@ -138,18 +172,37 @@ const MainNavigator: React.FC = () => {
             />
           ),
         }}
-        listeners={({ navigation }) => ({
-          tabPress: (event) => {
-            // Always reset messaging stack to conversations list
-            navigation.navigate('MessagesTab', {
-              screen: 'ConversationsList',
-            });
-          },
-        })}
-      />
+        listeners={
+          isAuthenticated
+            ? ({ navigation, route }) => ({
+                tabPress: (event) => {
+                  const state = route.state;
+                  
+                  // If already on ConversationsList screen, do nothing
+                  if (state && state.index === 0 && state.routes[0].name === 'ConversationsList') {
+                    return;
+                  }
+                  
+                  // Otherwise, reset to ConversationsList
+                  event.preventDefault();
+                  navigation.navigate('MessagesTab', {
+                    screen: 'ConversationsList',
+                  });
+                },
+              })
+            : undefined
+        }
+      >
+        {() =>
+          isAuthenticated ? (
+            <MessagingNavigator />
+          ) : (
+            <AuthRequiredScreen message="Autentifică-te pentru a accesa mesajele." />
+          )
+        }
+      </Tab.Screen>
       <Tab.Screen
         name="FavoritesTab"
-        component={FavoritesNavigator}
         options={{
           tabBarLabel: 'Favorite',
           tabBarIcon: ({ focused, color, size }) => (
@@ -162,10 +215,37 @@ const MainNavigator: React.FC = () => {
             />
           ),
         }}
-      />
+        listeners={
+          isAuthenticated
+            ? ({ navigation, route }) => ({
+                tabPress: (event) => {
+                  const state = route.state;
+                  
+                  // If already on Favorites screen, do nothing
+                  if (state && state.index === 0 && state.routes[0].name === 'Favorites') {
+                    return;
+                  }
+                  
+                  // Otherwise, reset to Favorites screen
+                  event.preventDefault();
+                  navigation.navigate('FavoritesTab', {
+                    screen: 'Favorites',
+                  });
+                },
+              })
+            : undefined
+        }
+      >
+        {() =>
+          isAuthenticated ? (
+            <FavoritesNavigator />
+          ) : (
+            <AuthRequiredScreen message="Autentifică-te pentru a accesa favoritele." />
+          )
+        }
+      </Tab.Screen>
       <Tab.Screen
         name="ProfileTab"
-        component={ProfileNavigator}
         options={{
           tabBarLabel: 'Profil',
           tabBarIcon: ({ focused, color, size }) => (
@@ -178,7 +258,36 @@ const MainNavigator: React.FC = () => {
             />
           ),
         }}
-      />
+        listeners={
+          isAuthenticated
+            ? ({ navigation, route }) => ({
+                tabPress: (event) => {
+                  // Get current state of ProfileTab
+                  const state = route.state;
+                  
+                  // If we're already on the Profile screen (root of stack), do nothing
+                  if (state && state.index === 0 && state.routes[0].name === 'Profile') {
+                    return;
+                  }
+                  
+                  // Otherwise, reset to Profile screen
+                  event.preventDefault();
+                  navigation.navigate('ProfileTab', {
+                    screen: 'Profile',
+                  });
+                },
+              })
+            : undefined
+        }
+      >
+        {() =>
+          isAuthenticated ? (
+            <ProfileNavigator />
+          ) : (
+            <AuthRequiredScreen message="Autentifică-te pentru a accesa profilul." />
+          )
+        }
+      </Tab.Screen>
     </Tab.Navigator>
   );
 };

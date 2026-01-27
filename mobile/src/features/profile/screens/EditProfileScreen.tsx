@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
   Camera,
   User,
   Mail,
@@ -30,9 +29,9 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Avatar } from '../components';
-import { Button, Input } from '@/shared/components';
+import { Button, Input, ScreenHeader } from '@/shared/components';
 
-import { useUpdateProfile, useUploadAvatar } from '@/features/profile/hooks/useUser';
+import { useUpdateProfile, useUploadAvatar } from '@/features/profile/services';
 import { useAuth } from '@/app/providers/AuthProvider';
 
 const EditProfileScreen: React.FC = () => {
@@ -135,40 +134,13 @@ const EditProfileScreen: React.FC = () => {
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: theme.colors.surface,
-              borderBottomColor: theme.colors.border,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <ArrowLeft size={24} color={theme.colors.textPrimary} />
-          </TouchableOpacity>
-          <Text
-            style={[
-              styles.headerTitle,
-              {
-                color: theme.colors.textPrimary,
-                fontSize: theme.typography.fontSize.lg,
-              },
-            ]}
-          >
-            Editare profil
-          </Text>
-          <View style={{ width: 44 }} />
-        </View>
+        <ScreenHeader title="Editare profil" />
 
         <ScrollView
           style={styles.scrollView}
+          horizontal={false}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ width: '100%', flexGrow: 1, paddingBottom: 32 }}
         >
           {/* Avatar Section */}
           <View style={[styles.avatarSection, { paddingVertical: theme.spacing[6] }]}>
@@ -385,23 +357,6 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

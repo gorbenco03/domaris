@@ -18,13 +18,13 @@ import {
   Filter, 
   List,
   Navigation,
-  ChevronLeft
+  ArrowLeft
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton } from '@/shared/components';
-import { PropertyCard } from '@/features/properties/components/PropertyCard';
+import { PropertyCard } from '@/shared/components';
 import { useNavigation } from '@react-navigation/native';
-import { useMapData, useSearch } from '@/features/search/hooks/useSearch';
+import { useMapData, useSearch } from '@/features/search/services';
 import { ActivityIndicator } from 'react-native';
 import type { IPropertyListing } from '@/core/api/types';
 
@@ -94,10 +94,11 @@ const MapSearchScreen: React.FC = () => {
       <SafeAreaView style={styles.headerOverlay}>
         <View style={styles.headerContent}>
           <IconButton
-            icon={<ChevronLeft size={24} color={theme.colors.textPrimary} />}
+            icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
             onPress={() => navigation.goBack()}
-            variant="ghost"
-            style={{ ...styles.backButton, backgroundColor: theme.colors.surface }}
+            variant="surface"
+            size="md"
+            style={{ ...styles.backButton, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }}
           />
           <View style={[styles.searchBar, { backgroundColor: theme.colors.surface }]}>
             <Search size={20} color={theme.colors.textTertiary} />

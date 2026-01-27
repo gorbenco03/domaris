@@ -1,121 +1,140 @@
-import { useState, useEffect } from 'react';
-import { PropertyAnalytics, AnalyticsSuggestion, OwnerAnalyticsSummary } from '../types';
+import { useQuery } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/config/constants';
+import { propertiesApi } from '@/features/properties/api/propertiesApi';
+import { apiClient } from '@/core/api/client';
+import { API_ENDPOINTS } from '@/core/api/endpoints';
+import {
+  PropertyAnalytics,
+  AnalyticsSuggestion,
+  OwnerAnalyticsSummary,
+} from '../types';
 
-export const usePropertyAnalytics = (propertyId: string, period: string = 'week') => {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<PropertyAnalytics | null>(null);
+const PERIOD_MAP: Record<string, '7d' | '30d' | 'all'> = {
+  week: '7d',
+  month: '30d',
+  all_time: 'all',
+};
 
-  useEffect(() => {
-    // Simulate API call
-    const timer = setTimeout(() => {
-      setData({
+const normalizeAnalytics = (
+  propertyId: string,
+  period: '7d' | '30d' | 'all',
+  payload: any
+): PropertyAnalytics => {
+  const viewsTotal = payload?.views_total ?? payload?.views ?? 0;
+  const favoritesTotal = payload?.favorites_total ?? payload?.favorites ?? 0;
+  const uniqueViews = payload?.views_unique ?? payload?.uniqueViews ?? 0;
+
+  return {
+    propertyId,
+    period: period === '7d' ? 'week' : period === '30d' ? 'month' : 'all_time',
+    impressions: payload?.impressions ?? 0,
+    views: viewsTotal,
+    uniqueViews,
+    favorites: favoritesTotal,
+    contacts: payload?.contacts ?? 0,
+    viewingsRequested: payload?.viewingsRequested ?? 0,
+    viewingsCompleted: payload?.viewingsCompleted ?? 0,
+    shares: payload?.shares ?? 0,
+    ctr: payload?.ctr ?? 0,
+    contactRate: payload?.contactRate ?? 0,
+    viewingRate: payload?.viewingRate ?? 0,
+    timeline: Array.isArray(payload?.timeline) ? payload.timeline : [],
+    sources: payload?.sources ?? {
+      search: 0,
+      alerts: 0,
+      direct: 0,
+      favorites: 0,
+    },
+    avgSearchPosition: payload?.avgSearchPosition,
+    trends: payload?.trends ?? {
+      viewsChange: 0,
+      contactsChange: 0,
+      viewingsChange: 0,
+    },
+    benchmark: payload?.benchmark,
+  };
+};
+
+export const usePropertyAnalytics = (
+  propertyId: string,
+  period: string = 'week'
+) => {
+  const mappedPeriod = PERIOD_MAP[period] ?? '7d';
+
+  const query = useQuery({
+    queryKey: [QUERY_KEYS.PROPERTIES, 'analytics', propertyId, mappedPeriod],
+    queryFn: async () => {
+      const data = await propertiesApi.getPropertyAnalytics(
         propertyId,
-        period: period as any,
-        impressions: 2450,
-        views: 234,
-        uniqueViews: 180,
-        favorites: 45,
-        contacts: 12,
-        viewingsRequested: 8,
-        viewingsCompleted: 5,
-        shares: 24,
-        ctr: 9.5,
-        contactRate: 5.1,
-        viewingRate: 41.6,
-        timeline: [
-          { date: 'L', views: 25, contacts: 1 },
-          { date: 'M', views: 42, contacts: 2 },
-          { date: 'Mi', views: 35, contacts: 1 },
-          { date: 'J', views: 48, contacts: 3 },
-          { date: 'V', views: 30, contacts: 0 },
-          { date: 'S', views: 28, contacts: 2 },
-          { date: 'D', views: 26, contacts: 3 },
-        ],
-        sources: {
-          search: 65,
-          alerts: 15,
-          direct: 10,
-          favorites: 10,
-        },
-        avgSearchPosition: 4.2,
-        trends: {
-          viewsChange: 15,
-          contactsChange: 8,
-          viewingsChange: 0,
-        },
-        benchmark: {
-          avgViews: 180,
-          avgContacts: 8,
-          percentile: 75,
-          marketStatus: 'top 25%',
-        },
-      });
-      setLoading(false);
-    }, 1000);
+        mappedPeriod
+      );
+      return normalizeAnalytics(propertyId, mappedPeriod, data);
+    },
+    enabled: !!propertyId,
+  });
 
-    return () => clearTimeout(timer);
-  }, [propertyId, period]);
-
-  return { data, loading };
+  return { data: query.data, loading: query.isLoading };
 };
 
 export const useAnalyticsSuggestions = (propertyId: string) => {
-  const [loading, setLoading] = useState(true);
-  const [suggestions, setSuggestions] = useState<AnalyticsSuggestion[]>([]);
+  const query = useQuery({
+    queryKey: [QUERY_KEYS.PROPERTIES, 'analytics', propertyId, 'suggestions'],
+    queryFn: async () => {
+      const response = await apiClient.get(
+        API_ENDPOINTS.ANALYTICS.PROPERTY_SUGGESTIONS(String(propertyId))
+      );
+      const recommendations = response.data?.recommendations || [];
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSuggestions([
-        {
-          id: '1',
-          type: 'photos',
-          priority: 'high',
-          message: 'Adaugă mai multe poze',
-          description: 'Anunțurile cu 10+ poze au cu 40% mai multe contacte.',
-          action: 'Adaugă poze',
-        },
-        {
-          id: '2',
-          type: 'price',
-          priority: 'medium',
-          message: 'Verifică prețul',
-          description: 'Prețul tău e cu 5% peste media zonei Drumul Taberei.',
-          action: 'Vezi comparație',
-        },
-      ]);
-      setLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [propertyId]);
+      return recommendations.map((message: string, index: number) => ({
+        id: `${propertyId}-${index}`,
+        type: 'description',
+        priority: 'medium',
+        message,
+        description: message,
+        action: 'Vezi detalii',
+      })) as AnalyticsSuggestion[];
+    },
+    enabled: !!propertyId,
+  });
 
-  return { suggestions, loading };
+  return { suggestions: query.data ?? [], loading: query.isLoading };
 };
 
 export const useOwnerAnalyticsSummary = () => {
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<OwnerAnalyticsSummary | null>(null);
+  const query = useQuery({
+    queryKey: [QUERY_KEYS.PROFILE, 'analytics', 'summary'],
+    queryFn: async () => {
+      const response = await apiClient.get(API_ENDPOINTS.ANALYTICS.OWNER_SUMMARY);
+      const payload = response.data || {};
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSummary({
-        totalViews: 1234,
-        totalContacts: 45,
-        scheduledViewings: 12,
+      const totalViews = payload.totalViews ?? 0;
+      const totalLeads = payload.totalLeads ?? 0;
+      const top = payload.listingsPerformance?.[0];
+
+      const summary: OwnerAnalyticsSummary = {
+        totalViews,
+        totalContacts: payload.totalContacts ?? totalLeads ?? 0,
+        scheduledViewings: payload.scheduledViewings ?? totalLeads ?? 0,
         topPerforming: {
-          id: 'prop-1',
-          title: 'Apartament 3 cam. Drumul Taberei',
-          views: 456,
+          id: String(top?.id ?? 'none'),
+          title: top?.title ?? '—',
+          views: top?.views ?? 0,
         },
         needsAttention: {
-          id: 'prop-2',
-          title: 'Casă Pipera',
-          issue: '0 contacte în ultima săptămână',
+          id: String(payload.needsAttention?.id ?? 'none'),
+          title: payload.needsAttention?.title ?? '—',
+          issue: payload.needsAttention?.issue ?? '—',
         },
-      });
-      setLoading(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
+      };
 
-  return { summary, loading };
+      return summary;
+    },
+  });
+
+  return {
+    summary: query.data ?? null,
+    loading: query.isLoading,
+    refetch: query.refetch,
+    isFetching: query.isFetching,
+  };
 };

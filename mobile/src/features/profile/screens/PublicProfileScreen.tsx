@@ -3,7 +3,7 @@
  * How other users see your profile
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,11 +14,11 @@ import {
   Dimensions,
   Share,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ArrowLeft,
   Share2,
   Star,
   MapPin,
@@ -42,9 +42,12 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import Button from '@/shared/components/Button';
-import { PropertyCard } from '@/features/properties/components';
+import { PropertyCard, ScreenHeader } from '@/shared/components';
+import { getPublicProfile, getUserListings, type IPublicUserProfile, type IUserListing } from '../api/userApi';
+import { formatDate } from '@/shared/utils/formatters';
 
 // Route prop type
 type PublicProfileRouteProp = RouteProp<ProfileStackParamList, 'PublicProfile'>;
@@ -108,72 +111,125 @@ interface PropertyListing {
 }
 
 // ============================================
-// MOCK DATA
+// HELPER FUNCTIONS
 // ============================================
 
-const MOCK_USER: PublicUser = {
-  id: 'user-123',
-  firstName: 'Alexandru',
-  lastName: 'Popescu',
-  location: {
-    city: 'București',
-    county: 'Sector 1',
-  },
-  memberSince: 'Decembrie 2024',
-  isVerified: true,
-  verificationLevel: 3,
-  stats: {
-    activeListings: 5,
-    totalSales: 23,
-    responseRate: 95,
-    responseTime: '< 1 oră',
-  },
-  rating: {
-    average: 4.8,
-    count: 47,
-  },
-  badges: [
-    { id: 'top-seller', name: 'Top Seller', icon: '🏆', description: 'Peste 20 de tranzacții finalizate' },
-    { id: 'fast-responder', name: 'Răspuns Rapid', icon: '⚡', description: 'Răspunde în mai puțin de 1 oră' },
-    { id: 'verified', name: 'Verificat Complet', icon: '✅', description: 'Identitate și documente verificate' },
-  ],
-  bio: 'Proprietar cu experiență în piața imobiliară din București. Ofer consiliere și asistență completă pentru vânzare și închiriere.',
-  languages: ['Română', 'Engleză'],
-  specializations: ['Apartamente', 'Case', 'Spații comerciale'],
+/**
+ * Format memberSince date to Romanian format (e.g., "Decembrie 2024")
+ */
+const formatMemberSince = (date: string | Date): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return new Intl.DateTimeFormat('ro-RO', {
+    month: 'long',
+    year: 'numeric',
+  }).format(dateObj);
 };
 
-const MOCK_LISTINGS: PropertyListing[] = [
-  {
-    id: 'prop-1',
-    title: 'Apartament 3 camere, Drumul Taberei',
-    transactionType: 'SALE',
-    price: 120000,
+/**
+ * Parse location string to {city, county} object
+ */
+const parseLocation = (location?: string | null): { city: string; county: string } => {
+  if (!location) {
+    return { city: 'București', county: 'România' };
+  }
+  
+  // Try to parse "City, County" format
+  const parts = location.split(',').map(p => p.trim());
+  if (parts.length >= 2) {
+    return { city: parts[0], county: parts[1] };
+  }
+  
+  return { city: parts[0] || 'București', county: 'România' };
+};
+
+/**
+ * Map verification level and badges to UI badge format
+ * Only show badge for level 3 (Proprietar Verificat)
+ */
+const mapBadges = (verificationLevel: number, backendBadges: string[]): Array<{
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+}> => {
+  const badges: Array<{ id: string; name: string; icon: string; description: string }> = [];
+  
+  // Only show badge for verification level 3
+  if (verificationLevel >= 3) {
+    badges.push({
+      id: 'verified-owner',
+      name: 'Proprietar Verificat',
+      icon: '', // No emoji, will use icon component instead
+      description: 'Proprietar verificat cu documente',
+    });
+  }
+  
+  return badges;
+};
+
+/**
+ * Map backend user profile to UI format
+ */
+const mapUserProfile = (backendUser: IPublicUserProfile): PublicUser => {
+  // Location is not included in public profile for privacy - use default
+  const location = { city: 'București', county: 'România' };
+  
+  return {
+    id: String(backendUser.id),
+    firstName: backendUser.firstName,
+    lastName: backendUser.lastName || '',
+    avatar: backendUser.avatar,
+    location,
+    memberSince: formatMemberSince(backendUser.memberSince),
+    isVerified: backendUser.isVerified,
+    verificationLevel: backendUser.verificationLevel,
+    stats: {
+      activeListings: backendUser.activeListingsCount,
+      totalSales: 0, // Not available from backend yet
+      responseRate: 0, // Not available from backend yet
+      responseTime: '', // Not available from backend yet
+    },
+    rating: {
+      average: backendUser.rating || 0,
+      count: backendUser.reviewsCount || 0,
+    },
+    badges: mapBadges(backendUser.verificationLevel, backendUser.badges || []),
+    bio: backendUser.bio,
+    languages: undefined, // Not available from backend
+    specializations: undefined, // Not available from backend
+  };
+};
+
+/**
+ * Map backend listing to UI format
+ */
+const mapListing = (backendListing: IUserListing): PropertyListing => {
+  const primaryImage = backendListing.images?.find(img => img.isPrimary) || backendListing.images?.[0];
+  
+  // Handle null/undefined transactionType - default to 'SALE'
+  const transactionType = backendListing.transactionType 
+    ? (backendListing.transactionType.toUpperCase() as 'SALE' | 'RENT')
+    : 'SALE';
+  
+  return {
+    id: String(backendListing.id),
+    title: backendListing.title || 'Proprietate',
+    transactionType,
+    price: backendListing.priceEur || 0,
     currency: 'EUR',
-    location: { city: 'București', neighborhood: 'Drumul Taberei' },
-    characteristics: { rooms: 3, bedrooms: 2, bathrooms: 1, totalArea: 75 },
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400',
-  },
-  {
-    id: 'prop-2',
-    title: 'Casă 4 camere cu grădină',
-    transactionType: 'SALE',
-    price: 250000,
-    currency: 'EUR',
-    location: { city: 'București', neighborhood: 'Pipera' },
-    characteristics: { rooms: 4, bedrooms: 3, bathrooms: 2, totalArea: 180 },
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400',
-  },
-  {
-    id: 'prop-3',
-    title: 'Garsonieră modernă centrală',
-    transactionType: 'RENT',
-    price: 450,
-    currency: 'EUR',
-    location: { city: 'București', neighborhood: 'Universitate' },
-    characteristics: { rooms: 1, bathrooms: 1, totalArea: 35 },
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400',
-  },
-];
+    location: {
+      city: backendListing.city || 'București',
+      neighborhood: backendListing.neighborhood,
+    },
+    characteristics: {
+      rooms: backendListing.rooms,
+      bedrooms: backendListing.bedrooms,
+      bathrooms: backendListing.bathrooms,
+      totalArea: backendListing.surfaceSqm || 0,
+    },
+    image: primaryImage?.url || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400',
+  };
+};
 
 // ============================================
 // VERIFICATION BADGE COMPONENT
@@ -247,7 +303,7 @@ const BadgeCard: React.FC<BadgeCardProps> = ({ badge }) => {
 
   return (
     <View style={[styles.badgeCard, { backgroundColor: theme.colors.surface, ...theme.shadows.sm }]}>
-      <Text style={styles.badgeIcon}>{badge.icon}</Text>
+      <BadgeCheck size={16} color={theme.colors.accent.main} />
       <Text style={[styles.badgeName, { color: theme.colors.textPrimary }]}>{badge.name}</Text>
     </View>
   );
@@ -261,24 +317,80 @@ const PublicProfileScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PublicProfileRouteProp>();
+  const { user: currentUser } = useAuth();
   
   // Get userId from route params
   const { userId } = route.params;
 
   const [refreshing, setRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  // In a real app, you would fetch user data based on userId
-  // For now we use mock data but acknowledge the userId
-  const [user] = useState<PublicUser>({ ...MOCK_USER, id: userId });
-  const [listings] = useState<PropertyListing[]>(MOCK_LISTINGS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<PublicUser | null>(null);
+  const [listings, setListings] = useState<PropertyListing[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
+
+  // Check if viewing own profile - redirect to Profile screen
+  useEffect(() => {
+    if (currentUser && String(currentUser.id) === String(userId)) {
+      // This is the user's own profile, navigate back to Profile screen
+      navigation.replace('Profile');
+    }
+  }, [currentUser, userId, navigation]);
+
+  const fetchUserData = useCallback(async () => {
+    if (!userId) {
+      setError('ID utilizator invalid');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setError(null);
+      const [userData, listingsData] = await Promise.all([
+        getPublicProfile(userId),
+        getUserListings(userId),
+      ]);
+
+      setUser(mapUserProfile(userData));
+      
+      // Safely map listings with error handling for each item
+      const mappedListings = listingsData
+        .map((listing) => {
+          try {
+            return mapListing(listing);
+          } catch (err) {
+            console.error('Error mapping listing:', listing.id, err);
+            return null;
+          }
+        })
+        .filter((listing): listing is PropertyListing => listing !== null);
+      
+      setListings(mappedListings);
+    } catch (err: any) {
+      console.error('Error fetching user profile:', err);
+      setError(err.response?.data?.message || 'Eroare la încărcarea profilului');
+      if (err.response?.status === 404) {
+        setError('Utilizatorul nu a fost găsit');
+      }
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+    setIsLoading(true);
+    fetchUserData();
+  }, [fetchUserData]);
 
   const handleShare = async () => {
+    if (!user) return;
+    
     try {
       await Share.share({
         message: `Vezi profilul lui ${user.firstName} ${user.lastName} pe IMOBI: https://imobi.ro/user/${user.id}`,
@@ -317,6 +429,7 @@ const PublicProfileScreen: React.FC = () => {
   };
 
   const handleViewReviews = () => {
+    if (!user) return;
     navigation.navigate('Reviews' as any, { userId: user.id });
   };
 
@@ -325,31 +438,76 @@ const PublicProfileScreen: React.FC = () => {
   };
 
   const handlePropertyPress = (propertyId: string) => {
-    // Navigate to property detail
-    console.log('Navigate to property', propertyId);
+    // Navigate to property detail - cross-tab navigation
+    (navigation as any).navigate('SearchTab', {
+      screen: 'PropertyDetail',
+      params: { propertyId },
+    });
   };
+
+  // Loading state
+  if (isLoading && !user) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScreenHeader title="Profil" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+            Se încarcă...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error && !user) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScreenHeader title="Profil" />
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: theme.colors.textSecondary }]}>
+            {error}
+          </Text>
+          <Button
+            title="Încearcă din nou"
+            onPress={fetchUserData}
+            variant="primary"
+            style={{ marginTop: 16 }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
-          Profil
-        </Text>
-        <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
-          <Share2 size={22} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Profil"
+        rightSlot={
+          <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
+            <Share2 size={22} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        horizontal={false}
+        contentContainerStyle={[styles.scrollContent, { width: '100%' }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -504,6 +662,7 @@ const PublicProfileScreen: React.FC = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.badgesScroll}
+              centerContent={true}
             >
               {user.badges.map((badge) => (
                 <BadgeCard key={badge.id} badge={badge} />
@@ -581,7 +740,7 @@ const PublicProfileScreen: React.FC = () => {
                   characteristics={listing.characteristics}
                   image={listing.image}
                   onPress={() => handlePropertyPress(listing.id)}
-                  variant="compact"
+                  variant="list"
                 />
               </View>
             ))}
@@ -613,23 +772,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
   headerButton: {
     width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
   },
   scrollView: {
     flex: 1,
@@ -637,6 +784,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+    width: '100%',
   },
   profileCard: {
     padding: 24,
@@ -790,17 +938,18 @@ const styles = StyleSheet.create({
   },
   badgesScroll: {
     gap: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
   },
   badgeCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
     minWidth: 80,
-  },
-  badgeIcon: {
-    fontSize: 20,
-    marginBottom: 4,
   },
   badgeName: {
     fontSize: 11,
@@ -846,7 +995,7 @@ const styles = StyleSheet.create({
   },
   listingsGrid: {
     gap: 16,
-    alignItems: 'center',
+    width: '100%',
   },
   listingCardWrapper: {
     width: '100%',
@@ -862,6 +1011,29 @@ const styles = StyleSheet.create({
   reportText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 60,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
   },
 });
 

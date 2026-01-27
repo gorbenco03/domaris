@@ -18,7 +18,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ArrowLeft,
   Plus,
   Home,
   FileText,
@@ -37,14 +36,16 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import Button from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { AuthRequiredScreen, VerificationRequiredScreen, ScreenHeader } from '@/shared/components';
 import { 
   useMyProperties, 
   useDeleteProperty, 
   useUpdatePropertyStatus 
-} from '@/features/properties/hooks/useProperties';
+} from '@/features/properties/services';
 import { ActivityIndicator } from 'react-native';
 import { IPropertyListItem } from '@/core/api/types';
 
@@ -253,17 +254,35 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
 const MyPropertiesScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const { isAuthenticated, user } = useAuth();
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [refreshing, setRefreshing] = useState(false);
 
   // Real data fetching
-  const { data: properties = [], isLoading, refetch, error } = useMyProperties();
+  const canAccess = isAuthenticated && (user?.verificationLevel ?? 0) >= 3;
+  const { data: properties = [], isLoading, refetch, error } = useMyProperties(canAccess);
   const deleteMutation = useDeleteProperty();
 
   console.log('[MyPropertiesScreen] Properties fetched:', JSON.stringify(properties, null, 2));
   console.log('[MyPropertiesScreen] Is loading:', isLoading);
   if (error) console.error('[MyPropertiesScreen] Fetch error:', error);
+
+  if (!isAuthenticated) {
+    return (
+      <AuthRequiredScreen message="Autentifică-te pentru a vedea anunțurile tale." />
+    );
+  }
+
+  if (!canAccess) {
+    return (
+      <VerificationRequiredScreen
+        title="Proprietar verificat necesar"
+        message="Finalizează verificarea nivel 3 pentru a gestiona anunțurile."
+        ctaLabel="Începe verificarea"
+      />
+    );
+  }
 
   const filteredProperties = properties.filter((p) => {
     if (!p.status) return true; // Safety
@@ -340,20 +359,12 @@ const MyPropertiesScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
-          Proprietățile mele
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+      <ScreenHeader title="Proprietățile mele" />
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        horizontal={false}
+        contentContainerStyle={[styles.scrollContent, { width: '100%' }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -498,29 +509,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: 100,
+    width: '100%',
   },
   summaryContainer: {
     paddingHorizontal: 16,

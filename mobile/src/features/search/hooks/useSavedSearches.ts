@@ -15,11 +15,12 @@ import {
 /**
  * Get all saved searches
  */
-export const useSavedSearches = () => {
+export const useSavedSearches = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [QUERY_KEYS.SEARCH_FILTERS, 'saved'],
     queryFn: savedSearchesApi.getAllSavedSearches,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: options?.enabled ?? true,
   });
 };
 

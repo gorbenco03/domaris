@@ -15,12 +15,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Share2, X } from 'lucide-react-native';
+import { Share2, X } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Button } from '@/shared/components';
+import { Button, ScreenHeader } from '@/shared/components';
 import { FavoritesStackParamList } from '@/app/navigation/types';
 import { useCompareFavorites } from '../hooks/useFavorites';
 
@@ -248,37 +248,14 @@ const PropertyCompareScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.border,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text
-          style={[
-            styles.headerTitle,
-            {
-              color: theme.colors.textPrimary,
-              fontSize: theme.typography.fontSize.lg,
-            },
-          ]}
-        >
-          Comparație ({properties.length})
-        </Text>
-        <TouchableOpacity style={styles.shareButton}>
-          <Share2 size={24} color={theme.colors.primary.main} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title={`Comparație (${properties.length})`}
+        rightSlot={
+          <TouchableOpacity style={styles.shareButton}>
+            <Share2 size={24} color={theme.colors.primary.main} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         horizontal={false}
@@ -353,23 +330,6 @@ const PropertyCompareScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontWeight: '600',
   },
   shareButton: {
     width: 44,

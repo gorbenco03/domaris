@@ -167,6 +167,7 @@ export interface IUserKycStatus {
   userId: string;
   status: KycStatus;
   currentLevel: VerificationLevel;
+  targetLevel?: VerificationLevel | null;
   submittedAt?: Date | string | null;
   reviewedAt?: Date | string | null;
   rejectionReason?: string | null;

@@ -20,14 +20,15 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
-import { authApi } from '@/features/auth/api';
+import { authApi } from '@/features/auth/services';
 import {
   Button,
   Input,
   Checkbox,
   PasswordStrength,
+  ScreenHeader,
 } from '@/shared/components';
-import { ArrowLeft, Mail, Phone, User, Lock } from 'lucide-react-native';
+import { Mail, Phone, User, Lock } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -199,21 +200,15 @@ const RegisterScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={[styles.backButton, { backgroundColor: theme.colors.surface }]}
-            >
-              <ArrowLeft size={24} color={theme.colors.textPrimary} />
-            </TouchableOpacity>
-            
-            {/* Progress Indicator - Simplified for Unified Account */}
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
-              <View style={[styles.progressStep, { backgroundColor: theme.colors.divider }]} />
-            </View>
-          </View>
+          <ScreenHeader
+            title=""
+            rightSlot={
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
+                <View style={[styles.progressStep, { backgroundColor: theme.colors.divider }]} />
+              </View>
+            }
+          />
 
           {/* Title */}
           <View style={styles.titleContainer}>

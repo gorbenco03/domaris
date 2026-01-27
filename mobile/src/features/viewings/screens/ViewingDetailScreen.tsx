@@ -13,13 +13,16 @@ import {
   Image,
   Linking,
   Alert,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import { Viewing, STATUS_INFO } from '../types';
-import { Button } from '@/shared/components';
+import { Button, IconButton } from '@/shared/components';
 import {
   ArrowLeft,
   Calendar,
@@ -35,53 +38,57 @@ import {
   XCircle,
   CheckCircle,
 } from 'lucide-react-native';
+import {
+  useViewing,
+  useConfirmViewing,
+  useRejectViewing,
+  useCancelViewing,
+  useSubmitViewingFeedback,
+} from '../hooks/useViewings';
 
 type ViewingDetailRouteProp = RouteProp<ProfileStackParamList, 'ViewingDetail'>;
-
-// Mock viewing data
-const MOCK_VIEWING: Viewing = {
-  id: '1',
-  propertyId: 'p1',
-  ownerId: 'o1',
-  seekerId: 's1',
-  property: {
-    id: 'p1',
-    title: 'Apartament 3 camere modern',
-    address: 'Str. Drumul Taberei 45, Sector 6, București',
-    imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-    price: 120000,
-  },
-  owner: {
-    id: 'o1',
-    name: 'Ion Popescu',
-    phone: '+40722123456',
-    avatar: 'https://i.pravatar.cc/150?u=owner1',
-  },
-  seeker: {
-    id: 's1',
-    name: 'Maria Ionescu',
-    phone: '+40733654321',
-    avatar: 'https://i.pravatar.cc/150?u=seeker1',
-  },
-  requestedSlots: [
-    { date: '2026-01-21', startTime: '10:00', endTime: '10:30' },
-  ],
-  confirmedSlot: { date: '2026-01-21', startTime: '10:00', endTime: '10:30' },
-  duration: 30,
-  status: 'confirmed',
-  notes: 'Sunt foarte interesat de această proprietate. Aș dori să văd ambele dormitoare și balconul.',
-  meetingPoint: 'La intrarea în bloc, la scara B',
-  createdAt: new Date('2026-01-18'),
-  confirmedAt: new Date('2026-01-19'),
-};
+type ViewingDetailNavigationProp = NativeStackNavigationProp<ProfileStackParamList, 'ViewingDetail'>;
 
 const ViewingDetailScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<ViewingDetailNavigationProp>();
   const route = useRoute<ViewingDetailRouteProp>();
   const { theme } = useTheme();
   
-  const [viewing] = useState<Viewing>(MOCK_VIEWING);
+  const { viewingId } = route.params;
+  const { data: viewing, isLoading, error, refetch } = useViewing(viewingId);
+  const confirmMutation = useConfirmViewing();
+  const rejectMutation = useRejectViewing();
+  const cancelMutation = useCancelViewing();
+  const feedbackMutation = useSubmitViewingFeedback();
   
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [rating, setRating] = useState<number>(0);
+  const [comment, setComment] = useState('');
+  const [interested, setInterested] = useState<boolean>(true);
+  
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !viewing) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: theme.colors.secondary.error }]}>
+            Eroare la încărcarea vizionării
+          </Text>
+          <Button title="Încearcă din nou" onPress={() => refetch()} variant="outline" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const statusInfo = STATUS_INFO[viewing.status];
   const slot = viewing.confirmedSlot || viewing.requestedSlots[0];
   
@@ -104,45 +111,136 @@ const ViewingDetailScreen: React.FC = () => {
   };
   
   const handleCall = () => {
-    if (viewing.owner.phone) {
+    if (viewing?.owner?.phone) {
       Linking.openURL(`tel:${viewing.owner.phone}`);
     }
   };
   
   const handleMessage = () => {
     // Navigate to chat
-    console.log('Navigate to chat with:', viewing.owner.id);
+    if (viewing?.owner?.id) {
+      // TODO: Navigate to chat with owner
+      console.log('Navigate to chat with:', viewing.owner.id);
+    }
   };
   
   const handleNavigate = () => {
-    const address = encodeURIComponent(viewing.property.address);
-    Linking.openURL(`https://maps.google.com/?q=${address}`);
+    if (viewing?.property?.address) {
+      const address = encodeURIComponent(viewing.property.address);
+      Linking.openURL(`https://maps.google.com/?q=${address}`);
+    }
   };
   
-  const handleReschedule = () => {
-    Alert.alert(
-      'Reprogramare',
-      'Dorești să reprogramezi această vizionare?',
+  const handleConfirm = () => {
+    if (!viewing) return;
+    confirmMutation.mutate(
+      { id: viewing.id },
+      {
+        onSuccess: () => {
+          Alert.alert('Succes', 'Vizionarea a fost confirmată');
+        },
+        onError: (error: any) => {
+          Alert.alert('Eroare', error?.message || 'Nu s-a putut confirma vizionarea');
+        },
+      }
+    );
+  };
+
+  const handleReject = () => {
+    if (!viewing) return;
+    Alert.prompt(
+      'Respingere vizionare',
+      'Introdu motivul respingerii:',
       [
         { text: 'Anulează', style: 'cancel' },
-        { text: 'Reprogramează', onPress: () => console.log('Reschedule') },
-      ]
+        {
+          text: 'Respinge',
+          style: 'destructive',
+          onPress: (reason) => {
+            if (reason) {
+              rejectMutation.mutate(
+                { id: viewing.id, reason },
+                {
+                  onSuccess: () => {
+                    Alert.alert('Succes', 'Vizionarea a fost respinsă');
+                  },
+                  onError: (error: any) => {
+                    Alert.alert('Eroare', error?.message || 'Nu s-a putut respinge vizionarea');
+                  },
+                }
+              );
+            }
+          },
+        },
+      ],
+      'plain-text'
     );
+  };
+
+  const handleReschedule = () => {
+    if (!viewing) return;
+    navigation.push('RequestViewing', {
+      propertyId: viewing.propertyId,
+      viewingId: viewing.id,
+    });
   };
   
   const handleCancel = () => {
+    if (!viewing) return;
     Alert.alert(
       'Anulare vizionare',
       'Ești sigur că dorești să anulezi această vizionare?',
       [
         { text: 'Nu', style: 'cancel' },
-        { text: 'Da, anulează', style: 'destructive', onPress: () => console.log('Cancel') },
+        {
+          text: 'Da, anulează',
+          style: 'destructive',
+          onPress: () => {
+            cancelMutation.mutate(
+              { id: viewing.id },
+              {
+                onSuccess: () => {
+                  Alert.alert('Succes', 'Vizionarea a fost anulată');
+                },
+                onError: (error: any) => {
+                  Alert.alert('Eroare', error?.message || 'Nu s-a putut anula vizionarea');
+                },
+              }
+            );
+          },
+        },
       ]
     );
   };
   
   const handleLeaveFeedback = () => {
-    console.log('Leave feedback');
+    setShowFeedbackForm(true);
+  };
+  
+  const handleSubmitFeedback = () => {
+    if (!viewing || rating === 0) {
+      Alert.alert('Atenție', 'Selectează o evaluare (1-5 stele)');
+      return;
+    }
+    
+    feedbackMutation.mutate(
+      {
+        id: viewing.id,
+        rating,
+        comment: comment || undefined,
+        interested,
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Succes', 'Feedback-ul a fost trimis');
+          setShowFeedbackForm(false);
+          refetch();
+        },
+        onError: (error: any) => {
+          Alert.alert('Eroare', error?.message || 'Nu s-a putut trimite feedback-ul');
+        },
+      }
+    );
   };
 
   return (
@@ -159,12 +257,23 @@ const ViewingDetailScreen: React.FC = () => {
           )}
           
           {/* Back Button */}
-          <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: theme.colors.surface }]}
-            onPress={() => navigation.goBack()}
-          >
-            <ArrowLeft size={24} color={theme.colors.textPrimary} />
-          </TouchableOpacity>
+          <IconButton
+            icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
+            onPress={() => {
+              // Always go back to Viewings list
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Viewings');
+              }
+            }}
+            variant="surface"
+            size="md"
+            style={[
+              styles.backButton,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            ]}
+          />
           
           {/* Status Badge */}
           <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
@@ -296,7 +405,7 @@ const ViewingDetailScreen: React.FC = () => {
           )}
           
           {/* Feedback (for completed viewings) */}
-          {viewing.status === 'completed' && !viewing.seekerFeedback && (
+          {viewing.status === 'completed' && !viewing.seekerFeedback && !showFeedbackForm && (
             <TouchableOpacity
               style={[styles.feedbackPrompt, { backgroundColor: theme.colors.secondary.main + '15' }]}
               onPress={handleLeaveFeedback}
@@ -312,9 +421,141 @@ const ViewingDetailScreen: React.FC = () => {
               </View>
             </TouchableOpacity>
           )}
+
+          {/* Feedback Form */}
+          {viewing.status === 'completed' && !viewing.seekerFeedback && showFeedbackForm && (
+            <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+                Lasă feedback
+              </Text>
+              
+              {/* Rating Stars */}
+              <View style={styles.ratingContainer}>
+                <Text style={[styles.ratingLabel, { color: theme.colors.textSecondary }]}>
+                  Evaluare:
+                </Text>
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity
+                      key={star}
+                      onPress={() => setRating(star)}
+                      style={styles.starButton}
+                    >
+                      <Star
+                        size={32}
+                        color={star <= rating ? '#fbbf24' : theme.colors.divider}
+                        fill={star <= rating ? '#fbbf24' : 'transparent'}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Comment */}
+              <View style={[styles.commentContainer, { borderColor: theme.colors.border }]}>
+                <TextInput
+                  style={[styles.commentInput, { color: theme.colors.textPrimary }]}
+                  placeholder="Comentariu (opțional)"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  value={comment}
+                  onChangeText={setComment}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+
+              {/* Interested Checkbox */}
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => setInterested(!interested)}
+              >
+                <View style={[
+                  styles.checkbox,
+                  { 
+                    backgroundColor: interested ? theme.colors.primary.main : 'transparent',
+                    borderColor: theme.colors.border,
+                  }
+                ]}>
+                  {interested && <CheckCircle size={16} color="#fff" />}
+                </View>
+                <Text style={[styles.checkboxLabel, { color: theme.colors.textPrimary }]}>
+                  Sunt încă interesat de această proprietate
+                </Text>
+              </TouchableOpacity>
+
+              {/* Submit Buttons */}
+              <View style={styles.feedbackActions}>
+                <Button
+                  title="Anulează"
+                  onPress={() => setShowFeedbackForm(false)}
+                  variant="outline"
+                  style={styles.feedbackButton}
+                />
+                <Button
+                  title="Trimite feedback"
+                  onPress={handleSubmitFeedback}
+                  variant="primary"
+                  style={styles.feedbackButton}
+                  loading={feedbackMutation.isPending}
+                  disabled={rating === 0}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Existing Feedback */}
+          {viewing.seekerFeedback && (
+            <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+                Feedback-ul tău
+              </Text>
+              <View style={styles.existingFeedback}>
+                <View style={styles.feedbackRating}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      size={20}
+                      color={star <= viewing.seekerFeedback!.rating ? '#fbbf24' : theme.colors.divider}
+                      fill={star <= viewing.seekerFeedback!.rating ? '#fbbf24' : 'transparent'}
+                    />
+                  ))}
+                </View>
+                {viewing.seekerFeedback.comment && (
+                  <Text style={[styles.feedbackComment, { color: theme.colors.textSecondary }]}>
+                    {viewing.seekerFeedback.comment}
+                  </Text>
+                )}
+                <Text style={[styles.feedbackInterested, { color: theme.colors.textTertiary }]}>
+                  {viewing.seekerFeedback.interested ? 'Interesat' : 'Nu este interesat'}
+                </Text>
+              </View>
+            </View>
+          )}
           
-          {/* Actions */}
-          {(viewing.status === 'pending' || viewing.status === 'confirmed') && (
+          {/* Actions - Owner can confirm/reject pending viewings */}
+          {viewing.status === 'pending' && viewing.isOwner && (
+            <View style={styles.actions}>
+              <Button
+                title="Confirmă vizionarea"
+                onPress={handleConfirm}
+                variant="primary"
+                fullWidth
+                style={styles.actionButton}
+                loading={confirmMutation.isPending}
+              />
+              <Button
+                title="Respinge"
+                onPress={handleReject}
+                variant="outline"
+                fullWidth
+                style={styles.actionButton}
+                loading={rejectMutation.isPending}
+              />
+            </View>
+          )}
+
+          {/* Actions - Seeker/Owner can reschedule/cancel confirmed viewings */}
+          {(viewing.status === 'confirmed' || viewing.status === 'rescheduled') && (
             <View style={styles.actions}>
               <Button
                 title="Reprogramează"
@@ -330,6 +571,7 @@ const ViewingDetailScreen: React.FC = () => {
                 fullWidth
                 style={{ ...styles.actionButton, ...styles.cancelButton }}
                 textStyle={{ color: '#ef4444' }}
+                loading={cancelMutation.isPending}
               />
             </View>
           )}
@@ -366,6 +608,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -539,6 +782,88 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     borderColor: '#ef4444',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  ratingContainer: {
+    marginBottom: 20,
+  },
+  ratingLabel: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  starButton: {
+    padding: 4,
+  },
+  commentContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  commentInput: {
+    padding: 12,
+    fontSize: 14,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    flex: 1,
+  },
+  feedbackActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  feedbackButton: {
+    flex: 1,
+  },
+  existingFeedback: {
+    marginTop: 8,
+  },
+  feedbackRating: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 12,
+  },
+  feedbackComment: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  feedbackInterested: {
+    fontSize: 12,
   },
 });
 

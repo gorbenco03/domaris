@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, Plus, Trash2, Edit2, MessageSquare } from 'lucide-react-native';
+import { Plus, Trash2, Edit2, MessageSquare } from 'lucide-react-native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { MessagesStackParamList } from '@/app/navigation/types';
@@ -24,6 +24,7 @@ import { MessageTemplate } from '../types';
 import Button from '@/shared/components/Button';
 import Input from '@/shared/components/Input';
 import Card from '@/shared/components/Card';
+import { ScreenHeader } from '@/shared/components';
 
 // ============================================
 // MOCK DATA
@@ -143,16 +144,14 @@ const TemplatesScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Template-uri mesaje</Text>
-        <TouchableOpacity onPress={handleAddPress} style={styles.addButton}>
-          <Plus size={24} color={theme.colors.primary.main} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Template-uri mesaje"
+        rightSlot={
+          <TouchableOpacity onPress={handleAddPress} style={styles.addButton}>
+            <Plus size={24} color={theme.colors.primary.main} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.infoSection}>
@@ -228,21 +227,6 @@ const TemplatesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
   },
   addButton: {
     padding: 4,

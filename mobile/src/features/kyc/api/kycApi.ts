@@ -58,12 +58,14 @@ export const startIdVerification = async (data: {
  * Upload property ownership document
  */
 export const uploadPropertyDocument = async (data: {
-  propertyId: number;
+  propertyId?: number;
   docType: 'PROPERTY_DEED' | 'UTILITY_BILL' | 'OTHER';
   file: File | { uri: string; name: string; type: string };
 }): Promise<IUserKycStatus> => {
   const formData = new FormData();
-  formData.append('propertyId', String(data.propertyId));
+  if (typeof data.propertyId === 'number') {
+    formData.append('propertyId', String(data.propertyId));
+  }
   formData.append('docType', data.docType);
   formData.append('file', data.file as any);
 

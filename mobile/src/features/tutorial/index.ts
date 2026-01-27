@@ -10,6 +10,7 @@ export {
   TutorialProgress,
   TutorialPromptModal,
   TutorialOverlay,
+  TutorialGate,
 } from './components';
 
 // Hooks
