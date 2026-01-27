@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const API_CONFIG = {
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', // Matches existing api.ts default
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api', // Matches existing api.ts default
   timeout: 10000,
 };
 

@@ -22,8 +22,17 @@ interface ISearchFacets {
 
 export const searchApi = {
   advancedSearch: async (filters: IPropertySearchParams): Promise<IPropertySearchResult> => {
-    const response = await apiClient.get<IPropertySearchResult>('/search', { params: filters });
-    return response.data;
+    const response = await apiClient.get<any>('/search', { params: filters });
+    
+    // Transform backend response { data: [], meta: {} } to IPropertySearchResult { items: [], ... }
+    return {
+        items: response.data.data,
+        total: response.data.meta.total,
+        page: response.data.meta.page,
+        limit: response.data.meta.limit,
+        totalPages: response.data.meta.totalPages,
+        hasMore: response.data.meta.hasNextPage
+    };
   },
 
   getSuggestions: async (query: string): Promise<ISearchSuggestion[]> => {

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Home, Building2 } from "lucide-react";
+import { Home, Menu, User } from "lucide-react";
 
 export const Header = () => {
   const router = useRouter();
@@ -17,34 +17,37 @@ export const Header = () => {
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <Home className="h-6 w-6 text-primary" />
-          <span className="text-xl font-bold text-foreground">RentFinder</span>
+          <span className="text-xl font-bold text-foreground hidden md:block">RentFinder</span>
         </button>
 
+        {/* Search Pill */}
+
+
         <nav className="flex items-center gap-6">
-          <a href="#properties" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Browse Properties
-          </a>
-          <a href="#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            How It Works
-          </a>
+
           <div className="flex items-center gap-3">
+            <Button size="sm" variant="ghost" className="rounded-full text-sm font-medium">
+              Airbnb your home
+            </Button>
             {isAuthenticated ? (
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
+                className="rounded-full border hover:shadow-md"
                 onClick={() => router.push("/account/properties")}
               >
-                My Dashboard
+                  <div className="h-8 w-8 bg-muted rounded-full flex items-center justify-center font-semibold">
+                      U
+                  </div>
               </Button>
             ) : (
-              <Button variant="ghost" size="sm" onClick={() => router.push("/auth")}>
-                Sign In
-              </Button>
+                <div className="flex items-center gap-1 border rounded-full p-1 pl-3 hover:shadow-md cursor-pointer transition-shadow" onClick={() => router.push("/auth")}>
+                    <Menu className="h-4 w-4" />
+                    <div className="h-7 w-7 bg-muted rounded-full flex items-center justify-center">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                </div>
             )}
-            <Button size="sm" className="gap-2" onClick={() => router.push("/auth")}>
-              <Building2 className="h-4 w-4" />
-              List Property
-            </Button>
           </div>
         </nav>
       </div>
