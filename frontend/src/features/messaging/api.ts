@@ -1,5 +1,11 @@
 import { apiClient } from '@/lib/client';
-import type { IConversation, IConversationListItem, IMessage } from '@domaris/types';
+import type { Conversation, Message } from './types';
+
+// Defining return types locally to be safe or reusing existing types
+// Assuming Conversation roughly matches what we need
+export type IConversationListItem = Conversation;
+export type IConversation = Conversation;
+export type IMessage = Message;
 
 export const messagingApi = {
   getConversations: async (params?: {
@@ -16,9 +22,8 @@ export const messagingApi = {
     return response.data;
   },
 
-  getMessages: async (conversationId: string): Promise<IMessage[]> => {
-    // Assuming backend returns messages in a consistent format
-    const response = await apiClient.get<{ data: IMessage[] }>(`/conversations/${conversationId}/messages`);
+  getMessages: async (conversationId: string, params?: { before?: string; limit?: number }): Promise<IMessage[]> => {
+    const response = await apiClient.get<{ data: IMessage[] }>(`/conversations/${conversationId}/messages`, { params });
     return response.data.data;
   },
 
@@ -46,6 +51,11 @@ export const messagingApi = {
 
   archiveConversation: async (conversationId: string): Promise<{ success: boolean }> => {
     const response = await apiClient.post<{ success: boolean }>(`/conversations/${conversationId}/archive`);
+    return response.data;
+  },
+
+  unarchiveConversation: async (conversationId: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.post<{ success: boolean }>(`/conversations/${conversationId}/unarchive`);
     return response.data;
   },
 

@@ -1,4 +1,4 @@
-import { Home } from "lucide-react";
+
 
 export const Footer = () => {
   return (
@@ -7,8 +7,8 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <Home className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold text-foreground">RentFinder</span>
+              <img src="/logotype.png" alt="Riva" className="h-8 w-auto" />
+              <span className="text-xl font-bold text-foreground">Riva</span>
             </div>
             <p className="text-sm text-muted-foreground">
               Connecting landlords and tenants for better rental experiences.
@@ -44,7 +44,7 @@ export const Footer = () => {
         </div>
         
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          © 2024 RentFinder. All rights reserved.
+          © 2024 Riva. All rights reserved.
         </div>
       </div>
     </footer>

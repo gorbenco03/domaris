@@ -67,9 +67,14 @@ export default function RegisterPage() {
             : { phone, password, firstName, lastName }; // Phone logic might be specific
             
         await register(data);
-        // On success, redirect to verify or login
-        // Assuming implementation of register handles success by resolving
-        router.push('/auth/login?registered=true'); // Or verification page
+        // On success, redirect to verify
+        if (method === 'email') {
+            router.push(`/auth/verify?email=${encodeURIComponent(email)}`);
+        } else {
+             // For phone, we might need a different page or same page if it supports phone
+             // Assuming verify page supports email for now based on file analysis
+             router.push('/auth/login?registered=true'); 
+        }
     } catch (err: any) {
         console.error(err);
         setErrors({ root: err.response?.data?.message || "Registration failed" });
@@ -81,7 +86,10 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col">
        {/* Background Elements matching mobile - consistent with login */}
-       <div className="absolute top-0 left-0 right-0 h-[30vh] bg-gradient-to-br from-emerald-900 to-emerald-600 rounded-b-[40px] z-0" />
+       <div 
+         className="absolute top-0 left-0 right-0 h-[30vh] rounded-b-[40px] z-0" 
+         style={{ background: 'var(--gradient-hero)' }}
+       />
        
        <div className="z-10 flex-1 flex flex-col px-6 pt-8 max-w-md mx-auto w-full">
          {/* Method Tabs - Centered at top like mobile header? Or inside card? Mobile has it in card. */}
@@ -95,7 +103,7 @@ export default function RegisterPage() {
          </div>
 
          {/* Card */}
-         <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
+         <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
             
             {/* Tabs */}
             <div className="flex gap-3 mb-6">
@@ -105,7 +113,7 @@ export default function RegisterPage() {
                     className={cn(
                         "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border transition-all",
                         method === 'email' 
-                            ? "border-emerald-500 bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500" 
+                            ? "border-primary bg-primary/5 text-primary ring-1 ring-primary" 
                             : "border-slate-200 text-slate-500 hover:bg-slate-50"
                     )}
                 >
@@ -118,7 +126,7 @@ export default function RegisterPage() {
                     className={cn(
                         "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border transition-all",
                         method === 'phone' 
-                            ? "border-emerald-500 bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500" 
+                            ? "border-primary bg-primary/5 text-primary ring-1 ring-primary" 
                             : "border-slate-200 text-slate-500 hover:bg-slate-50"
                     )}
                 >
@@ -134,9 +142,9 @@ export default function RegisterPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         leftIcon={<User className="w-5 h-5" />}
-                        className={cn(errors.name && "border-red-500 focus-visible:ring-red-500")}
+                        className={cn(errors.name && "border-destructive focus-visible:ring-destructive")}
                      />
-                     {errors.name && <p className="text-red-500 text-xs mt-1 ml-1">{errors.name}</p>}
+                     {errors.name && <p className="text-destructive text-xs mt-1 ml-1">{errors.name}</p>}
                 </div>
 
                 {method === 'email' ? (
@@ -147,9 +155,9 @@ export default function RegisterPage() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             leftIcon={<Mail className="w-5 h-5" />}
-                            className={cn(errors.email && "border-red-500 focus-visible:ring-red-500")}
+                            className={cn(errors.email && "border-destructive focus-visible:ring-destructive")}
                          />
-                         {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
+                         {errors.email && <p className="text-destructive text-xs mt-1 ml-1">{errors.email}</p>}
                     </div>
                 ) : (
                     <div>
@@ -159,9 +167,9 @@ export default function RegisterPage() {
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                             leftIcon={<Phone className="w-5 h-5" />}
-                            className={cn(errors.phone && "border-red-500 focus-visible:ring-red-500")}
+                            className={cn(errors.phone && "border-destructive focus-visible:ring-destructive")}
                          />
-                         {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</p>}
+                         {errors.phone && <p className="text-destructive text-xs mt-1 ml-1">{errors.phone}</p>}
                     </div>
                 )}
 
@@ -172,9 +180,9 @@ export default function RegisterPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         leftIcon={<Lock className="w-5 h-5" />}
-                        className={cn(errors.password && "border-red-500 focus-visible:ring-red-500")}
+                        className={cn(errors.password && "border-destructive focus-visible:ring-destructive")}
                     />
-                     {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>}
+                     {errors.password && <p className="text-destructive text-xs mt-1 ml-1">{errors.password}</p>}
                 </div>
 
                 <div>
@@ -184,9 +192,9 @@ export default function RegisterPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         leftIcon={<Lock className="w-5 h-5" />}
-                        className={cn(errors.confirmPassword && "border-red-500 focus-visible:ring-red-500")}
+                        className={cn(errors.confirmPassword && "border-destructive focus-visible:ring-destructive")}
                     />
-                     {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 ml-1">{errors.confirmPassword}</p>}
+                     {errors.confirmPassword && <p className="text-destructive text-xs mt-1 ml-1">{errors.confirmPassword}</p>}
                 </div>
 
                 <div className="flex items-start gap-3 mt-4">
@@ -195,22 +203,22 @@ export default function RegisterPage() {
                         id="terms" 
                         checked={acceptTerms}
                         onChange={(e) => setAcceptTerms(e.target.checked)}
-                        className="mt-1 w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        className="mt-1 w-4 h-4 rounded border-gray-300 text-accent focus:ring-accent"
                     />
                     <label htmlFor="terms" className="text-sm text-slate-600">
-                        I accept the <Link href="/terms" className="text-emerald-600 font-semibold">Terms & Conditions</Link> and <Link href="/privacy" className="text-emerald-600 font-semibold">Privacy Policy</Link>
+                        I accept the <Link href="/terms" className="text-accent font-semibold">Terms & Conditions</Link> and <Link href="/privacy" className="text-accent font-semibold">Privacy Policy</Link>
                     </label>
                 </div>
-                {errors.terms && <p className="text-red-500 text-xs ml-1">{errors.terms}</p>}
+                {errors.terms && <p className="text-destructive text-xs ml-1">{errors.terms}</p>}
 
 
                 {errors.root && (
-                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center">
+                    <div className="p-3 bg-red-50 text-destructive text-sm rounded-lg text-center">
                         {errors.root}
                     </div>
                 )}
 
-                <Button type="submit" className="w-full bg-emerald-900 hover:bg-emerald-800 text-white h-12 rounded-xl text-base font-semibold mt-4" disabled={isLoading}>
+                <Button type="submit" className="w-full mt-4" disabled={isLoading}>
                     {isLoading ? 'Creating Account...' : 'Continue'}
                 </Button>
             </form>
@@ -219,7 +227,7 @@ export default function RegisterPage() {
          {/* Login Link */}
          <div className="flex items-center justify-center gap-1 text-slate-500 mb-8">
             <span>Already have an account?</span>
-            <Link href="/auth/login" className="text-emerald-600 font-bold hover:underline">
+            <Link href="/auth/login" className="text-accent font-bold hover:underline">
                 Log In
             </Link>
          </div>

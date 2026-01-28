@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
-import { IMessage } from '@domaris/types';
+import { IMessage } from '@/features/messaging/api';
 import { cn } from '@/lib/utils';
 
 interface ChatWindowProps {

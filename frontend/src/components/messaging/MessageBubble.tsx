@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check, CheckCheck, Clock, AlertCircle, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { IMessage } from '@domaris/types';
+import { IMessage } from '@/features/messaging/api'; // Local type
 
 interface MessageBubbleProps {
   message: IMessage;
@@ -22,22 +22,22 @@ const StatusIcon = ({ status, className }: { status: string; className?: string 
 
 export function MessageBubble({ message, isOwn, showTime = true }: MessageBubbleProps) {
   
-  const formattedTime = new Date(message.sentAt).toLocaleTimeString('ro-RO', {
+  const formattedTime = new Date(message.createdAt).toLocaleTimeString('ro-RO', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
   const getStatus = () => {
       if (message.readAt) return 'read';
-      if (message.deliveredAt) return 'delivered';
+      // if (message.deliveredAt) return 'delivered'; // Not in local type currently
       return 'sent';
   };
 
-  if (message.type === 'SYSTEM' as any) { // Casting or assuming uppercase based on Enumconvention usually
+  if ((message.type as any) === 'SYSTEM') { 
     return (
       <div className="flex justify-center my-4">
         <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-          {message.text}
+          {message.content}
         </span>
       </div>
     );
@@ -60,18 +60,19 @@ export function MessageBubble({ message, isOwn, showTime = true }: MessageBubble
                 <Calendar className="w-4 h-4" />
                 <span>Cerere Vizionare</span>
              </div>
-             <p className="text-sm opacity-90">{message.text}</p>
+             <p className="text-sm opacity-90">{message.content}</p>
            </div>
         ) : message.type === 'IMAGE' as any ? (
            <div className="mb-1">
+             {/* mediaUrl not in local type yet, assuming content is url or metadata has it */}
              <img 
-               src={message.mediaUrl || message.text} 
+               src={message.metadata?.imageUrl || message.content} 
                alt="Attachment" 
                className="rounded-lg max-w-full md:max-w-xs object-cover"
              />
            </div>
         ) : (
-          <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
         )}
 
         {showTime && (

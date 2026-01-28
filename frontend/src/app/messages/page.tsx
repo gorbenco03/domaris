@@ -10,11 +10,13 @@ import { ProfileWrapper } from '@/components/profile/ProfileWrapper';
 import { Avatar } from '@/components/profile/Avatar';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { messagingApi } from '@/features/messaging/api';
-import { IConversationListItem } from '@domaris/types';
+import { messagingApi, IConversationListItem } from '@/features/messaging/api';
 import { cn } from '@/lib/utils';
 import { socketService } from '@/lib/socket';
+import { useAuth } from '@/contexts/AuthContext';
+
 export default function MessagesPage() {
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<IConversationListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -83,6 +85,7 @@ export default function MessagesPage() {
               const otherParticipant = conv.otherParticipant;
               const lastMessage = conv.lastMessage;
               const isUnread = (conv.unreadCount || 0) > 0;
+              const isFromMe = lastMessage?.senderId === user?.id;
 
               return (
                 <Link 
@@ -107,7 +110,7 @@ export default function MessagesPage() {
                           {otherParticipant?.firstName} {otherParticipant?.lastName}
                         </h4>
                         <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                          {lastMessage?.sentAt && formatDistanceToNow(new Date(lastMessage.sentAt), { addSuffix: true, locale: ro })}
+                          {lastMessage?.createdAt && formatDistanceToNow(new Date(lastMessage.createdAt), { addSuffix: true, locale: ro })}
                         </span>
                       </div>
                       
@@ -119,8 +122,8 @@ export default function MessagesPage() {
                                 </span>
                             )}
                             <p className={cn("text-sm truncate", isUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
-                              {lastMessage?.isFromMe ? 'Tu: ' : ''}
-                              {lastMessage?.text || 'Începe conversația...'}
+                              {isFromMe ? 'Tu: ' : ''}
+                              {lastMessage?.content || 'Începe conversația...'}
                             </p>
                         </div>
 

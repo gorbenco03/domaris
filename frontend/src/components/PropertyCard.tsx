@@ -52,7 +52,7 @@ export const PropertyCard = ({ property, variant = 'list' }: PropertyCardProps) 
                 />
                 
                 {/* Gradient Overlay */}
-                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-foreground/80 to-transparent pointer-events-none" />
 
                 {/* Badges */}
                 <div className="absolute top-3 left-3 flex gap-2">
@@ -60,7 +60,7 @@ export const PropertyCard = ({ property, variant = 'list' }: PropertyCardProps) 
                         <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none shadow-sm">Promoted</Badge>
                     )}
                     {property.isNew && (
-                         <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-sm">New</Badge>
+                         <Badge className="bg-accent hover:bg-accent/90 text-accent-foreground border-none shadow-sm">New</Badge>
                     )}
                 </div>
 
@@ -68,10 +68,10 @@ export const PropertyCard = ({ property, variant = 'list' }: PropertyCardProps) 
                 <Button
                     size="icon"
                     variant="ghost"
-                    className="absolute top-3 right-3 h-9 w-9 rounded-full bg-white/90 hover:bg-white text-muted-foreground hover:text-red-500 shadow-sm backdrop-blur-sm"
+                    className="absolute top-3 right-3 h-9 w-9 rounded-full bg-white/90 hover:bg-white text-muted-foreground hover:text-destructive shadow-sm backdrop-blur-sm"
                     onClick={handleFavoriteClick}
                 >
-                    <Heart className={cn("h-5 w-5 transition-colors", favorited && "fill-red-500 text-red-500")} />
+                    <Heart className={cn("h-5 w-5 transition-colors", favorited && "fill-destructive text-destructive")} />
                 </Button>
 
                 {/* Price */}
@@ -114,7 +114,7 @@ export const PropertyCard = ({ property, variant = 'list' }: PropertyCardProps) 
                 {/* Footer */}
                 <div className="pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
                     {property.owner?.isVerified && (
-                        <div className="flex items-center gap-1 text-emerald-600 font-medium">
+                        <div className="flex items-center gap-1 text-accent font-medium">
                             <CheckCircle className="h-3.5 w-3.5" />
                             <span>Verified Owner</span>
                         </div>

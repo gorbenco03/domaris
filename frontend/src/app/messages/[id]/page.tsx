@@ -6,8 +6,7 @@ import { ArrowLeft, Phone, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/profile/Avatar';
 import { ChatWindow } from '@/components/messaging/ChatWindow';
-import { messagingApi } from '@/features/messaging/api';
-import { IConversation, IMessage } from '@domaris/types';
+import { messagingApi, IConversation, IMessage } from '@/features/messaging/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { socketService } from '@/lib/socket';
 import { toast } from 'sonner';
@@ -58,9 +57,10 @@ export default function ChatPage() {
     messagingApi.markMessagesAsRead(conversationId);
 
     // Socket Listeners
-    const handleNewMessage = (newMsg: IMessage) => {
+    const handleNewMessage = (newMsg: any) => {
         // Only if it belongs to this conversation
         if (String(newMsg.conversationId) === String(conversationId)) {
+            // Map if necessary or cast
             setMessages(prev => [...prev, newMsg]);
             if (String(newMsg.senderId) !== String(user.id)) {
                  messagingApi.markMessagesAsRead(conversationId);
@@ -86,12 +86,11 @@ export default function ChatPage() {
         id: tempId,
         conversationId: conversationId,
         senderId: String(user.id),
-        text: content,
+        content: content,
         type: 'TEXT' as any,
-        sentAt: new Date().toISOString(),
-        isEdited: false,
-        isDeleted: false,
-    } as any;
+        createdAt: new Date(),
+        status: 'sending'
+    };
 
     setMessages(prev => [...prev, optimisticMsg]);
     setSending(true);
@@ -124,7 +123,12 @@ export default function ChatPage() {
 
   if (!conversation) return <div>Conversația nu a fost găsită.</div>;
 
-  const otherParticipant = conversation.participants.find(p => String(p.userId) !== String(user?.id))?.user;
+  const otherParticipant = conversation.otherParticipant || 
+    conversation.participants.find(p => String(p.userId) !== String(user?.id));
+  
+  const participantName = (otherParticipant as any)?.firstName 
+      ? `${(otherParticipant as any).firstName} ${(otherParticipant as any).lastName || ''}`
+      : otherParticipant?.name || 'Utilizator';
 
   return (
     <div className="flex flex-col h-screen max-w-5xl mx-auto shadow-xl bg-white overflow-hidden">
@@ -137,14 +141,14 @@ export default function ChatPage() {
             
             <Avatar 
                 source={otherParticipant?.avatar} 
-                firstName={otherParticipant?.firstName} 
-                lastName={otherParticipant?.lastName} 
+                firstName={(otherParticipant as any)?.firstName || participantName.split(' ')[0]} 
+                lastName={(otherParticipant as any)?.lastName || participantName.split(' ').slice(1).join(' ')} 
                 size="sm"
             />
             
             <div>
                 <h2 className="font-semibold text-sm md:text-base">
-                    {otherParticipant?.firstName} {otherParticipant?.lastName}
+                    {participantName}
                 </h2>
                 {conversation.property && (
                     <p className="text-xs text-muted-foreground truncate max-w-[200px]">

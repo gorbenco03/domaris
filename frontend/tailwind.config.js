@@ -25,6 +25,12 @@ module.exports = {
       },
     },
     extend: {
+      boxShadow: {
+        card: 'var(--shadow-card)',
+      },
+      fontFamily: {
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',

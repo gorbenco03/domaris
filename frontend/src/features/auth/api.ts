@@ -33,6 +33,10 @@ export const authApi = {
     const response = await apiClient.post<IOtpSentResponse>('/auth/register/phone', data);
     return response.data;
   },
+  verifyEmailOtp: async (data: { email: string; code: string }): Promise<IAuthResponse> => {
+    const response = await apiClient.post<IAuthResponse>('/auth/verify-email-otp', data);
+    return response.data;
+  },
   getCurrentUser: async (): Promise<IUser> => {
     const response = await apiClient.get<IUser>('/auth/me');
     return response.data;
@@ -40,5 +44,27 @@ export const authApi = {
   logout: async () => {
     const response = await apiClient.post('/auth/logout');
     return response.data;
-  }
+  },
+  
+  // Password Reset Flow
+  forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+  
+  resetPassword: async (data: { email: string; code: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post('/auth/reset-password', data);
+    return response.data;
+  },
+  
+  changePassword: async (data: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.post('/auth/change-password', data);
+    return response.data;
+  },
+  
+  // Token Management
+  refreshToken: async (refreshToken: string): Promise<IAuthResponse> => {
+    const response = await apiClient.post<IAuthResponse>('/auth/refresh', { refreshToken });
+    return response.data;
+  },
 };

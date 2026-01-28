@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Home, Mail, Lock, Phone, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Phone, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -40,15 +40,15 @@ export default function LoginPage() {
 
         if (method === 'email') {
             await login(email, password);
-             // Redirect after login - ideally functionality should be in AuthContext or here
-            router.push('/tenant/dashboard'); // Default to tenant for now, or check user role
+            router.push('/'); // Redirect to home after login
         } else {
             // Phone login not yet implemented in context
             alert("Phone login not yet supported on web");
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error(err);
-        setErrors({ root: err.response?.data?.message || "Login failed" });
+        const error = err as { response?: { data?: { message?: string } } };
+        setErrors({ root: error.response?.data?.message || "Login failed" });
     } finally {
         setIsLoading(false);
     }
@@ -56,8 +56,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col">
-       {/* Background Elements matching mobile */}
-       <div className="absolute top-0 left-0 right-0 h-[42vh] bg-gradient-to-br from-emerald-900 to-emerald-600 rounded-b-[40px] z-0" />
+       {/* Background Elements */}
+       <div 
+         className="absolute top-0 left-0 right-0 h-[42vh] rounded-b-[40px] z-0" 
+         style={{ background: 'var(--gradient-hero)' }}
+       />
        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/10 z-0" />
        <div className="absolute top-[25vh] -left-20 w-52 h-52 rounded-full bg-white/5 z-0" />
 
@@ -71,15 +74,15 @@ export default function LoginPage() {
 
          {/* Content */}
          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-5">
-                <Home className="w-7 h-7 text-emerald-500" />
+            <div className="w-auto h-16 bg-white/90 backdrop-blur rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 mb-5 px-6">
+                <img src="/logotype.png" alt="Domaris" className="h-8 w-auto" />
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Welcome Back!</h1>
             <p className="text-white/80">Log in to continue</p>
          </div>
 
          {/* Card */}
-         <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
+         <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
             {/* Tabs */}
             <div className="flex gap-3 mb-6">
                 <button
@@ -87,7 +90,7 @@ export default function LoginPage() {
                     className={cn(
                         "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border transition-all",
                         method === 'email' 
-                            ? "border-emerald-500 bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500" 
+                            ? "border-primary bg-primary/5 text-primary ring-1 ring-primary" 
                             : "border-slate-200 text-slate-500 hover:bg-slate-50"
                     )}
                 >
@@ -99,7 +102,7 @@ export default function LoginPage() {
                     className={cn(
                         "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border transition-all",
                         method === 'phone' 
-                            ? "border-emerald-500 bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500" 
+                            ? "border-primary bg-primary/5 text-primary ring-1 ring-primary" 
                             : "border-slate-200 text-slate-500 hover:bg-slate-50"
                     )}
                 >
@@ -118,9 +121,9 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 leftIcon={<Mail className="w-5 h-5" />}
-                                className={cn(errors.email && "border-red-500 focus-visible:ring-red-500")}
+                                className={cn(errors.email && "border-destructive focus-visible:ring-destructive")}
                              />
-                             {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
+                             {errors.email && <p className="text-destructive text-xs mt-1 ml-1">{errors.email}</p>}
                         </div>
                     </div>
                 ) : (
@@ -132,9 +135,9 @@ export default function LoginPage() {
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                                 leftIcon={<Phone className="w-5 h-5" />}
-                                className={cn(errors.phone && "border-red-500 focus-visible:ring-red-500")}
+                                className={cn(errors.phone && "border-destructive focus-visible:ring-destructive")}
                              />
-                             {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</p>}
+                             {errors.phone && <p className="text-destructive text-xs mt-1 ml-1">{errors.phone}</p>}
                         </div>
                     </div>
                 )}
@@ -146,24 +149,24 @@ export default function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         leftIcon={<Lock className="w-5 h-5" />}
-                        className={cn(errors.password && "border-red-500 focus-visible:ring-red-500")}
+                        className={cn(errors.password && "border-destructive focus-visible:ring-destructive")}
                     />
-                     {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>}
+                     {errors.password && <p className="text-destructive text-xs mt-1 ml-1">{errors.password}</p>}
                 </div>
 
                 <div className="flex justify-end">
-                    <Link href="/auth/forgot-password" className="text-emerald-500 text-sm font-semibold hover:text-emerald-600">
+                    <Link href="/auth/forgot-password" className="text-accent text-sm font-semibold hover:underline">
                         Forgot Password?
                     </Link>
                 </div>
 
                 {errors.root && (
-                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center">
+                    <div className="p-3 bg-red-50 text-destructive text-sm rounded-lg text-center">
                         {errors.root}
                     </div>
                 )}
 
-                <Button type="submit" className="w-full bg-emerald-900 hover:bg-emerald-800 text-white h-12 rounded-xl text-base font-semibold" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Logging in...' : 'Login'}
                 </Button>
             </form>
@@ -172,7 +175,7 @@ export default function LoginPage() {
          {/* Register Link */}
          <div className="flex items-center justify-center gap-1 text-slate-500 mb-8">
             <span>Don't have an account?</span>
-            <Link href="/auth/register" className="text-emerald-600 font-bold hover:underline">
+            <Link href="/auth/register" className="text-accent font-bold hover:underline">
                 Sign Up
             </Link>
          </div>
