@@ -65,7 +65,7 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
     try {
       // Mock export functionality
       await Share.share({
-        message: `Raport Statistici IMOBI - Prop: ${propertyId}\nVizualizări: ${data?.views}\nContacte: ${data?.contacts}`,
+        message: `Raport Statistici RIVA - Prop: ${propertyId}\nVizualizări: ${data?.views}\nContacte: ${data?.contacts}`,
         title: 'Export Statistici',
       });
     } catch (error) {

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Tooltip Component
+ * RIVA - Tutorial Tooltip Component
  * Displays step information with navigation controls
  */
 

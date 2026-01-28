@@ -1,5 +1,5 @@
 /**
- * IMOBI - Verification Required Screen
+ * RIVA - Verification Required Screen
  * Prompt user to complete verification before access.
  */
 

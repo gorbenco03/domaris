@@ -1,5 +1,5 @@
 /**
- * IMOBI - Edit Property Screen
+ * RIVA - Edit Property Screen
  * Reuses the CreatePropertyWizard for editing existing properties
  */
 

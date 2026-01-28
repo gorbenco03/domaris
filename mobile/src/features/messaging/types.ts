@@ -1,5 +1,5 @@
 /**
- * IMOBI - Messaging Types
+ * RIVA - Messaging Types
  * Type definitions for the messaging feature
  */
 

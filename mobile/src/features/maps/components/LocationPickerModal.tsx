@@ -1,9 +1,9 @@
 /**
- * IMOBI - Location Picker Modal
+ * RIVA - Location Picker Modal
  * Full-screen modal for picking location on map
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,13 +28,20 @@ interface LocationPickerModalProps {
 
 export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   visible,
-  initialLocation = [24.7536, 45.9432], // Bucharest
+  initialLocation = [28.8638, 47.0105], // Chișinău, Moldova
   onConfirm,
   onClose,
 }) => {
   const { theme } = useTheme();
   const mapRef = useRef<Mapbox.MapView>(null);
   const [selectedLocation, setSelectedLocation] = useState<[number, number]>(initialLocation);
+
+  // Update selected location when initialLocation changes
+  useEffect(() => {
+    if (visible) {
+      setSelectedLocation(initialLocation);
+    }
+  }, [visible, initialLocation]);
 
   const handleMapPress = (feature: any) => {
     const { geometry } = feature;

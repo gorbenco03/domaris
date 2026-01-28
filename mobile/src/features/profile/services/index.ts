@@ -1,5 +1,5 @@
 /**
- * IMOBI - Profile Application Services
+ * RIVA - Profile Application Services
  */
 
 export {

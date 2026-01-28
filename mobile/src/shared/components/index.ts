@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Components Index
+ * RIVA - Shared Components Index
  * Export all shared components
  */
 

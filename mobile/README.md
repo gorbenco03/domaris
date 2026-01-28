@@ -1,10 +1,10 @@
-# 🏠 IMOBI - Platforma Imobiliară Direct de la Proprietari
+# 🏠 RIVA - Platforma Imobiliară Direct de la Proprietari
 
 Aplicație mobilă React Native/Expo pentru conectarea directă a proprietarilor cu potențialii cumpărători sau chiriași.
 
 ## 📱 Descriere
 
-IMOBI elimină intermediarii din piața imobiliară, oferind:
+RIVA elimină intermediarii din piața imobiliară, oferind:
 
 - **Zero comisioane de agenție**
 - **Comunicare directă proprietar-client**
@@ -144,4 +144,4 @@ cp .env.example .env
 
 ---
 
-**Creat cu ❤️ pentru IMOBI**
+**Creat cu ❤️ pentru RIVA**

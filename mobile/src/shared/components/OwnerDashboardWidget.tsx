@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Owner Dashboard Widget
+ * RIVA - Shared Owner Dashboard Widget
  * Re-exported from analytics feature.
  */
 

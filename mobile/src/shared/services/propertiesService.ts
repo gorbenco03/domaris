@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Properties Service
+ * RIVA - Shared Properties Service
  * Explicit contract for property data hooks.
  */
 

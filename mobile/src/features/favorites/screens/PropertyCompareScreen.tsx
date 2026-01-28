@@ -1,5 +1,5 @@
 /**
- * IMOBI - Property Comparison Screen
+ * RIVA - Property Comparison Screen
  * Side-by-side comparison of 2-4 properties
  */
 

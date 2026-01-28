@@ -1,5 +1,5 @@
 /**
- * 🤖 AI SERVICE - Asistent Inteligent pentru IMOBI
+ * 🤖 AI SERVICE - Asistent Inteligent pentru RIVA
  * 
  * Funcționalități:
  * - Căutare în limbaj natural
@@ -333,7 +333,7 @@ export class AIService {
 - Deal breakers: ${userPreferences.dealBreakers?.join(', ') || 'nespecificate'}`
       : '';
 
-    const systemPrompt = `Ești un asistent imobiliar care parsează cereri de căutare în limba română pentru platforma IMOBI din Republica Moldova.
+    const systemPrompt = `Ești un asistent imobiliar care parsează cereri de căutare în limba română pentru platforma RIVA din Republica Moldova.
     
 Extrage parametrii de căutare din mesajul utilizatorului și returnează un JSON cu structura:
 {
@@ -422,7 +422,7 @@ Reguli pentru params:
       ? `\n\nInstrucțiuni speciale: ${contextOptions.customInstructions}`
       : '';
 
-    const systemPrompt = `Ești IMOBI Assistant, un asistent imobiliar pentru platforma IMOBI din Republica Moldova.
+    const systemPrompt = `Ești RIVA Assistant, un asistent imobiliar pentru platforma RIVA din Republica Moldova.
     
 Regulile tale:
 1. ${languageGuide}

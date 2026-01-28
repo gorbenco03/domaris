@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Components
+ * RIVA - Tutorial Components
  */
 
 export { SpotlightMask } from './SpotlightMask';

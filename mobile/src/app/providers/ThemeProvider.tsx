@@ -1,5 +1,5 @@
 /**
- * IMOBI - Theme Provider
+ * RIVA - Theme Provider
  * Context provider for theme management
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Saved Searches Hooks
+ * RIVA - Saved Searches Hooks
  * React Query hooks for saved searches
  */
 

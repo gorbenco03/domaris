@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notifications API
+ * RIVA - Notifications API
  * Notifications and push tokens API client functions
  */
 

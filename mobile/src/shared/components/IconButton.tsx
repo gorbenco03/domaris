@@ -1,5 +1,5 @@
 /**
- * IMOBI - Icon Button Component
+ * RIVA - Icon Button Component
  * Circular icon button with various styles
  */
 

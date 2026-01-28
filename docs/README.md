@@ -1,6 +1,6 @@
-# 📚 Documentație Centralizată - Domaris/IMOBI
+# 📚 Documentație Centralizată - Domaris/RIVA
 
-Acest folder conține întreaga documentație pentru monorepo-ul Domaris/IMOBI.
+Acest folder conține întreaga documentație pentru monorepo-ul Domaris/RIVA.
 
 ---
 
@@ -52,7 +52,7 @@ docs/
 | [decisions/001-UNIFIED-ACCOUNT-MODEL.md](./decisions/001-UNIFIED-ACCOUNT-MODEL.md) | **⭐ CITEȘTE PRIMUL: Model cont unificat (fără roluri)** | 20 Ian 2026        |
 | [shared/DATA-MODELS.md](./shared/DATA-MODELS.md)                                   | Modele de date comune                                    | 20 Ian 2026        |
 | [shared/BACKEND-API-CRUD-GUIDE.md](./shared/BACKEND-API-CRUD-GUIDE.md)             | Specificații API                                         | 19 Ian 2026        |
-| [mobile/00-PROJECT-OVERVIEW.md](./mobile/00-PROJECT-OVERVIEW.md)                   | Viziunea completă IMOBI                                  | Ian 2026           |
+| [mobile/00-PROJECT-OVERVIEW.md](./mobile/00-PROJECT-OVERVIEW.md)                   | Viziunea completă RIVA                                  | Ian 2026           |
 | [mobile/ui-ux/DESIGN-SYSTEM.md](./mobile/ui-ux/DESIGN-SYSTEM.md)                   | Design System                                            | Ian 2026           |
 
 ---

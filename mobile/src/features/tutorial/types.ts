@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Feature Types
+ * RIVA - Tutorial Feature Types
  */
 
 import { RefObject } from 'react';

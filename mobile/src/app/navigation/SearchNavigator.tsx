@@ -1,5 +1,5 @@
 /**
- * IMOBI - Search Navigator
+ * RIVA - Search Navigator
  * Stack navigator for property search and discovery
  */
 

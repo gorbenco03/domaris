@@ -1,5 +1,5 @@
 /**
- * IMOBI - API Endpoints
+ * RIVA - API Endpoints
  * Centralized endpoint definitions
  */
 

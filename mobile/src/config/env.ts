@@ -1,5 +1,5 @@
 /**
- * IMOBI - Environment Configuration
+ * RIVA - Environment Configuration
  * Environment variables are loaded from .env files via Expo
  */
 

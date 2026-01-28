@@ -10,7 +10,7 @@
 
 ## 📋 Sumar Executiv
 
-**Decizia:** Platforma IMOBI va folosit un **model de cont unificat** - fiecare utilizator poate atât să caute proprietăți, cât și să publice anunțuri, fără separare pe roluri (Owner/Seeker).
+**Decizia:** Platforma RIVA va folosit un **model de cont unificat** - fiecare utilizator poate atât să caute proprietăți, cât și să publice anunțuri, fără separare pe roluri (Owner/Seeker).
 
 **Motivație principală:** Simplitate pentru utilizatori și flexibilitate pentru cazuri reale de utilizare.
 
@@ -293,7 +293,7 @@ export class VerificationGuard implements CanActivate {
 6. Accesează și Dashboard Analytics pentru anunțuri
 ```
 
-### Scenariul 3: Dezvoltator Imobiliar
+### Scenariul 3: Dezvoltator Rivaliar
 
 ```
 1. Înregistrare cont

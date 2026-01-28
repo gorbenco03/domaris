@@ -1,5 +1,5 @@
 /**
- * IMOBI - Messaging Hooks
+ * RIVA - Messaging Hooks
  * Placeholder hooks for messaging feature - will be connected to backend later
  */
 

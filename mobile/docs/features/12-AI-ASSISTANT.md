@@ -26,7 +26,7 @@
 
 ### Viziune
 
-Asistentul AI IMOBI reprezintă **diferențiatorul cheie** al platformei. În loc să navigheze prin sute de filtre și liste, utilizatorii pot pur și simplu să **converseze** cu AI-ul pentru a găsi exact ce caută sau pentru a-și optimiza anunțurile.
+Asistentul AI RIVA reprezintă **diferențiatorul cheie** al platformei. În loc să navigheze prin sute de filtre și liste, utilizatorii pot pur și simplu să **converseze** cu AI-ul pentru a găsi exact ce caută sau pentru a-și optimiza anunțurile.
 
 ### Propunere de Valoare
 
@@ -641,7 +641,7 @@ interface AIConfig {
 
 ```typescript
 const SEARCH_ASSISTANT_PROMPT = `
-Ești IMOBI AI, asistentul imobiliar inteligent care ajută utilizatorii
+Ești RIVA AI, asistentul imobiliar inteligent care ajută utilizatorii
 să găsească proprietatea perfectă în România.
 
 REGULI:
@@ -685,7 +685,7 @@ Bazat pe tarifele de **$0.10 / 1M input** și **$0.70 / 1M output**:
 ---
 
 const LISTING_ANALYZER_PROMPT = `
-Ești IMOBI AI, expertul în optimizarea anunțurilor imobiliare.
+Ești RIVA AI, expertul în optimizarea anunțurilor imobiliare.
 
 TASK: Analizează anunțul furnizat și oferă recomandări concrete.
 
@@ -772,10 +772,10 @@ const streamAIResponse = async (
 
 ```
 ┌─────────────────────────────────────┐
-│  🤖 IMOBI AI            [Istoric]  │
+│  🤖 RIVA AI            [Istoric]  │
 ├─────────────────────────────────────┤
 │                                     │
-│  Bună! Sunt IMOBI AI, asistentul   │
+│  Bună! Sunt RIVA AI, asistentul   │
 │  tău imobiliar. 🏠                  │
 │                                     │
 │  Spune-mi ce cauți și îți găsesc   │

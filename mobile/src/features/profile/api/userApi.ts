@@ -1,5 +1,5 @@
 /**
- * IMOBI - User API
+ * RIVA - User API
  * User profile API client functions
  */
 

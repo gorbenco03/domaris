@@ -1,5 +1,5 @@
 /**
- * IMOBI - Main Navigator
+ * RIVA - Main Navigator
  * Main app navigation with bottom tabs
  */
 

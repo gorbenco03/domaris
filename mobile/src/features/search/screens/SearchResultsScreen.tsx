@@ -1,5 +1,5 @@
 /**
- * IMOBI - Search Results Screen
+ * RIVA - Search Results Screen
  * Property search results with filters
  */
 

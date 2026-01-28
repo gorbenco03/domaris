@@ -1,5 +1,5 @@
 /**
- * IMOBI - Chat Screen
+ * RIVA - Chat Screen
  * Individual conversation chat interface
  */
 

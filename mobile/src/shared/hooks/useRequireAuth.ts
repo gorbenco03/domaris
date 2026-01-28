@@ -1,5 +1,5 @@
 /**
- * IMOBI - Require Auth Hook
+ * RIVA - Require Auth Hook
  * Prompts guest users to authenticate before protected actions.
  */
 

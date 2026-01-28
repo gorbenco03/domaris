@@ -1,5 +1,5 @@
 /**
- * IMOBI - Report Screen
+ * RIVA - Report Screen
  * Report a user or conversation for inappropriate behavior
  */
 

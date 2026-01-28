@@ -1,5 +1,5 @@
 /**
- * IMOBI - Date Utilities
+ * RIVA - Date Utilities
  * Utility functions for date formatting
  */
 

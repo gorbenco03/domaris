@@ -1,5 +1,5 @@
 /**
- * IMOBI - Reviews Screen
+ * RIVA - Reviews Screen
  * Display and add user reviews
  */
 

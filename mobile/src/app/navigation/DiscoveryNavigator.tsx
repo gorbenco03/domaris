@@ -1,5 +1,5 @@
 /**
- * IMOBI - Discovery Navigator
+ * RIVA - Discovery Navigator
  * Stack navigator for the main discovery/home feed
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Anonymous ID
+ * RIVA - Anonymous ID
  * Persistent device identifier for guest analytics.
  */
 

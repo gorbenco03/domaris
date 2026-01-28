@@ -1,5 +1,5 @@
 /**
- * IMOBI - Token Manager
+ * RIVA - Token Manager
  * Secure token storage and management using expo-secure-store
  */
 

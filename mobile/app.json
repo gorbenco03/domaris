@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "IMOBI",
-    "slug": "imobi",
+    "name": "RIVA",
+    "slug": "riva",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "scheme": "imobi",
+    "scheme": "riva",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,16 +15,16 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ro.imobi.app",
+      "bundleIdentifier": "ro.riva.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "IMOBI folosește camera pentru a fotografia proprietăți",
-        "NSPhotoLibraryUsageDescription": "IMOBI accesează galeria pentru a selecta fotografii ale proprietăților",
-        "NSLocationWhenInUseUsageDescription": "IMOBI folosește locația pentru a găsi proprietăți în apropiere"
+        "NSCameraUsageDescription": "RIVA folosește camera pentru a fotografia proprietăți",
+        "NSPhotoLibraryUsageDescription": "RIVA accesează galeria pentru a selecta fotografii ale proprietăților",
+        "NSLocationWhenInUseUsageDescription": "RIVA folosește locația pentru a găsi proprietăți în apropiere"
       }
     },
     "android": {
-      "package": "ro.imobi.app",
+      "package": "ro.riva.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -49,8 +49,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "IMOBI accesează galeria pentru a selecta fotografii ale proprietăților",
-          "cameraPermission": "IMOBI folosește camera pentru a fotografia proprietăți"
+          "photosPermission": "RIVA accesează galeria pentru a selecta fotografii ale proprietăților",
+          "cameraPermission": "RIVA folosește camera pentru a fotografia proprietăți"
         }
       ],
       [
@@ -64,7 +64,13 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "IMOBI folosește locația pentru a găsi proprietăți în apropiere"
+          "locationAlwaysAndWhenInUsePermission": "RIVA folosește locația pentru a găsi proprietăți în apropiere"
+        }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "sk.REDACTED_ROTATE_ME"
         }
       ]
     ],
@@ -73,6 +79,6 @@
         "projectId": "your-project-id"
       }
     },
-    "owner": "imobi"
+    "owner": "riva"
   }
 }

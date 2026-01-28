@@ -1,5 +1,5 @@
 /**
- * IMOBI - Home Screen
+ * RIVA - Home Screen
  * Main discovery screen with search and property highlights
  */
 
@@ -167,7 +167,7 @@ const HomeScreen: React.FC = () => {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={[styles.logo, { color: theme.colors.primary.main }]}>
-              IMOBI
+              RIVA
             </Text>
             <View style={styles.locationRow}>
               <MapPin size={14} color={theme.colors.accent.main} />

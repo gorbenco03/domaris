@@ -1,5 +1,5 @@
 /**
- * IMOBI - OTP Input Component
+ * RIVA - OTP Input Component
  * Input for one-time passwords (6 digits)
  */
 

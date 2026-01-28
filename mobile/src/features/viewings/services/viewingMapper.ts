@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewing Mapper
+ * RIVA - Viewing Mapper
  * Transforms backend viewing data to mobile UI format
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Map Search Screen
+ * RIVA - Map Search Screen
  * Interactive map discovery for properties with Mapbox
  */
 

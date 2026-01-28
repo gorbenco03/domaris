@@ -1,5 +1,5 @@
 /**
- * IMOBI - Request Viewing Screen
+ * RIVA - Request Viewing Screen
  * Allows seekers to request a property viewing
  */
 

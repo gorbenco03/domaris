@@ -1,5 +1,5 @@
 /**
- * IMOBI - Favorites Application Services
+ * RIVA - Favorites Application Services
  */
 
 export {

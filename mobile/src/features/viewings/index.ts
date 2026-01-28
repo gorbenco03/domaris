@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewings Feature Index
+ * RIVA - Viewings Feature Index
  */
 
 export * from './screens';

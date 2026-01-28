@@ -1,5 +1,5 @@
 /**
- * IMOBI - Property Card Component
+ * RIVA - Property Card Component
  * Premium property card for list and grid views
  */
 

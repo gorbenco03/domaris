@@ -1,5 +1,5 @@
 /**
- * IMOBI - Auth Provider
+ * RIVA - Auth Provider
  * Authentication context and initialization
  * Connected to real backend API
  */

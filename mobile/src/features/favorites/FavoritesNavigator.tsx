@@ -1,5 +1,5 @@
 /**
- * IMOBI - Favorites Navigator
+ * RIVA - Favorites Navigator
  * Stack navigator for favorites and comparison features
  */
 

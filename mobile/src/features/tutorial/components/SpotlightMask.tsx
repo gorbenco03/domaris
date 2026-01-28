@@ -1,5 +1,5 @@
 /**
- * IMOBI - Spotlight Mask Component
+ * RIVA - Spotlight Mask Component
  * Creates a dark overlay with a transparent "hole" for highlighting elements
  */
 

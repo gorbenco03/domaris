@@ -25,7 +25,7 @@
 
 ## 📝 Descriere Generală
 
-Sistemul de autentificare reprezintă poarta de intrare în aplicația IMOBI. Trebuie să fie **simplu**, **sigur** și **fără fricțiuni** pentru a maximiza rata de conversie la înregistrare.
+Sistemul de autentificare reprezintă poarta de intrare în aplicația RIVA. Trebuie să fie **simplu**, **sigur** și **fără fricțiuni** pentru a maximiza rata de conversie la înregistrare.
 
 ### Obiective
 
@@ -495,7 +495,7 @@ const registerSchema = z
 
 #### Welcome Screen
 
-- Logo IMOBI prominent
+- Logo RIVA prominent
 - Tagline motivațional
 - 2 CTA-uri principale: [Înregistrare] [Am cont]
 - Social login buttons (vizibile dar secundare)
@@ -699,4 +699,4 @@ DELETE /api/v1/auth/sessions/all
 
 **Document Status:** Draft  
 **Ultima actualizare:** Ianuarie 2026  
-**Autor:** IMOBI Mobile Team
+**Autor:** RIVA Mobile Team

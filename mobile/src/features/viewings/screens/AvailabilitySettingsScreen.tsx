@@ -1,5 +1,5 @@
 /**
- * IMOBI - Availability Settings Screen
+ * RIVA - Availability Settings Screen
  * Allows property owners to set their viewing availability
  */
 

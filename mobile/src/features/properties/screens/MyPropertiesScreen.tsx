@@ -1,5 +1,5 @@
 /**
- * IMOBI - My Properties Screen
+ * RIVA - My Properties Screen
  * Lists all properties owned by the user with filtering and management options
  */
 

@@ -10,7 +10,7 @@ Deschide proiectul în Xcode și construiește de acolo pentru a vedea eroarea m
 
 ```bash
 cd mobile/ios
-open IMOBI.xcodeproj
+open RIVA.xcodeproj
 ```
 
 În Xcode:
@@ -47,7 +47,7 @@ npx expo run:ios --device
 Dacă problema persistă, poate fi un asset catalog corupt:
 
 ```bash
-cd mobile/ios/IMOBI/Images.xcassets
+cd mobile/ios/RIVA/Images.xcassets
 
 # Verifică dacă toate fișierele există
 ls -la AppIcon.appiconset/

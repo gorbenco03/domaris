@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared AI Service
+ * RIVA - Shared AI Service
  * Explicit contract for AI API usage across features.
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI Design System - Theme Configuration
+ * RIVA Design System - Theme Configuration
  * Based on docs/ui-ux/DESIGN-SYSTEM.md
  * Concept: Premium Minimalism
  * Motto: "Încredere prin Simplitate"

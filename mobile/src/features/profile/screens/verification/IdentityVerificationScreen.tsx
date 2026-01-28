@@ -1,5 +1,5 @@
 /**
- * IMOBI - Identity Verification Screen (Level 2)
+ * RIVA - Identity Verification Screen (Level 2)
  */
 
 import React, { useMemo, useState } from 'react';

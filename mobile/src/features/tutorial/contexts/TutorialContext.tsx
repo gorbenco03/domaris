@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Context
+ * RIVA - Tutorial Context
  * Manages references to tutorial target elements
  */
 

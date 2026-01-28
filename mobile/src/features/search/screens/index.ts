@@ -1,5 +1,5 @@
 /**
- * IMOBI - Search Screens Index
+ * RIVA - Search Screens Index
  */
 
 export { default as HomeScreen } from './HomeScreen';

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Onboarding Screen
+ * RIVA - Onboarding Screen
  * First-time user onboarding with 3 slides
  */
 
@@ -42,7 +42,7 @@ interface OnboardingSlide {
   gradient: [string, string];
 }
 
-const ONBOARDING_KEY = '@imobi_onboarding_complete';
+const ONBOARDING_KEY = '@riva_onboarding_complete';
 
 const OnboardingScreen: React.FC = () => {
   const { theme } = useTheme();

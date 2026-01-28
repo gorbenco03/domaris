@@ -1,4 +1,4 @@
-# 🏠 IMOBI - Platforma Imobiliară Direct de la Proprietari
+# 🏠 RIVA - Platforma Imobiliară Direct de la Proprietari
 
 ## Document Principal - Project Overview
 
@@ -43,7 +43,7 @@ Eliminarea intermediarilor din piața imobiliară prin crearea unei platforme tr
 
 ### Problema pe care o rezolvăm
 
-| Problemă Actuală                      | Soluția IMOBI                      |
+| Problemă Actuală                      | Soluția RIVA                      |
 | ------------------------------------- | ---------------------------------- |
 | Comisioane mari de agenție (2-5%)     | Zero comisioane intermediari       |
 | Informații incomplete sau înșelătoare | Verificare și validare proprietăți |
@@ -493,5 +493,5 @@ docs/
 
 ---
 
-**Document creat de:** IMOBI Mobile Team  
+**Document creat de:** RIVA Mobile Team  
 **Următoarea actualizare:** După feedback-ul inițial

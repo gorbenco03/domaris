@@ -1,5 +1,5 @@
 /**
- * IMOBI - Auth Required Screen
+ * RIVA - Auth Required Screen
  * Simple guest prompt with CTA to authenticate
  */
 

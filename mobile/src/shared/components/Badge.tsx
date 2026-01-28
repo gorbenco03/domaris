@@ -1,5 +1,5 @@
 /**
- * IMOBI - Badge Component
+ * RIVA - Badge Component
  * Premium badges for property cards and labels
  */
 

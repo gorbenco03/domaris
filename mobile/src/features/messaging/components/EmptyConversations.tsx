@@ -1,5 +1,5 @@
 /**
- * IMOBI - Empty Conversations Component
+ * RIVA - Empty Conversations Component
  * Empty state display when no conversations match the filter
  */
 

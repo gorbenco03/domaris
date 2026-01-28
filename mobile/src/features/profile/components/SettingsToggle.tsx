@@ -1,5 +1,5 @@
 /**
- * IMOBI - Settings Toggle Component
+ * RIVA - Settings Toggle Component
  * Toggle switch for settings
  */
 

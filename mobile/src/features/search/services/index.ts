@@ -1,5 +1,5 @@
 /**
- * IMOBI - Search Application Services
+ * RIVA - Search Application Services
  * UI should consume hooks from here, not other features.
  */
 

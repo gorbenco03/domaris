@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Hooks
+ * RIVA - Tutorial Hooks
  */
 
 export { useTutorial } from './useTutorial';

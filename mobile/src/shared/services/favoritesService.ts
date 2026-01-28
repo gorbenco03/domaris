@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Favorites Service
+ * RIVA - Shared Favorites Service
  * Explicit contract for favorites hooks.
  */
 

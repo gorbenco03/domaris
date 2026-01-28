@@ -1,5 +1,5 @@
 /**
- * IMOBI - AI Analysis Widget Component
+ * RIVA - AI Analysis Widget Component
  * Shows AI analysis results for property listing
  */
 

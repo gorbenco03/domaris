@@ -1,5 +1,5 @@
 /**
- * IMOBI - Checkbox Component
+ * RIVA - Checkbox Component
  * Styled checkbox with optional label
  */
 

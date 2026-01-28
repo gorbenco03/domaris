@@ -1,5 +1,5 @@
 /**
- * IMOBI - Main Application Entry Point
+ * RIVA - Main Application Entry Point
  * Platforma Imobiliară Direct de la Proprietari
  */
 

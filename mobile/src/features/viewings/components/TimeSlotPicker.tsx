@@ -1,5 +1,5 @@
 /**
- * IMOBI - Time Slot Picker Component
+ * RIVA - Time Slot Picker Component
  * For selecting available time slots
  */
 

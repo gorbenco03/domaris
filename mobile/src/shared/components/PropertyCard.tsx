@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Property Card
+ * RIVA - Shared Property Card
  * Re-exported from properties feature.
  */
 

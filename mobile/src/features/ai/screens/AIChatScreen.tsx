@@ -1,5 +1,5 @@
 /**
- * IMOBI - AI Chat Screen
+ * RIVA - AI Chat Screen
  * Conversational AI assistant for property search
  */
 
@@ -71,7 +71,7 @@ const AIChatScreen: React.FC = () => {
       id: '1',
       role: 'assistant',
       content:
-        'Bună! Sunt IMOBI AI, asistentul tău imobiliar.\n\nSpune-mi ce cauți și îți găsesc cele mai potrivite opțiuni!\n\nPoți să-mi spui, de exemplu:\n• "Caut apartament 2 camere..."\n• "Vreau casă cu grădină..."\n• "Ceva aproape de centru..."',
+        'Bună! Sunt RIVA AI, asistentul tău imobiliar.\n\nSpune-mi ce cauți și îți găsesc cele mai potrivite opțiuni!\n\nPoți să-mi spui, de exemplu:\n• "Caut apartament 2 camere..."\n• "Vreau casă cu grădină..."\n• "Ceva aproape de centru..."',
       timestamp: new Date(),
     },
   ]);
@@ -208,7 +208,7 @@ const AIChatScreen: React.FC = () => {
                 },
               ]}
             >
-              IMOBI AI
+              RIVA AI
             </Text>
             <Text
               style={[

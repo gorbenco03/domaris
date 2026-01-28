@@ -1,5 +1,5 @@
 /**
- * IMOBI - Avatar Component
+ * RIVA - Avatar Component
  * Displays user avatar with fallback to initials
  */
 

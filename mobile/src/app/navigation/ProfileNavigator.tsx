@@ -1,5 +1,5 @@
 /**
- * IMOBI - Profile Navigator
+ * RIVA - Profile Navigator
  * Stack navigator for profile related screens
  */
 

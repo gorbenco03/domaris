@@ -1,5 +1,5 @@
 /**
- * IMOBI - Boost Purchase Screen
+ * RIVA - Boost Purchase Screen
  * Screen for purchasing property boost/promotion options
  */
 

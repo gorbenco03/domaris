@@ -1,5 +1,5 @@
 /**
- * IMOBI - Password Strength Indicator Component
+ * RIVA - Password Strength Indicator Component
  * Visual indicator for password strength
  */
 

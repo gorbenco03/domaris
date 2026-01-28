@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewing Detail Screen
+ * RIVA - Viewing Detail Screen
  * Shows full details of a viewing appointment
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Require Verification Hook
+ * RIVA - Require Verification Hook
  * Prompts user to complete verification before protected actions.
  */
 

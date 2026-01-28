@@ -1,5 +1,5 @@
 /**
- * IMOBI - useGeolocation Hook
+ * RIVA - useGeolocation Hook
  * Get device location using expo-location
  */
 

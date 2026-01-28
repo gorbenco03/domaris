@@ -1,5 +1,5 @@
 /**
- * IMOBI - Messaging API
+ * RIVA - Messaging API
  * Chat/messaging API client functions (REST + WebSocket)
  */
 

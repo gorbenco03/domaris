@@ -1,5 +1,5 @@
 /**
- * IMOBI - Navigation Types
+ * RIVA - Navigation Types
  * Type definitions for React Navigation
  */
 

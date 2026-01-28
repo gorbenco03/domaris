@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notifications Feature Index
+ * RIVA - Notifications Feature Index
  */
 
 export * from './screens';

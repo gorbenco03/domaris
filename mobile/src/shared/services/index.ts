@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Services Index
+ * RIVA - Shared Services Index
  */
 
 export * from './propertiesService';

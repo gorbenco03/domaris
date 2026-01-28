@@ -1,5 +1,5 @@
 /**
- * IMOBI - Formatters
+ * RIVA - Formatters
  * Utility functions for formatting data
  */
 

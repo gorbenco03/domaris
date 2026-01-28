@@ -1,5 +1,5 @@
 /**
- * IMOBI - Social Login Button Component
+ * RIVA - Social Login Button Component
  * Google and Apple login buttons with official brand icons
  */
 

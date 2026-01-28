@@ -1,5 +1,5 @@
 /**
- * IMOBI - AI Chat Analysis Component
+ * RIVA - AI Chat Analysis Component
  * Premium AI widget to summarize conversations or suggest responses
  */
 
@@ -75,7 +75,7 @@ const AIChatAnalysis: React.FC<AIChatAnalysisProps> = ({ onSuggestResponse }) =>
         <View style={styles.header}>
           <View style={styles.headerTitleContainer}>
             <Sparkles size={16} color="#ffffff" style={{ marginRight: 8 }} />
-            <Text style={styles.headerTitle}>Analiză Inteligentă IMOBI</Text>
+            <Text style={styles.headerTitle}>Analiză Inteligentă RIVA</Text>
           </View>
           <TouchableOpacity onPress={() => setIsVisible(false)}>
             <X size={20} color="#ffffff" />

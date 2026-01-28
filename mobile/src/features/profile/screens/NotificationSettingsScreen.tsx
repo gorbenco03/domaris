@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notification Settings Screen
+ * RIVA - Notification Settings Screen
  * Configure push, email, and SMS notification preferences
  */
 

@@ -2,7 +2,9 @@
   "name": "@domaris/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "list-users": "cd backend && node scripts/list-users.js"
+  },
   "private": true,
   "devDependencies": {
     "@eslint/js": "^9.8.0",

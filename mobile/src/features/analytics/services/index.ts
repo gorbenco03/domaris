@@ -1,5 +1,5 @@
 /**
- * IMOBI - Analytics Application Services
+ * RIVA - Analytics Application Services
  */
 
 export { useOwnerAnalyticsSummary } from '../hooks/useAnalytics';

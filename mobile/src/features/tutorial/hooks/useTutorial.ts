@@ -1,5 +1,5 @@
 /**
- * IMOBI - useTutorial Hook
+ * RIVA - useTutorial Hook
  * Main hook for controlling the tutorial flow
  */
 

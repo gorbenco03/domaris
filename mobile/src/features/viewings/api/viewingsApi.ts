@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewings API
+ * RIVA - Viewings API
  * Property viewings/bookings API client functions
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Filter Tabs Component
+ * RIVA - Filter Tabs Component
  * Horizontal tabs for filtering conversations (All, Unread, Archived)
  */
 

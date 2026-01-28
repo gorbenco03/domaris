@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Constants
+ * RIVA - Tutorial Constants
  */
 
 import { TutorialStep } from './types';

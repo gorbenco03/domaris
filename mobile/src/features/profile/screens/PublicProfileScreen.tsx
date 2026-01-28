@@ -1,5 +1,5 @@
 /**
- * IMOBI - Public Profile Screen
+ * RIVA - Public Profile Screen
  * How other users see your profile
  */
 
@@ -393,8 +393,8 @@ const PublicProfileScreen: React.FC = () => {
     
     try {
       await Share.share({
-        message: `Vezi profilul lui ${user.firstName} ${user.lastName} pe IMOBI: https://imobi.ro/user/${user.id}`,
-        title: `${user.firstName} ${user.lastName} - IMOBI`,
+        message: `Vezi profilul lui ${user.firstName} ${user.lastName} pe RIVA: https://riva.ro/user/${user.id}`,
+        title: `${user.firstName} ${user.lastName} - RIVA`,
       });
     } catch (error) {
       console.error(error);

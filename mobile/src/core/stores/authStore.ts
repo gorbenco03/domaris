@@ -1,5 +1,5 @@
 /**
- * IMOBI - Auth Store
+ * RIVA - Auth Store
  * Zustand store for authentication state
  */
 

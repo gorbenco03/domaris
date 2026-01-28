@@ -1,5 +1,5 @@
 /**
- * IMOBI - Pricing Screen
+ * RIVA - Pricing Screen
  * Subscription plans and pricing options
  */
 

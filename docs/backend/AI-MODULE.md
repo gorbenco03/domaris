@@ -7,7 +7,7 @@
 
 ## 📋 Sumar
 
-Modulul AI oferă funcționalități inteligente pentru platforma IMOBI:
+Modulul AI oferă funcționalități inteligente pentru platforma RIVA:
 
 - **Chat conversațional** - Căutare în limbaj natural
 - **Generare descrieri** - Descrieri atractive pentru proprietăți

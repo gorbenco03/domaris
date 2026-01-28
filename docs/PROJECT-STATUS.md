@@ -1,4 +1,4 @@
-# 📊 DOMARIS/IMOBI - Project Status Report
+# 📊 DOMARIS/RIVA - Project Status Report
 
 **Versiune:** 2.2.0  
 **Data Raportului:** 22 Ianuarie 2026  

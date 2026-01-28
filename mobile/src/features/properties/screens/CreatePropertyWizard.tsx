@@ -1,5 +1,5 @@
 /**
- * IMOBI - Create Property Wizard Screen
+ * RIVA - Create Property Wizard Screen
  * Multi-step property creation wizard
  */
 

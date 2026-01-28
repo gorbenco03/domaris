@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Utils Index
+ * RIVA - Shared Utils Index
  */
 
 export * from './formatters';

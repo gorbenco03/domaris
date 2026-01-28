@@ -1,5 +1,5 @@
 /**
- * IMOBI - Quick Filters Component
+ * RIVA - Quick Filters Component
  * Common quick-access filters for search
  */
 

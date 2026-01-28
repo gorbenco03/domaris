@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Progress Component
+ * RIVA - Tutorial Progress Component
  * Step indicator dots for tutorial
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Push Notifications Provider
+ * RIVA - Push Notifications Provider
  * Registers device push tokens after authentication.
  */
 

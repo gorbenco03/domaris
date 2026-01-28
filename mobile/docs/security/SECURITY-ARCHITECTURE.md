@@ -52,7 +52,7 @@ Implementăm multiple straturi de securitate:
 // Configurare în axios/fetch
 
 const api = axios.create({
-  baseURL: "https://api.imobi.ro", // Doar HTTPS
+  baseURL: "https://api.riva.ro", // Doar HTTPS
   timeout: 30000,
 });
 ```
@@ -67,7 +67,7 @@ const secureRequest = async (url: string) => {
   return fetch(url, {
     method: "GET",
     sslPinning: {
-      certs: ["imobi_cert"], // SHA-256 hash of certificate
+      certs: ["riva_cert"], // SHA-256 hash of certificate
     },
     headers: {
       "Content-Type": "application/json",
@@ -230,7 +230,7 @@ storage.set("onboarding_completed", true);
 
 ```proguard
 # proguard-rules.pro
--keep class com.imobi.** { *; }
+-keep class com.riva.** { *; }
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
@@ -418,8 +418,8 @@ console.log(sanitizeLog({ email: "test@example.com", name: "Ion" }));
 
 ### Contact Securitate
 
-- Security Team: security@imobi.ro
-- Bug Bounty: security@imobi.ro
+- Security Team: security@riva.ro
+- Bug Bounty: security@riva.ro
 - Emergency: +40 XXX XXX XXX
 
 ---

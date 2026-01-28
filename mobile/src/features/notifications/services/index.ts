@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notifications Application Services
+ * RIVA - Notifications Application Services
  */
 
 export { notificationsApi } from '../api/notificationsApi';

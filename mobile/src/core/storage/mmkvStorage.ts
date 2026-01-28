@@ -1,5 +1,5 @@
 /**
- * IMOBI - Storage
+ * RIVA - Storage
  * Cross-platform storage using AsyncStorage (works in Expo Go)
  * 
  * Note: In production with EAS Build, you can switch to MMKV for better performance

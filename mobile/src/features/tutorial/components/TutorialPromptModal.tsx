@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Prompt Modal
+ * RIVA - Tutorial Prompt Modal
  * "Do you want a quick tour?" modal shown after first login
  */
 
@@ -106,7 +106,7 @@ export const TutorialPromptModal: React.FC<TutorialPromptModalProps> = ({
           </LinearGradient>
 
           {/* Content */}
-          <Text style={styles.title}>Bun venit la IMOBI!</Text>
+          <Text style={styles.title}>Bun venit la RIVA!</Text>
           <Text style={styles.subtitle}>
             Vrei să vezi un ghid rapid de utilizare?
           </Text>

@@ -1,14 +1,15 @@
 /**
- * IMOBI - Location Step
+ * RIVA - Location Step
  * Step 2 of property creation wizard
  */
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { MapPin, Navigation, ChevronDown } from 'lucide-react-native';
+import { MapPin, Navigation, ChevronDown, Map } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import Input from '@/shared/components/Input';
 import Card from '@/shared/components/Card';
+import { LocationPickerModal } from '@/features/maps/components/LocationPickerModal';
 import type { PropertyFormData } from '../CreatePropertyWizard';
 
 // ============================================
@@ -96,9 +97,32 @@ const LocationStep: React.FC<LocationStepProps> = ({
   const [showRegionPicker, setShowRegionPicker] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [showNeighborhoodPicker, setShowNeighborhoodPicker] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const selectedRegion = formData.location?.county || '';
   const selectedCity = formData.location?.city || '';
+
+  // Get initial coordinates for map picker
+  const getInitialMapLocation = (): [number, number] => {
+    if (formData.location?.coordinates) {
+      return [formData.location.coordinates.longitude, formData.location.coordinates.latitude];
+    }
+    // Default to Chișinău center
+    return [28.8638, 47.0105];
+  };
+
+  // Handle location selection from map
+  const handleMapLocationSelect = (location: { lat: number; lng: number }) => {
+    updateLocation({
+      coordinates: {
+        latitude: location.lat,
+        longitude: location.lng,
+      },
+    });
+  };
+
+  // Check if coordinates are set
+  const hasCoordinates = formData.location?.coordinates?.latitude && formData.location?.coordinates?.longitude;
   
   // Get available neighborhoods for selected city
   const availableNeighborhoods = getCityNeighborhoods(selectedCity);
@@ -462,23 +486,40 @@ const LocationStep: React.FC<LocationStepProps> = ({
         </View>
       </View>
 
-      {/* Map Preview Placeholder */}
+      {/* Map Picker Button */}
       <View style={styles.mapContainer}>
-        <View 
+        <TouchableOpacity
           style={[
-            styles.mapPlaceholder, 
-            { 
-              backgroundColor: theme.colors.divider,
-              borderColor: theme.colors.border,
+            styles.mapPlaceholder,
+            {
+              backgroundColor: hasCoordinates
+                ? `${theme.colors.success}15`
+                : theme.colors.divider,
+              borderColor: hasCoordinates
+                ? theme.colors.success
+                : theme.colors.border,
             }
           ]}
+          onPress={() => setShowMapPicker(true)}
+          activeOpacity={0.8}
         >
-          <MapPin size={32} color={theme.colors.textTertiary} />
-          <Text style={[styles.mapText, { color: theme.colors.textTertiary }]}>
-            Selectează locația pe hartă
+          <Map size={32} color={hasCoordinates ? theme.colors.success : theme.colors.textTertiary} />
+          <Text style={[styles.mapText, { color: hasCoordinates ? theme.colors.success : theme.colors.textTertiary }]}>
+            {hasCoordinates
+              ? `Locație selectată (${formData.location?.coordinates?.latitude.toFixed(4)}, ${formData.location?.coordinates?.longitude.toFixed(4)})`
+              : 'Apasă pentru a selecta locația pe hartă'
+            }
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
+
+      {/* Location Picker Modal */}
+      <LocationPickerModal
+        visible={showMapPicker}
+        initialLocation={getInitialMapLocation()}
+        onConfirm={handleMapLocationSelect}
+        onClose={() => setShowMapPicker(false)}
+      />
     </View>
   );
 };

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewings Components Index
+ * RIVA - Viewings Components Index
  */
 
 export { default as ViewingCard } from './ViewingCard';

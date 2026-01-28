@@ -1,5 +1,5 @@
 /**
- * IMOBI - Auth Screens Index
+ * RIVA - Auth Screens Index
  * Export all authentication screens
  */
 

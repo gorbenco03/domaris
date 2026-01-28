@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewings Hooks
+ * RIVA - Viewings Hooks
  * React Query hooks for viewings/bookings
  */
 

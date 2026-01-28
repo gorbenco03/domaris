@@ -1,5 +1,5 @@
 /**
- * IMOBI - MapView Component
+ * RIVA - MapView Component
  * Wrapper around Mapbox GL for displaying property markers
  */
 

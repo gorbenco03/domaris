@@ -1,5 +1,5 @@
 /**
- * IMOBI - Navigation Index
+ * RIVA - Navigation Index
  */
 
 export { default as RootNavigator } from './RootNavigator';

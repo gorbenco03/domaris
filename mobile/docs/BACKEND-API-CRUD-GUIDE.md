@@ -1,11 +1,11 @@
-# 🔌 IMOBI - Documentație API CRUD pentru Backend
+# 🔌 RIVA - Documentație API CRUD pentru Backend
 
-Acest document centralizează toate specificațiile de API din documentația de proiect IMOBI. Este destinat echipei de Backend pentru implementare.
+Acest document centralizează toate specificațiile de API din documentația de proiect RIVA. Este destinat echipei de Backend pentru implementare.
 
 **Versiune:** 1.0.0
 **Status:** Consolidat
 **Data:** Ianuarie 2026
-**Base URL:** `https://api.imobi.ro/v1`
+**Base URL:** `https://api.riva.ro/v1`
 
 ---
 
@@ -240,5 +240,5 @@ Acest modul reprezintă **diferențiatorul cheie**. Backend-ul trebuie să integ
 2. S-a ales folosirea de UUID-uri pentru toate ID-urile de resurse expuse extern.
 3. Toate datele financiare/prețurile trebuie procesate în format `integer` (cenți/bani) pentru a evita erorile de rotunjire.
 
-**Document finalizat de:** Team IMOBI
+**Document finalizat de:** Team RIVA
 **Data:** 19 Ianuarie 2026

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Settings Screen
+ * RIVA - Settings Screen
  * App settings and preferences
  */
 

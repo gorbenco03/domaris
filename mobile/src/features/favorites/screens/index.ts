@@ -1,5 +1,5 @@
 /**
- * IMOBI - Favorites Screens Exports
+ * RIVA - Favorites Screens Exports
  */
 
 export { default as FavoritesListScreen } from './FavoritesListScreen';

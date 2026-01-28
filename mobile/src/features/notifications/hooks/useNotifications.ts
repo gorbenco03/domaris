@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notifications Hooks
+ * RIVA - Notifications Hooks
  * React Query hooks for notifications
  */
 

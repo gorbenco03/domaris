@@ -1,5 +1,5 @@
 /**
- * IMOBI - Favorites Feature Exports
+ * RIVA - Favorites Feature Exports
  */
 
 export { default as FavoritesNavigator } from './FavoritesNavigator';

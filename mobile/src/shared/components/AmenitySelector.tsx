@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Amenity Selector
+ * RIVA - Shared Amenity Selector
  * Re-exported from properties feature.
  */
 

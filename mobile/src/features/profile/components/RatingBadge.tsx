@@ -1,5 +1,5 @@
 /**
- * IMOBI - Rating Badge Component
+ * RIVA - Rating Badge Component
  * Displays user rating with star icon
  */
 

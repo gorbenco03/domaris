@@ -1,5 +1,5 @@
 /**
- * IMOBI - Validators
+ * RIVA - Validators
  * Validation utilities using Zod schemas
  */
 

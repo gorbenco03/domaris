@@ -1,5 +1,5 @@
 /**
- * IMOBI - Progress Bar Component
+ * RIVA - Progress Bar Component
  * Multi-step wizard progress indicator
  */
 

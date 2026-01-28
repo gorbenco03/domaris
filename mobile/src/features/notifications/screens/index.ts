@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notifications Screens Index
+ * RIVA - Notifications Screens Index
  */
 
 export { default as NotificationsCenterScreen } from './NotificationsCenterScreen';

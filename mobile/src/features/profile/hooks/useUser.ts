@@ -1,5 +1,5 @@
 /**
- * IMOBI - User Hooks
+ * RIVA - User Hooks
  * React Query hooks for user profile management
  */
 

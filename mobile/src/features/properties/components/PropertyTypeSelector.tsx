@@ -1,5 +1,5 @@
 /**
- * IMOBI - Property Type Selector Component
+ * RIVA - Property Type Selector Component
  * Grid of property type options for listing wizard
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notifications Types
+ * RIVA - Notifications Types
  * Based on docs/mobile/features/09-NOTIFICATIONS.md
  */
 

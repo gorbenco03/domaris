@@ -1,5 +1,5 @@
 /**
- * IMOBI - Login Screen (Redesigned)
+ * RIVA - Login Screen (Redesigned)
  * Minimalist, premium design focused on credentials and social login
  * Based on Unified Account Model - no role selection
  */

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notifications Center Screen
+ * RIVA - Notifications Center Screen
  * Shows all notifications with grouping by date
  */
 

@@ -7,7 +7,7 @@
 
 ## 🎯 Scop
 
-Acest document stabilește procesele și convențiile pentru sincronizarea între echipele Backend, Frontend și Mobile în cadrul monorepo-ului Domaris/IMOBI.
+Acest document stabilește procesele și convențiile pentru sincronizarea între echipele Backend, Frontend și Mobile în cadrul monorepo-ului Domaris/RIVA.
 
 ---
 

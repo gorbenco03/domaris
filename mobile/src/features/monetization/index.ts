@@ -1,5 +1,5 @@
 /**
- * IMOBI - Monetization Feature Exports
+ * RIVA - Monetization Feature Exports
  */
 
 // Screens

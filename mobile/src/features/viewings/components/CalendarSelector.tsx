@@ -1,5 +1,5 @@
 /**
- * IMOBI - Calendar Selector Component
+ * RIVA - Calendar Selector Component
  * For selecting dates when requesting viewings
  */
 

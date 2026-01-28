@@ -1,5 +1,5 @@
 /**
- * IMOBI - Messaging Components Index
+ * RIVA - Messaging Components Index
  */
 
 export { default as ConversationItem } from './ConversationItem';

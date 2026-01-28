@@ -1,5 +1,5 @@
 /**
- * IMOBI - Card Component
+ * RIVA - Card Component
  * Base card component with various styles
  */
 

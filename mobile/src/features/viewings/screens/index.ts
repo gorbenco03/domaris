@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewings Screens Index
+ * RIVA - Viewings Screens Index
  */
 
 export { default as ViewingsListScreen } from './ViewingsListScreen';

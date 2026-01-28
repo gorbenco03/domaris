@@ -1,5 +1,5 @@
 /**
- * IMOBI - Socket Provider
+ * RIVA - Socket Provider
  * Manages socket connection lifecycle and live updates.
  */
 

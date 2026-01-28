@@ -1,5 +1,5 @@
 /**
- * IMOBI - Button Component
+ * RIVA - Button Component
  * Reusable button component following the Design System
  */
 
