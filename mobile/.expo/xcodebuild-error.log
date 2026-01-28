@@ -1,7 +1,0 @@
-** BUILD FAILED **
-
-
-The following build commands failed:
-	CompileAssetCatalogVariant thinned /Users/kirill/Library/Developer/Xcode/DerivedData/IMOBI-dgvdrvahxcmqnjeknvlzzlbhfybr/Build/Products/Debug-iphoneos/MapboxMaps/MapboxMapsResources.bundle /Users/kirill/domaris/mobile/ios/Pods/MapboxMaps/Sources/MapboxMaps/Location/Puck/IndicatorAssets.xcassets /Users/kirill/domaris/mobile/ios/Pods/MapboxMaps/Sources/MapboxMaps/Annotations/MarkerAssets.xcassets (in target 'MapboxMaps-MapboxMapsResources' from project 'Pods')
-	Building workspace IMOBI with scheme IMOBI and configuration Debug
-(2 failures)

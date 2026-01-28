@@ -1,0 +1,20 @@
+# PostgreSQL pentru development
+# Rulează: docker compose up -d
+# Backend-ul de pe host se conectează la localhost:5432 cu DB_USER=postgres, DB_PASS=postgres
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: domaris-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: domaris
+    ports:
+      - "5433:5432"   # 5433 pe host ca să nu intre în conflict cu Postgres local (5432)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
