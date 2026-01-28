@@ -20,7 +20,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
   Star,
   ThumbsUp,
   MessageCircle,
@@ -32,19 +31,14 @@ import {
   Award,
   CheckCircle,
 } from 'lucide-react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { ProfileStackParamList } from '@/app/navigation/types';
 import Button from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { ScreenHeader } from '@/shared/components';
 
 // ============================================
 // TYPES
 // ============================================
-
-type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
 
 interface Review {
   id: string;
@@ -496,7 +490,6 @@ const AddReviewModal: React.FC<AddReviewModalProps> = ({ visible, onClose, onSub
 
 const ReviewsScreen: React.FC = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp>();
 
   const [refreshing, setRefreshing] = useState(false);
   const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS);
@@ -578,21 +571,16 @@ const ReviewsScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
-          Recenzii
-        </Text>
-        {!isOwnProfile && (
-          <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
-            <MessageCircle size={22} color={theme.colors.primary.main} />
-          </TouchableOpacity>
-        )}
-        {isOwnProfile && <View style={{ width: 44 }} />}
-      </View>
+      <ScreenHeader
+        title="Recenzii"
+        rightSlot={
+          !isOwnProfile ? (
+            <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
+              <MessageCircle size={22} color={theme.colors.primary.main} />
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
 
       <ScrollView
         style={styles.scrollView}
@@ -744,24 +732,6 @@ const ReviewsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
   },
   addButton: {
     width: 44,

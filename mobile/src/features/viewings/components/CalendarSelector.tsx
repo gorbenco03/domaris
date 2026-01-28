@@ -3,7 +3,7 @@
  * For selecting dates when requesting viewings
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -67,23 +67,26 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
     }
     
     return days;
-  }, [currentMonth]);
+  }, [currentMonth, availableDates]); // Add availableDates as dependency to re-render when it changes
   
-  const isDateAvailable = (date: Date): boolean => {
+  const isDateAvailable = useCallback((date: Date): boolean => {
     const dateStr = date.toISOString().split('T')[0];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Past dates are not available
     if (date < today) return false;
     if (minDate && date < minDate) return false;
     if (maxDate && date > maxDate) return false;
     
-    if (availableDates && !availableDates.includes(dateStr)) {
+    // If availableDates is provided and not empty, only allow those dates
+    // If availableDates is empty or undefined, allow all future dates
+    if (availableDates && availableDates.length > 0 && !availableDates.includes(dateStr)) {
       return false;
     }
     
     return true;
-  };
+  }, [availableDates, minDate, maxDate]);
   
   const isDateSelected = (date: Date): boolean => {
     const dateStr = date.toISOString().split('T')[0];

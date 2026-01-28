@@ -6,6 +6,7 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { API_CONFIG } from '@/config/constants';
 import { tokenManager } from '@/core/auth/tokenManager';
+import { getAnonymousId } from '@/core/analytics/anonymousId';
 
 // Create axios instance
 export const apiClient: AxiosInstance = axios.create({
@@ -21,9 +22,13 @@ export const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const token = await tokenManager.getAccessToken();
+    const anonymousId = await getAnonymousId();
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (anonymousId) {
+      config.headers['X-Anonymous-Id'] = anonymousId;
     }
     
     return config;

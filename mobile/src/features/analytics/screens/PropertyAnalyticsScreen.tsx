@@ -11,6 +11,7 @@ import {
   Share
 } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { IconButton, ScreenHeader } from '@/shared/components';
 import { 
   ArrowLeft, 
   Download, 
@@ -21,7 +22,6 @@ import {
   Share2,
   Trophy,
   Sparkles,
-  Info,
   Zap,
   TrendingUp
 } from 'lucide-react-native';
@@ -29,6 +29,7 @@ import { MetricCard } from '../components/MetricCard';
 import { AnalyticsChart } from '../components/AnalyticsChart';
 import { SuggestionCard } from '../components/SuggestionCard';
 import { usePropertyAnalytics, useAnalyticsSuggestions } from '../hooks/useAnalytics';
+import { usePropertyDetail } from '@/shared/services/propertiesService';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '@/app/navigation/types';
 
@@ -45,8 +46,18 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
   const { theme } = useTheme();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
   
-  const { data, loading: statsLoading } = usePropertyAnalytics(propertyId, selectedPeriod);
-  const { suggestions, loading: suggestionsLoading } = useAnalyticsSuggestions(propertyId);
+  const numericPropertyId = Number(propertyId);
+  const isValidPropertyId = Number.isFinite(numericPropertyId);
+  const { data, loading: statsLoading } = usePropertyAnalytics(
+    isValidPropertyId ? String(numericPropertyId) : '',
+    selectedPeriod
+  );
+  const { data: propertyDetail } = usePropertyDetail(
+    isValidPropertyId ? String(numericPropertyId) : undefined
+  );
+  const { suggestions, loading: suggestionsLoading } = useAnalyticsSuggestions(
+    isValidPropertyId ? propertyId : ''
+  );
 
   const handleBack = () => navigation.goBack();
 
@@ -62,6 +73,23 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
     }
   };
 
+  if (!isValidPropertyId) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.errorText, { color: theme.colors.textPrimary }]}>
+          Anunț invalid pentru statistici.
+        </Text>
+        <IconButton
+          icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
+          onPress={handleBack}
+          variant="surface"
+          size="md"
+          style={[styles.backButton, { borderWidth: 1, borderColor: theme.colors.border }]}
+        />
+      </View>
+    );
+  }
+
   if (statsLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
@@ -74,21 +102,14 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.colors.divider }]}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Statistici anunț</Text>
-          <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-            Apartament 3 camere, Drumul Taberei
-          </Text>
-        </View>
-        <TouchableOpacity onPress={handleExport} style={styles.exportButton}>
-          <Download size={20} color={theme.colors.primary.main} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Statistici anunț"
+        rightSlot={
+          <TouchableOpacity onPress={handleExport} style={styles.exportButton}>
+            <Download size={20} color={theme.colors.primary.main} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView 
         style={styles.scrollView}
@@ -215,37 +236,6 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
           )}
         </View>
 
-        {/* Traffic Sources */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Info size={20} color={theme.colors.textSecondary} />
-            <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, marginLeft: 8 }]}>
-              Surse trafic
-            </Text>
-          </View>
-          <View style={[styles.sourcesContainer, { backgroundColor: theme.colors.surface, ...theme.shadows.card }]}>
-            {Object.entries(data?.sources || {}).map(([key, value]) => (
-              <View key={key} style={styles.sourceRow}>
-                <Text style={[styles.sourceLabel, { color: theme.colors.textSecondary }]}>
-                  {key.charAt(0).toUpperCase() + key.slice(1)}
-                </Text>
-                <View style={styles.sourceBarContainer}>
-                  <View style={[styles.sourceBarBg, { backgroundColor: theme.colors.divider }]} />
-                  <View 
-                    style={[
-                      styles.sourceBar, 
-                      { 
-                        width: `${value}%`, 
-                        backgroundColor: theme.colors.primary.main 
-                      }
-                    ]} 
-                  />
-                </View>
-                <Text style={[styles.sourceValue, { color: theme.colors.textPrimary }]}>{value}%</Text>
-              </View>
-            ))}
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -260,27 +250,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+  errorText: {
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   backButton: {
     padding: 4,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    marginTop: 2,
   },
   exportButton: {
     padding: 8,

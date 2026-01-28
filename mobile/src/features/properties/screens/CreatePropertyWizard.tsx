@@ -18,13 +18,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, X } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
 import ProgressBar from '@/shared/components/ProgressBar';
 import Button from '@/shared/components/Button';
-import { 
-  useCreateProperty, 
-  useUploadPropertyPhotos 
-} from '@/features/properties/hooks/useProperties';
-import { ICreatePropertyRequest } from '@/features/properties/api/propertiesApi';
+import { AuthRequiredScreen, VerificationRequiredScreen, IconButton } from '@/shared/components';
+import {
+  useCreateProperty,
+  useUploadPropertyPhotos,
+  ICreatePropertyRequest,
+} from '@/features/properties/services';
 
 // Import Steps
 import PropertyTypeStep from './steps/PropertyTypeStep';
@@ -131,6 +133,7 @@ const STEP_TITLES = [
 const CreatePropertyWizard: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
+  const { isAuthenticated, user } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -172,6 +175,22 @@ const CreatePropertyWizard: React.FC = () => {
   /* API Hooks */
   const createPropertyMutation = useCreateProperty();
   const uploadPhotosMutation = useUploadPropertyPhotos();
+
+  if (!isAuthenticated) {
+    return (
+      <AuthRequiredScreen message="Autentifică-te pentru a putea posta anunțuri." />
+    );
+  }
+
+  if ((user?.verificationLevel ?? 0) < 3) {
+    return (
+      <VerificationRequiredScreen
+        title="Proprietar verificat necesar"
+        message="Finalizează verificarea nivel 3 pentru a posta un anunț."
+        ctaLabel="Începe verificarea"
+      />
+    );
+  }
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -326,12 +345,13 @@ const CreatePropertyWizard: React.FC = () => {
     >
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity
-          style={styles.headerButton}
+        <IconButton
+          icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
           onPress={handleBack}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+          variant="surface"
+          size="md"
+          style={[styles.headerButton, { borderWidth: 1, borderColor: theme.colors.border }]}
+        />
         
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>

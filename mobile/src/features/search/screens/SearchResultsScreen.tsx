@@ -29,13 +29,13 @@ import {
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { SearchBar } from '@/features/search/components/SearchBar';
 import { FilterChips } from '@/features/search/components/FilterChips';
-import { PropertyCard } from '@/features/properties/components/PropertyCard';
-import { useSearch, useSearchSuggestions } from '@/features/search/hooks/useSearch';
-import { useFavorites, useToggleFavorite } from '@/features/favorites/hooks/useFavorites';
+import { PropertyCard, IconButton } from '@/shared/components';
+import { useSearch, useSearchSuggestions, useFavorites, useToggleFavorite } from '@/features/search/services';
+import { useRequireAuth } from '@/shared/hooks';
 import { SearchStackParamList } from '@/app/navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { IPropertyListItem } from '@/core/api/types';
-import type { IAdvancedSearchFilters, ISearchSuggestion } from '@/features/search/api/searchApi';
+import type { IAdvancedSearchFilters, ISearchSuggestion } from '@/features/search/services';
 import { PAGINATION } from '@/config/constants';
 
 type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
@@ -123,10 +123,12 @@ const SearchResultsScreen: React.FC = () => {
   const [showSortModal, setShowSortModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const { isAuthenticated, requireAuth } = useRequireAuth();
+
   const { data: favoritesData } = useFavorites({
     page: 1,
     limit: PAGINATION.MAX_PAGE_SIZE,
-  });
+  }, { enabled: isAuthenticated });
   const toggleFavoriteMutation = useToggleFavorite();
   const favoriteIds = useMemo(
     () => new Set((favoritesData?.data || []).map((favorite) => String(favorite.propertyId))),
@@ -194,6 +196,9 @@ const SearchResultsScreen: React.FC = () => {
   };
 
   const handleToggleFavorite = async (propertyId: number, currentlyFavorite: boolean) => {
+    if (!requireAuth({ message: 'Autentifică-te pentru a salva favorite.' })) {
+      return;
+    }
     try {
       await toggleFavoriteMutation.mutateAsync({ propertyId, currentlyFavorite });
     } catch (error) {
@@ -212,13 +217,13 @@ const SearchResultsScreen: React.FC = () => {
   const handleFilterPress = (_filterType: string) => {
     // Open full filters modal for now
     setShowSortModal(false);
-    (navigation.navigate as any)('SearchFilters', { filters, onApply: handleApplyFilters });
+    (navigation.navigate as any)('SearchFilters', { filters });
   };
 
   const handleFiltersPress = () => {
     // Open full filters modal passing current filters
     setShowSortModal(false);
-    (navigation.navigate as any)('SearchFilters', { filters, onApply: handleApplyFilters });
+    (navigation.navigate as any)('SearchFilters', { filters });
   };
 
   const getActiveFiltersCount = () => {
@@ -320,12 +325,13 @@ const SearchResultsScreen: React.FC = () => {
       {/* Search Bar Row */}
       <View style={styles.searchRow}>
         {navigation.canGoBack() && (
-          <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: theme.colors.surface }]}
+          <IconButton
+            icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
             onPress={() => navigation.goBack()}
-          >
-            <ArrowLeft size={22} color={theme.colors.textPrimary} />
-          </TouchableOpacity>
+            variant="surface"
+            size="md"
+            style={[styles.backButton, { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border }]}
+          />
         )}
         <View style={styles.searchBarContainer}>
           <SearchBar

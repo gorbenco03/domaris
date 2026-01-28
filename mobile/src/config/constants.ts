@@ -20,6 +20,7 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
   REFRESH_TOKEN: 'refresh_token',
   USER_DATA: 'user_data',
+  ANONYMOUS_ID: 'anonymous_id',
   THEME_MODE: 'theme_mode',
   LANGUAGE: 'language',
   ONBOARDING_COMPLETED: 'onboarding_completed',

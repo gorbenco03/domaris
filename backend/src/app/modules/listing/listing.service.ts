@@ -10,6 +10,8 @@ import { Listing } from '../../db/entities/listing.entity.js';
 import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { User } from '../../db/entities/user.entity.js';
 import { S3Service } from '../../s3/s3.service.js';
+import { GeocodingService } from '../geocoding/geocoding.service.js';
+import { Sequelize } from 'sequelize-typescript';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -18,7 +20,10 @@ import * as os from 'os';
 export class ListingService {
   private readonly logger = new Logger(ListingService.name);
 
-  constructor(private readonly s3Service: S3Service) {}
+  constructor(
+    private readonly s3Service: S3Service,
+    private readonly geocodingService: GeocodingService,
+  ) {}
 
   /**
    * Creează un anunț nou pentru user-ul curent
@@ -54,15 +59,43 @@ export class ListingService {
       transactionType: input.transactionType,
       propertyType: input.propertyType,
       status: 'public',    // Default to public for now so it's visible
-      
+
       // Location mapping
       addressText: input.addressText || input.address || computedAddress,
       neighborhood: input.neighborhood || input.area,
       city: input.city || 'Bucuresti', // Fallback
     };
 
+    // GEOCODING LOGIC
+    if (input.lat && input.lng) {
+      // User set location manually on map
+      listingData.lat = input.lat;
+      listingData.lng = input.lng;
+      listingData.locationSetManually = true;
+
+      // Optionally reverse geocode to get formatted address
+      if (!listingData.addressText) {
+        const address = await this.geocodingService.reverseGeocode(input.lat, input.lng);
+        if (address) {
+          listingData.addressText = address;
+        }
+      }
+    } else if (listingData.addressText) {
+      // User provided address - geocode it
+      const fullAddress = `${listingData.addressText}, ${listingData.city}, Romania`;
+      const geocoded = await this.geocodingService.geocodeAddress(fullAddress);
+
+      if (geocoded) {
+        listingData.lat = geocoded.latitude;
+        listingData.lng = geocoded.longitude;
+        listingData.locationSetManually = false;
+      } else {
+        this.logger.warn(`Geocoding failed for address: ${fullAddress}`);
+      }
+    }
+
     const listing = await Listing.create(listingData);
-    this.logger.log(`Created listing: ${JSON.stringify(listing)}`);
+    this.logger.log(`Created listing with location: lat=${listing.lat}, lng=${listing.lng}`);
 
     return listing;
   }
@@ -239,7 +272,25 @@ export class ListingService {
       throw new ForbiddenException('You are not the owner of this listing');
     }
 
-    await listing.update(dto);
+    const updateData: any = { ...dto };
+
+    // GEOCODING LOGIC (same as create)
+    if ((dto as any).lat && (dto as any).lng) {
+      updateData.lat = (dto as any).lat;
+      updateData.lng = (dto as any).lng;
+      updateData.locationSetManually = true;
+    } else if ((dto as any).addressText) {
+      const fullAddress = `${(dto as any).addressText}, ${(dto as any).city || listing.city}, Romania`;
+      const geocoded = await this.geocodingService.geocodeAddress(fullAddress);
+
+      if (geocoded) {
+        updateData.lat = geocoded.latitude;
+        updateData.lng = geocoded.longitude;
+        updateData.locationSetManually = false;
+      }
+    }
+
+    await listing.update(updateData);
     return listing;
   }
 
@@ -248,9 +299,96 @@ export class ListingService {
     const listings = await Listing.findAll({
       where: { ownerId },
       order: [['createdAt', 'DESC']],
+      attributes: {
+        include: [
+          [
+            Sequelize.literal(
+              `(SELECT COUNT(*) FROM listing_views lv WHERE lv.listing_id = "Listing"."id")`
+            ),
+            'viewsCount',
+          ],
+          [
+            Sequelize.literal(
+              `(SELECT COUNT(*) FROM conversations c WHERE c.property_id = "Listing"."id")`
+            ),
+            'leadsCount',
+          ],
+        ],
+      },
       include: [{ model: ListingImage, as: 'images' }],
     });
     this.logger.log(`Found ${listings.length} listings for ownerId: ${ownerId}`);
+    return listings;
+  }
+
+  /**
+   * Find listings within map bounds (bounding box)
+   * Used for map search view
+   */
+  async findInBounds(params: {
+    neLat: number; // Northeast corner latitude
+    neLng: number; // Northeast corner longitude
+    swLat: number; // Southwest corner latitude
+    swLng: number; // Southwest corner longitude
+    limit?: number;
+    // Optional filters
+    transactionType?: string;
+    propertyType?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minRooms?: number;
+    maxRooms?: number;
+  }) {
+    const { neLat, neLng, swLat, swLng, limit = 100 } = params;
+    const { Op } = require('sequelize');
+
+    const where: any = {
+      lat: {
+        [Op.between]: [swLat, neLat],
+      },
+      lng: {
+        [Op.between]: [swLng, neLng],
+      },
+      lat: { [Op.ne]: null }, // Only properties with coordinates
+      lng: { [Op.ne]: null },
+      status: 'public', // Only public listings
+    };
+
+    // Apply optional filters
+    if (params.transactionType) where.transactionType = params.transactionType;
+    if (params.propertyType) where.propertyType = params.propertyType;
+    if (params.minPrice || params.maxPrice) {
+      where.priceEur = {};
+      if (params.minPrice) where.priceEur[Op.gte] = params.minPrice;
+      if (params.maxPrice) where.priceEur[Op.lte] = params.maxPrice;
+    }
+    if (params.minRooms || params.maxRooms) {
+      where.rooms = {};
+      if (params.minRooms) where.rooms[Op.gte] = params.minRooms;
+      if (params.maxRooms) where.rooms[Op.lte] = params.maxRooms;
+    }
+
+    const listings = await Listing.findAll({
+      where,
+      limit,
+      include: [{ model: ListingImage, as: 'images' }],
+      attributes: [
+        'id',
+        'title',
+        'priceEur',
+        'currency',
+        'surfaceSqm',
+        'rooms',
+        'lat',
+        'lng',
+        'city',
+        'neighborhood',
+        'transactionType',
+        'propertyType',
+      ],
+    });
+
+    this.logger.log(`Found ${listings.length} listings in bounds`);
     return listings;
   }
 

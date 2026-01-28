@@ -3,7 +3,7 @@
  * Shows all viewings with tabs: Upcoming, Past, Cancelled
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,9 +22,9 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import { ViewingCard } from '../components';
 import { Viewing, ViewingStatus } from '../types';
-import { Calendar, Clock, XCircle, ChevronRight, Plus } from 'lucide-react-native';
+import { Calendar, Clock, XCircle, ChevronRight, Plus, Settings } from 'lucide-react-native';
 import { useViewings, useCancelViewing } from '../hooks/useViewings';
-import type { IViewingListItem } from '@domaris/types';
+import { Button, ScreenHeader } from '@/shared/components';
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList, 'Viewings'>;
 
@@ -171,8 +171,8 @@ const ViewingsListScreen: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>('upcoming');
 
-  // Fetch viewings from API
-  const { data: viewingsData = [], isLoading, refetch, isFetching } = useViewings();
+  // Fetch all viewings from API (unified account model - no role separation)
+  const { data: viewings = [], isLoading, isFetching, refetch, error } = useViewings();
   const cancelMutation = useCancelViewing();
   
   const tabs: { key: TabType; label: string; icon: React.ReactNode }[] = [
@@ -180,39 +180,64 @@ const ViewingsListScreen: React.FC = () => {
     { key: 'past', label: 'Trecute', icon: <Clock size={16} /> },
     { key: 'cancelled', label: 'Anulate', icon: <XCircle size={16} /> },
   ];
-  
-  const filteredViewings = viewings.filter(viewing => {
-    switch (activeTab) {
-      case 'upcoming':
-        return ['pending', 'confirmed', 'rescheduled'].includes(viewing.status);
-      case 'past':
-        return ['completed', 'no_show'].includes(viewing.status);
-      case 'cancelled':
-        return viewing.status === 'cancelled';
-      default:
-        return true;
-    }
-  });
-  
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setRefreshing(false);
-  }, []);
+
+  const filteredViewings = useMemo(() => {
+    const now = new Date();
+    return viewings.filter(viewing => {
+      const slot = viewing.confirmedSlot || viewing.requestedSlots[0];
+      const slotDate = slot ? new Date(slot.date + 'T' + slot.startTime) : null;
+      const isPast = slotDate && slotDate < now;
+      
+      switch (activeTab) {
+        case 'upcoming':
+          return ['pending', 'confirmed', 'rescheduled'].includes(viewing.status) && !isPast;
+        case 'past':
+          return ['completed', 'no_show'].includes(viewing.status) || 
+                 (['pending', 'confirmed', 'rescheduled'].includes(viewing.status) && isPast);
+        case 'cancelled':
+          return viewing.status === 'cancelled';
+        default:
+          return true;
+      }
+    });
+  }, [viewings, activeTab]);
   
   const handleViewingPress = (viewing: Viewing) => {
     navigation.navigate('ViewingDetail', { viewingId: viewing.id });
   };
   
   const handleReschedule = (viewing: Viewing) => {
-    console.log('Reschedule viewing:', viewing.id);
-    // TODO: Navigate to reschedule flow
+    navigation.navigate('RequestViewing', { 
+      propertyId: viewing.propertyId,
+      viewingId: viewing.id, // Pass viewingId to indicate reschedule mode
+    });
   };
   
   const handleCancel = (viewing: Viewing) => {
-    console.log('Cancel viewing:', viewing.id);
-    // TODO: Show confirmation dialog
+    Alert.alert(
+      'Anulare vizionare',
+      'Ești sigur că dorești să anulezi această vizionare?',
+      [
+        { text: 'Nu', style: 'cancel' },
+        {
+          text: 'Da, anulează',
+          style: 'destructive',
+          onPress: () => {
+            cancelMutation.mutate(
+              { id: viewing.id },
+              {
+                onSuccess: () => {
+                  // Viewing will be refetched automatically
+                },
+                onError: (error: any) => {
+                  Alert.alert('Eroare', error?.message || 'Nu s-a putut anula vizionarea');
+                },
+              }
+            );
+          },
+        },
+      ]
+    );
   };
   
   const renderEmptyState = () => {
@@ -292,12 +317,17 @@ const ViewingsListScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
-          Vizionări
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Vizionări"
+        rightSlot={
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AvailabilitySettings')}
+            style={[styles.settingsButton, { backgroundColor: theme.colors.surface }]}
+          >
+            <Settings size={20} color={theme.colors.textPrimary} />
+          </TouchableOpacity>
+        }
+      />
       
       {/* Tabs */}
       <View style={[styles.tabs, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
@@ -327,36 +357,61 @@ const ViewingsListScreen: React.FC = () => {
         })}
       </View>
       
-      {/* Viewings List */}
-      <FlatList
-        data={Object.entries(groupViewingsByDate(filteredViewings))}
-        keyExtractor={([date]) => date}
-        renderItem={({ item: [date, dateViewings] }) => (
-          <View>
-            {renderSectionHeader(date)}
-            {dateViewings.map(viewing => (
-              <ViewingCard
-                key={viewing.id}
-                viewing={viewing}
-                onPress={() => handleViewingPress(viewing)}
-                onReschedule={() => handleReschedule(viewing)}
-                onCancel={() => handleCancel(viewing)}
-                viewType="seeker"
-              />
-            ))}
-          </View>
-        )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primary.main}
+      {/* Loading State */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        </View>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: theme.colors.secondary.error }]}>
+            Eroare la încărcarea vizionărilor
+          </Text>
+          <Button
+            title="Încearcă din nou"
+            onPress={() => refetch()}
+            variant="outline"
+            style={styles.retryButton}
           />
-        }
-        ListEmptyComponent={renderEmptyState}
-      />
+        </View>
+      )}
+
+      {/* Viewings List */}
+      {!isLoading && !error && (
+        <FlatList
+          data={Object.entries(groupViewingsByDate(filteredViewings))}
+          keyExtractor={([date]) => date}
+          horizontal={false}
+          renderItem={({ item: [date, dateViewings] }) => (
+            <View style={{ width: '100%' }}>
+              {renderSectionHeader(date)}
+              {dateViewings.map(viewing => (
+                <ViewingCard
+                  key={viewing.id}
+                  viewing={viewing}
+                  onPress={() => handleViewingPress(viewing)}
+                  onReschedule={() => handleReschedule(viewing)}
+                  onCancel={() => handleCancel(viewing)}
+                  viewType="seeker"
+                />
+              ))}
+            </View>
+          )}
+          contentContainerStyle={[styles.listContent, { width: '100%' }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isFetching}
+              onRefresh={refetch}
+              tintColor={theme.colors.primary.main}
+            />
+          }
+          ListEmptyComponent={renderEmptyState}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -365,14 +420,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabs: {
     flexDirection: 'row',
@@ -398,6 +451,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 24,
+    width: '100%',
   },
   sectionHeader: {
     fontSize: 12,
@@ -422,6 +476,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     maxWidth: 280,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 8,
   },
 });
 

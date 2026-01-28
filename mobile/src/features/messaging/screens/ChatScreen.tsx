@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MoreVertical, ArrowLeft } from 'lucide-react-native';
+import { MoreVertical } from 'lucide-react-native';
 import {
   useMessages,
   useSendMessage,
@@ -26,8 +26,8 @@ import {
   useArchiveConversation,
   useStartConversation,
   useUnarchiveConversation,
-} from '@/features/messaging/hooks/useMessaging';
-import socketService from '@/features/messaging/services/socketService';
+  socketService,
+} from '@/features/messaging/services';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';

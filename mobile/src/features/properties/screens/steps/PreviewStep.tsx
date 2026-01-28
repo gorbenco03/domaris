@@ -19,7 +19,7 @@ import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
 import { AIAnalysisWidget } from '@/features/properties/components/AIAnalysisWidget';
 import { useQuery } from '@tanstack/react-query';
-import { aiApi } from '@/features/ai/api/aiApi';
+import { analyzeListingDraft, estimatePrice } from '@/shared/services';
 import { QUERY_KEYS } from '@/config/constants';
 import type { PropertyFormData } from '../CreatePropertyWizard';
 
@@ -53,7 +53,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
 
   const analysisQuery = useQuery({
     queryKey: [QUERY_KEYS.AI_ANALYSIS, analysisInput],
-    queryFn: () => aiApi.analyzeListingDraft(analysisInput),
+    queryFn: () => analyzeListingDraft(analysisInput),
     enabled:
       !!analysisInput.city &&
       !!analysisInput.priceEur &&
@@ -64,7 +64,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
   const estimateQuery = useQuery({
     queryKey: [QUERY_KEYS.AI_ANALYSIS, analysisInput, 'estimate'],
     queryFn: () =>
-      aiApi.estimatePrice({
+      estimatePrice({
         city: analysisInput.city!,
         neighborhood: formData.location?.neighborhood,
         propertyType: formData.propertyType || 'APARTMENT',

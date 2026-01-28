@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
   Bell,
   Moon,
   Globe,
@@ -32,7 +31,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import { ProfileMenuItem, ProfileSection, SettingsToggle } from '../components';
-import { useTutorial } from '@/features/tutorial';
+import { ScreenHeader } from '@/shared/components';
+import { useTutorial } from '@/shared/services';
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
 
@@ -83,40 +83,13 @@ const SettingsScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.border,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text
-          style={[
-            styles.headerTitle,
-            {
-              color: theme.colors.textPrimary,
-              fontSize: theme.typography.fontSize.lg,
-            },
-          ]}
-        >
-          Setări
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+      <ScreenHeader title="Setări" />
 
       <ScrollView
         style={styles.scrollView}
+        horizontal={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ width: '100%', flexGrow: 1, paddingBottom: 32 }}
       >
         {/* Notifications */}
         <ProfileSection title="Notificări">
@@ -213,23 +186,6 @@ const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

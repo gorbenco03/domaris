@@ -19,7 +19,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ArrowLeft,
   Search,
   Bell,
   BellOff,
@@ -37,8 +36,9 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
 import { SearchStackParamList } from '@/app/navigation/types';
-import { EmptyState } from '@/shared/components/EmptyState';
+import { EmptyState, AuthRequiredScreen, ScreenHeader } from '@/shared/components';
 import {
   useSavedSearches,
   useDeleteSavedSearch,
@@ -229,10 +229,13 @@ const SavedSearchCard: React.FC<SavedSearchCardProps> = ({
 
 const SavedSearchesScreen: React.FC = () => {
   const { theme } = useTheme();
+  const { isAuthenticated } = useAuth();
   const navigation = useNavigation<NavigationProp>();
 
   // React Query hooks
-  const { data: searches = [], isLoading, refetch } = useSavedSearches();
+  const { data: searches = [], isLoading, refetch } = useSavedSearches({
+    enabled: isAuthenticated,
+  });
   const deleteMutation = useDeleteSavedSearch();
   const toggleAlertsMutation = useToggleSavedSearchAlerts();
 
@@ -314,6 +317,12 @@ const SavedSearchesScreen: React.FC = () => {
   );
   const activeAlerts = searches.filter((s) => s.alertsEnabled).length;
 
+  if (!isAuthenticated) {
+    return (
+      <AuthRequiredScreen message="Autentifică-te pentru a vedea căutările salvate." />
+    );
+  }
+
   // Loading state
   if (isLoading) {
     return (
@@ -338,18 +347,14 @@ const SavedSearchesScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
-          Căutări salvate
-        </Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleCreateSearch}>
-          <Plus size={24} color={theme.colors.primary.main} />
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Căutări salvate"
+        rightSlot={
+          <TouchableOpacity style={styles.addButton} onPress={handleCreateSearch}>
+            <Plus size={24} color={theme.colors.primary.main} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView
         style={styles.scrollView}
@@ -443,24 +448,6 @@ const SavedSearchesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
   },
   addButton: {
     width: 44,

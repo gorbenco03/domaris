@@ -105,6 +105,9 @@ export interface Viewing {
   // Status
   status: ViewingStatus;
   
+  // Role indicator (from backend)
+  isOwner?: boolean;
+  
   // Detalii
   notes?: string;
   meetingPoint?: string;

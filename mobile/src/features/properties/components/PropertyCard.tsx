@@ -262,11 +262,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
+    width: '100%',
+    maxWidth: '100%',
   },
   compactCard: {
     width: SCREEN_WIDTH * 0.7,
     marginRight: 12,
     marginBottom: 0,
+    maxWidth: SCREEN_WIDTH * 0.7,
   },
   imageContainer: {
     position: 'relative',

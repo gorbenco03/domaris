@@ -21,17 +21,67 @@ interface LocationStepProps {
 }
 
 // ============================================
-// MOCK DATA
+// LOCATION DATA - Moldova
 // ============================================
 
-const COUNTIES = [
-  'București', 'Cluj', 'Timiș', 'Iași', 'Constanța', 'Brașov',
+// All regions (raioane) of Moldova
+const REGIONS: string[] = [
+  'Chișinău', 'Bălți', 'Cahul', 'Ungheni', 'Orhei', 'Soroca',
+  'Edineț', 'Comrat', 'Strășeni', 'Hîncești', 'Ialoveni', 'Criuleni',
+  'Căușeni', 'Florești', 'Anenii Noi', 'Telenești', 'Sîngerei', 'Rîșcani',
+  'Briceni', 'Ocnița', 'Dondușeni', 'Drochia', 'Glodeni', 'Fălești',
+  'Nisporeni', 'Călărași', 'Rezina', 'Șoldănești', 'Dubăsari',
+  'Ștefan Vodă', 'Cimișlia', 'Basarabeasca', 'Leova', 'Cantemir', 'Taraclia',
 ];
 
+// Cities/towns per region
 const CITIES: Record<string, string[]> = {
-  'București': ['Sector 1', 'Sector 2', 'Sector 3', 'Sector 4', 'Sector 5', 'Sector 6'],
-  'Cluj': ['Cluj-Napoca', 'Turda', 'Dej', 'Câmpia Turzii'],
-  'Timiș': ['Timișoara', 'Lugoj', 'Sânnicolau Mare'],
+  'Chișinău': ['Chișinău'],
+  'Bălți': ['Bălți'],
+  'Cahul': ['Cahul', 'Vulcănești'],
+  'Ungheni': ['Ungheni', 'Cornești'],
+  'Orhei': ['Orhei'],
+  'Soroca': ['Soroca'],
+  'Edineț': ['Edineț', 'Cupcini'],
+  'Comrat': ['Comrat', 'Ceadîr-Lunga'],
+  'Strășeni': ['Strășeni'],
+  'Hîncești': ['Hîncești'],
+  'Ialoveni': ['Ialoveni'],
+  'Criuleni': ['Criuleni'],
+  'Căușeni': ['Căușeni'],
+  'Florești': ['Florești'],
+  'Anenii Noi': ['Anenii Noi'],
+  'Telenești': ['Telenești'],
+  'Sîngerei': ['Sîngerei'],
+  'Rîșcani': ['Rîșcani'],
+  'Briceni': ['Briceni'],
+  'Ocnița': ['Ocnița'],
+  'Dondușeni': ['Dondușeni'],
+  'Drochia': ['Drochia'],
+  'Glodeni': ['Glodeni'],
+  'Fălești': ['Fălești'],
+  'Nisporeni': ['Nisporeni'],
+  'Călărași': ['Călărași'],
+  'Rezina': ['Rezina'],
+  'Șoldănești': ['Șoldănești'],
+  'Dubăsari': ['Dubăsari'],
+  'Ștefan Vodă': ['Ștefan Vodă'],
+  'Cimișlia': ['Cimișlia'],
+  'Basarabeasca': ['Basarabeasca'],
+  'Leova': ['Leova'],
+  'Cantemir': ['Cantemir'],
+  'Taraclia': ['Taraclia'],
+};
+
+// Neighborhoods for cities that have defined sectors/neighborhoods
+const NEIGHBORHOODS: Record<string, string[]> = {
+  'Chișinău': ['Centru', 'Botanica', 'Buiucani', 'Ciocana', 'Rîșcani'],
+  'Bălți': ['Centru', 'Dacia', 'Slobozia', 'Pământeni'],
+};
+
+// Helper to check if a city has defined neighborhoods
+const getCityNeighborhoods = (city: string): string[] | null => {
+  return NEIGHBORHOODS[city] || null;
 };
 
 // ============================================
@@ -43,13 +93,27 @@ const LocationStep: React.FC<LocationStepProps> = ({
   updateFormData,
 }) => {
   const { theme } = useTheme();
-  const [showCountyPicker, setShowCountyPicker] = useState(false);
+  const [showRegionPicker, setShowRegionPicker] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
+  const [showNeighborhoodPicker, setShowNeighborhoodPicker] = useState(false);
+
+  const selectedRegion = formData.location?.county || '';
+  const selectedCity = formData.location?.city || '';
+  
+  // Get available neighborhoods for selected city
+  const availableNeighborhoods = getCityNeighborhoods(selectedCity);
+  const hasNeighborhoods = availableNeighborhoods && availableNeighborhoods.length > 0;
+
+  const closeAllPickers = () => {
+    setShowRegionPicker(false);
+    setShowCityPicker(false);
+    setShowNeighborhoodPicker(false);
+  };
 
   const updateLocation = (updates: Partial<NonNullable<PropertyFormData['location']>>) => {
     updateFormData({
       location: {
-        country: 'România',
+        country: 'Moldova',
         county: '',
         city: '',
         ...formData.location,
@@ -58,17 +122,54 @@ const LocationStep: React.FC<LocationStepProps> = ({
     });
   };
 
+  const handleRegionSelect = (region: string) => {
+    const cities = CITIES[region] || [];
+    
+    // If region has only one city with same name, auto-select it
+    if (cities.length === 1 && cities[0] === region) {
+      updateLocation({ 
+        county: region, 
+        city: region, 
+        neighborhood: undefined 
+      });
+    } else {
+      updateLocation({ 
+        county: region, 
+        city: '', 
+        neighborhood: undefined 
+      });
+    }
+    closeAllPickers();
+  };
+
+  const handleCitySelect = (city: string) => {
+    updateLocation({ city, neighborhood: undefined });
+    closeAllPickers();
+  };
+
+  const handleNeighborhoodSelect = (neighborhood: string) => {
+    updateLocation({ neighborhood });
+    closeAllPickers();
+  };
+
   const handleUseCurrentLocation = () => {
     // In a real app, this would use GPS
     updateLocation({
-      county: 'București',
-      city: 'Sector 6',
+      country: 'Moldova',
+      county: 'Chișinău',
+      city: 'Chișinău',
+      neighborhood: 'Centru',
       coordinates: {
-        latitude: 44.4268,
-        longitude: 26.1025,
+        latitude: 47.0105,
+        longitude: 28.8638,
       },
     });
   };
+
+  // Get cities for current selection
+  const availableCities = CITIES[selectedRegion] || [];
+  // Check if we should show city picker (hide if only one city with same name as region)
+  const shouldShowCityPicker = !(availableCities.length === 1 && availableCities[0] === selectedRegion);
 
   return (
     <View style={styles.container}>
@@ -97,10 +198,10 @@ const LocationStep: React.FC<LocationStepProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* County Selector */}
-      <View style={[styles.fieldContainer, showCountyPicker && styles.fieldContainerActive]}>
+      {/* Region/Raion Selector */}
+      <View style={[styles.fieldContainer, showRegionPicker && styles.fieldContainerActive]}>
         <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
-          Județ / Sector *
+          Raion *
         </Text>
         <TouchableOpacity
           style={[
@@ -111,8 +212,8 @@ const LocationStep: React.FC<LocationStepProps> = ({
             }
           ]}
           onPress={() => {
-            setShowCityPicker(false);
-            setShowCountyPicker(!showCountyPicker);
+            closeAllPickers();
+            setShowRegionPicker(!showRegionPicker);
           }}
         >
           <MapPin size={20} color={theme.colors.textSecondary} />
@@ -120,49 +221,46 @@ const LocationStep: React.FC<LocationStepProps> = ({
             style={[
               styles.selectorText, 
               { 
-                color: formData.location?.county 
+                color: selectedRegion 
                   ? theme.colors.textPrimary 
                   : theme.colors.textTertiary 
               }
             ]}
           >
-            {formData.location?.county || 'Selectează județul'}
+            {selectedRegion || 'Selectează raionul'}
           </Text>
           <ChevronDown size={20} color={theme.colors.textSecondary} />
         </TouchableOpacity>
 
-        {showCountyPicker && (
+        {showRegionPicker && (
           <Card
             style={[
               styles.pickerDropdown,
               { backgroundColor: theme.colors.surface },
             ]}
           >
-            {COUNTIES.map((county) => (
+            {REGIONS.map((region) => (
               <TouchableOpacity
-                key={county}
+                key={region}
                 style={[
                   styles.pickerOption,
-                  formData.location?.county === county && { 
+                  selectedRegion === region && { 
                     backgroundColor: `${theme.colors.primary.main}10` 
                   }
                 ]}
-                onPress={() => {
-                  updateLocation({ county, city: '' });
-                  setShowCountyPicker(false);
-                }}
+                onPress={() => handleRegionSelect(region)}
               >
                 <Text 
                   style={[
                     styles.pickerOptionText,
                     { 
-                      color: formData.location?.county === county 
+                      color: selectedRegion === region 
                         ? theme.colors.primary.main 
                         : theme.colors.textPrimary 
                     }
                   ]}
                 >
-                  {county}
+                  {region}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -170,79 +268,151 @@ const LocationStep: React.FC<LocationStepProps> = ({
         )}
       </View>
 
-      {/* City Selector */}
-      <View style={[styles.fieldContainer, showCityPicker && styles.fieldContainerActive]}>
-        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
-          Oraș / Cartier *
-        </Text>
-        <TouchableOpacity
-          style={[
-            styles.selector,
-            { 
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
-            }
-          ]}
-          onPress={() => {
-            setShowCountyPicker(false);
-            setShowCityPicker(!showCityPicker);
-          }}
-          disabled={!formData.location?.county}
-        >
-          <MapPin size={20} color={theme.colors.textSecondary} />
-          <Text 
+      {/* City Selector - only show if region has multiple cities */}
+      {shouldShowCityPicker && (
+        <View style={[styles.fieldContainer, showCityPicker && styles.fieldContainerActive]}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
+            Oraș *
+          </Text>
+          <TouchableOpacity
             style={[
-              styles.selectorText, 
+              styles.selector,
               { 
-                color: formData.location?.city 
-                  ? theme.colors.textPrimary 
-                  : theme.colors.textTertiary 
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
               }
             ]}
+            onPress={() => {
+              closeAllPickers();
+              setShowCityPicker(!showCityPicker);
+            }}
+            disabled={!selectedRegion}
           >
-            {formData.location?.city || 'Selectează orașul'}
-          </Text>
-          <ChevronDown size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+            <MapPin size={20} color={theme.colors.textSecondary} />
+            <Text 
+              style={[
+                styles.selectorText, 
+                { 
+                  color: selectedCity 
+                    ? theme.colors.textPrimary 
+                    : theme.colors.textTertiary 
+                }
+              ]}
+            >
+              {selectedCity || 'Selectează orașul'}
+            </Text>
+            <ChevronDown size={20} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
 
-        {showCityPicker && formData.location?.county && (
-          <Card
-            style={[
-              styles.pickerDropdown,
-              { backgroundColor: theme.colors.surface },
-            ]}
-          >
-            {(CITIES[formData.location.county] || []).map((city) => (
-              <TouchableOpacity
-                key={city}
-                style={[
-                  styles.pickerOption,
-                  formData.location?.city === city && { 
-                    backgroundColor: `${theme.colors.primary.main}10` 
-                  }
-                ]}
-                onPress={() => {
-                  updateLocation({ city });
-                  setShowCityPicker(false);
-                }}
-              >
-                <Text 
+          {showCityPicker && selectedRegion && (
+            <Card
+              style={[
+                styles.pickerDropdown,
+                { backgroundColor: theme.colors.surface },
+              ]}
+            >
+              {availableCities.map((city) => (
+                <TouchableOpacity
+                  key={city}
                   style={[
-                    styles.pickerOptionText,
-                    { 
-                      color: formData.location?.city === city 
-                        ? theme.colors.primary.main 
-                        : theme.colors.textPrimary 
+                    styles.pickerOption,
+                    selectedCity === city && { 
+                      backgroundColor: `${theme.colors.primary.main}10` 
                     }
                   ]}
+                  onPress={() => handleCitySelect(city)}
                 >
-                  {city}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </Card>
-        )}
-      </View>
+                  <Text 
+                    style={[
+                      styles.pickerOptionText,
+                      { 
+                        color: selectedCity === city 
+                          ? theme.colors.primary.main 
+                          : theme.colors.textPrimary 
+                      }
+                    ]}
+                  >
+                    {city}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </Card>
+          )}
+        </View>
+      )}
+
+      {/* Neighborhood Selector - only show for cities with defined neighborhoods (București, Chișinău) */}
+      {hasNeighborhoods && (
+        <View style={[styles.fieldContainer, showNeighborhoodPicker && styles.fieldContainerActive]}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
+            Sector / Cartier *
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.selector,
+              { 
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+              }
+            ]}
+            onPress={() => {
+              closeAllPickers();
+              setShowNeighborhoodPicker(!showNeighborhoodPicker);
+            }}
+            disabled={!selectedCity}
+          >
+            <MapPin size={20} color={theme.colors.textSecondary} />
+            <Text 
+              style={[
+                styles.selectorText, 
+                { 
+                  color: formData.location?.neighborhood 
+                    ? theme.colors.textPrimary 
+                    : theme.colors.textTertiary 
+                }
+              ]}
+            >
+              {formData.location?.neighborhood || 'Selectează sectorul/cartierul'}
+            </Text>
+            <ChevronDown size={20} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+
+          {showNeighborhoodPicker && selectedCity && (
+            <Card
+              style={[
+                styles.pickerDropdown,
+                { backgroundColor: theme.colors.surface },
+              ]}
+            >
+              {availableNeighborhoods?.map((neighborhood) => (
+                <TouchableOpacity
+                  key={neighborhood}
+                  style={[
+                    styles.pickerOption,
+                    formData.location?.neighborhood === neighborhood && { 
+                      backgroundColor: `${theme.colors.primary.main}10` 
+                    }
+                  ]}
+                  onPress={() => handleNeighborhoodSelect(neighborhood)}
+                >
+                  <Text 
+                    style={[
+                      styles.pickerOptionText,
+                      { 
+                        color: formData.location?.neighborhood === neighborhood 
+                          ? theme.colors.primary.main 
+                          : theme.colors.textPrimary 
+                      }
+                    ]}
+                  >
+                    {neighborhood}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </Card>
+          )}
+        </View>
+      )}
 
       {/* Street Address */}
       <View style={styles.fieldContainer}>

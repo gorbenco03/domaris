@@ -15,7 +15,7 @@ export const API_ENDPOINTS = {
     VERIFY_OTP: '/auth/verify-phone-otp',
     VERIFY_EMAIL_OTP: '/auth/verify-email-otp',
     RESEND_OTP: '/auth/resend-otp',
-    ME: '/auth/me',
+    ME: '/users/me',
   },
 
   // Users
@@ -26,6 +26,8 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: '/auth/change-password', 
     DELETE_ACCOUNT: '/users/me',
     NOTIFICATIONS_SETTINGS: '/users/me/notifications',
+    PUBLIC_PROFILE: (id: string) => `/users/${id}`,
+    USER_LISTINGS: (id: string) => `/users/${id}/listings`,
   },
 
   // Properties
@@ -36,6 +38,7 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/properties/${id}`,
     DELETE: (id: string) => `/properties/${id}`,
     MY_PROPERTIES: '/properties/my',
+    VIEW: (id: string) => `/properties/${id}/view`,
     UPLOAD_PHOTOS: (id: string) => `/properties/${id}/photos`, // Backend uses /photos
     DELETE_IMAGE: (id: string, imageId: string) => `/properties/${id}/images/${imageId}`,
     STATS: (id: string) => `/properties/${id}/stats`,
@@ -114,6 +117,12 @@ export const API_ENDPOINTS = {
     GENERATE_DESCRIPTION: '/ai/generate-description',
     IMPROVE_LISTING: '/ai/improve-listing',
     PROPERTY_SUMMARY: (propertyId: string) => `/ai/property-summary/${propertyId}`,
+  },
+
+  // Analytics
+  ANALYTICS: {
+    PROPERTY_SUGGESTIONS: (id: string) => `/properties/${id}/analytics/suggestions`,
+    OWNER_SUMMARY: '/users/me/analytics/summary',
   },
 
   // Media

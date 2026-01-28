@@ -3,7 +3,7 @@
  * Comprehensive property information view
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
   Alert,
 } from 'react-native';
 import {
-  ChevronLeft,
+  ArrowLeft,
   Heart,
   Share2,
   MapPin,
@@ -50,6 +50,7 @@ import {
   Droplets,
   Thermometer,
   Dumbbell,
+  CalendarCheck,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { 
@@ -58,16 +59,20 @@ import {
   Button, 
   Divider 
 } from '@/shared/components';
-import { usePropertyDetail } from '@/features/properties/hooks/useProperties';
-import { messagingApi } from '@/features/messaging/api/messagingApi';
-import { useAuth } from '@/app/providers/AuthProvider';
+import {
+  usePropertyDetail,
+  useFavoriteStatus,
+  useToggleFavorite,
+  startConversation,
+  trackPropertyView,
+} from '@/features/search/services';
+import { useRequireAuth } from '@/shared/hooks';
 import { ActivityIndicator, Linking } from 'react-native';
 import { useNavigation, useRoute, CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SearchStackParamList, MainTabParamList, ProfileStackParamList } from '@/app/navigation/types';
-import { useFavoriteStatus, useToggleFavorite } from '@/features/favorites/hooks/useFavorites';
 
 // Combined navigation type for cross-tab navigation
 type PropertyDetailNavigationProp = CompositeNavigationProp<
@@ -118,15 +123,17 @@ const PropertyDetailScreen: React.FC = () => {
   const navigation = useNavigation<PropertyDetailNavigationProp>();
   const route = useRoute<any>();
   const { propertyId } = route.params;
-  const { user } = useAuth();
+  const { isAuthenticated, requireAuth } = useRequireAuth();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const viewTrackedRef = useRef<string | null>(null);
   const propertyIdNumber = Number(propertyId);
 
   // Real data fetching
   const { data: property, isLoading, error } = usePropertyDetail(propertyId);
   const { data: favoriteStatus } = useFavoriteStatus(
-    Number.isFinite(propertyIdNumber) ? propertyIdNumber : undefined
+    Number.isFinite(propertyIdNumber) ? propertyIdNumber : undefined,
+    { enabled: isAuthenticated }
   );
   const toggleFavoriteMutation = useToggleFavorite();
 
@@ -135,6 +142,26 @@ const PropertyDetailScreen: React.FC = () => {
       setIsFavorite(favoriteStatus.isFavorite);
     }
   }, [favoriteStatus]);
+
+  useEffect(() => {
+    if (!property?.id) return;
+    const currentId = String(property.id);
+    if (viewTrackedRef.current === currentId) return;
+
+    let isActive = true;
+    const timer = setTimeout(() => {
+      if (!isActive) return;
+      trackPropertyView(currentId).catch((error) => {
+        console.warn('Failed to track property view', error);
+      });
+      viewTrackedRef.current = currentId;
+    }, 3000);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [property?.id]);
 
   const handleShare = async () => {
     if (!property) return;
@@ -149,6 +176,9 @@ const PropertyDetailScreen: React.FC = () => {
 
   const handleToggleFavorite = async () => {
     if (!Number.isFinite(propertyIdNumber) || toggleFavoriteMutation.isPending) return;
+    if (!requireAuth({ message: 'Autentifică-te pentru a salva favorite.' })) {
+      return;
+    }
     const currentValue = isFavorite;
     setIsFavorite(!currentValue);
     try {
@@ -222,7 +252,7 @@ const PropertyDetailScreen: React.FC = () => {
           {/* Gallery Overlay Actions */}
           <SafeAreaView style={styles.headerActions}>
             <IconButton
-              icon={<ChevronLeft size={24} color="#ffffff" />}
+              icon={<ArrowLeft size={22} color="#ffffff" />}
               onPress={() => navigation.goBack()}
               variant="ghost"
               style={{ ...styles.headerIconButton, backgroundColor: 'rgba(0,0,0,0.3)' }}
@@ -376,10 +406,12 @@ const PropertyDetailScreen: React.FC = () => {
           <IconButton
             icon={<MessageCircle size={24} color={theme.colors.primary.main} />}
             onPress={() => {
+              if (!requireAuth({ message: 'Autentifică-te pentru a trimite mesaje.' })) {
+                return;
+              }
               if (isStartingChat || !property) return;
               setIsStartingChat(true);
-              messagingApi
-                .startConversation({ propertyId: Number(property.id) })
+              startConversation({ propertyId: Number(property.id) })
                 .then((conversation) => {
                   // @ts-ignore - Temporary until we fix navigation types across stacks
                   navigation.navigate('MessagesTab', {
@@ -410,13 +442,30 @@ const PropertyDetailScreen: React.FC = () => {
             style={{ width: 56, height: 56, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.divider }}
           />
           <Button
-            title="Sunați"
-            icon={<Phone size={20} color="#ffffff" />}
-            onPress={handleCall}
+            title="Programează vizionare"
+            icon={<CalendarCheck size={20} color="#ffffff" />}
+            onPress={() => {
+              if (!requireAuth({ message: 'Autentifică-te pentru a programa o vizionare.' })) {
+                return;
+              }
+              if (!property?.id) return;
+              // Navigate to RequestViewing screen in ProfileTab
+              navigation.navigate('ProfileTab', {
+                screen: 'RequestViewing',
+                params: { propertyId: String(property.id) },
+              } as any);
+            }}
             variant="primary"
             style={{ flex: 1, height: 56, borderRadius: 16 }}
-            disabled={!owner?.phone}
           />
+          {owner?.phone && (
+            <IconButton
+              icon={<Phone size={24} color={theme.colors.primary.main} />}
+              onPress={handleCall}
+              variant="ghost"
+              style={{ width: 56, height: 56, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.divider }}
+            />
+          )}
         </View>
       </SafeAreaView>
     </View>

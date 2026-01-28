@@ -8,8 +8,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Button } from '@/shared/components';
-import { ArrowLeft, Clock, Calendar, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
+import { Button, ScreenHeader } from '@/shared/components';
+import { Clock, Calendar, ChevronRight, Plus, Trash2 } from 'lucide-react-native';
 import { DAYS_OF_WEEK, WeeklySlot } from '../types';
 
 const DEFAULT_SLOTS: WeeklySlot[] = [
@@ -50,68 +50,93 @@ const AvailabilitySettingsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: theme.colors.surface }]}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Disponibilitate</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader
+        title="Disponibilitate"
+        onBackPress={() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('Viewings' as any);
+          }
+        }}
+      />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Program săptămânal</Text>
           {weeklySlots.map((item, index) => (
-            <View key={item.dayOfWeek} style={[styles.dayRow, index < weeklySlots.length - 1 && { borderBottomColor: theme.colors.divider, borderBottomWidth: 1 }]}>
+            <TouchableOpacity 
+              key={item.dayOfWeek} 
+              style={[styles.dayRow, index < weeklySlots.length - 1 && { borderBottomColor: theme.colors.divider, borderBottomWidth: 1 }]}
+              onPress={() => {
+                // TODO: Navigate to day slot editor
+                Alert.alert('Editare', `Editarea sloturilor pentru ${getDayName(item.dayOfWeek)} va fi disponibilă în curând.`);
+              }}
+            >
               <Text style={[styles.dayName, { color: theme.colors.textPrimary }]}>{getDayName(item.dayOfWeek)}</Text>
               <Text style={[styles.daySlots, { color: item.slots.length > 0 ? theme.colors.textSecondary : theme.colors.textTertiary }]}>
                 {formatSlots(item.slots)}
               </Text>
               <ChevronRight size={18} color={theme.colors.textTertiary} />
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Setări</Text>
           
-          <View style={styles.settingRow}>
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => Alert.alert('Editare', 'Editarea duratei va fi disponibilă în curând.')}
+          >
             <View style={styles.settingInfo}>
               <Clock size={18} color={theme.colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: theme.colors.textPrimary }]}>Durată vizionare</Text>
             </View>
             <Text style={[styles.settingValue, { color: theme.colors.accent.main }]}>{duration} min</Text>
-          </View>
+          </TouchableOpacity>
           
-          <View style={styles.settingRow}>
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => Alert.alert('Editare', 'Editarea pauzei va fi disponibilă în curând.')}
+          >
             <View style={styles.settingInfo}>
               <Clock size={18} color={theme.colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: theme.colors.textPrimary }]}>Pauză între vizionări</Text>
             </View>
             <Text style={[styles.settingValue, { color: theme.colors.accent.main }]}>{buffer} min</Text>
-          </View>
+          </TouchableOpacity>
           
-          <View style={styles.settingRow}>
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => Alert.alert('Editare', 'Editarea rezervării în avans va fi disponibilă în curând.')}
+          >
             <View style={styles.settingInfo}>
               <Calendar size={18} color={theme.colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: theme.colors.textPrimary }]}>Rezervare în avans</Text>
             </View>
             <Text style={[styles.settingValue, { color: theme.colors.accent.main }]}>{advanceDays} zile</Text>
-          </View>
+          </TouchableOpacity>
           
-          <View style={styles.settingRow}>
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => Alert.alert('Editare', 'Editarea max vizionări/zi va fi disponibilă în curând.')}
+          >
             <View style={styles.settingInfo}>
               <Calendar size={18} color={theme.colors.textSecondary} />
               <Text style={[styles.settingLabel, { color: theme.colors.textPrimary }]}>Max vizionări/zi</Text>
             </View>
             <Text style={[styles.settingValue, { color: theme.colors.accent.main }]}>{maxPerDay}</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Zile blocate</Text>
-            <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.colors.accent.main + '20' }]}>
+            <TouchableOpacity 
+              style={[styles.addBtn, { backgroundColor: theme.colors.accent.main + '20' }]}
+              onPress={() => Alert.alert('Adăugare', 'Adăugarea zilelor blocate va fi disponibilă în curând.')}
+            >
               <Plus size={18} color={theme.colors.accent.main} />
             </TouchableOpacity>
           </View>
@@ -140,9 +165,6 @@ const AvailabilitySettingsScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-  backBtn: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', textAlign: 'center' },
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
   section: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 20 },

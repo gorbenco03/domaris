@@ -15,7 +15,7 @@ export const useKycStatus = () => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: [QUERY_KEYS.USER_PROFILE, 'kyc-status'],
+    queryKey: [QUERY_KEYS.USER_PROFILE, 'kyc-status', user?.id],
     queryFn: kycApi.getKycStatus,
     enabled: !!user?.id,
   });
@@ -26,6 +26,7 @@ export const useKycStatus = () => {
  */
 export const useStartIdVerification = () => {
   const queryClient = useQueryClient();
+  const { refreshUser } = useAuth();
 
   return useMutation({
     mutationFn: (data: {
@@ -34,7 +35,8 @@ export const useStartIdVerification = () => {
       docBack?: { uri: string; name: string; type: string };
       selfie: { uri: string; name: string; type: string };
     }) => kycApi.startIdVerification(data),
-    onSuccess: () => {
+    onSuccess: async () => {
+      await refreshUser().catch(() => undefined);
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.USER_PROFILE, 'kyc-status'],
       });
@@ -48,14 +50,16 @@ export const useStartIdVerification = () => {
  */
 export const useUploadPropertyDocument = () => {
   const queryClient = useQueryClient();
+  const { refreshUser } = useAuth();
 
   return useMutation({
     mutationFn: (data: {
-      propertyId: number;
+      propertyId?: number;
       docType: 'PROPERTY_DEED' | 'UTILITY_BILL' | 'OTHER';
       file: { uri: string; name: string; type: string };
     }) => kycApi.uploadPropertyDocument(data),
-    onSuccess: () => {
+    onSuccess: async () => {
+      await refreshUser().catch(() => undefined);
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.USER_PROFILE, 'kyc-status'],
       });

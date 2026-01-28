@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
   Bell,
   Mail,
   MessageSquare,
@@ -27,6 +26,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { ScreenHeader } from '@/shared/components';
 import { ProfileSection, SettingsToggle } from '../components';
 import { Button } from '@/shared/components';
 
@@ -115,35 +115,7 @@ const NotificationSettingsScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.border,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text
-          style={[
-            styles.headerTitle,
-            {
-              color: theme.colors.textPrimary,
-              fontSize: theme.typography.fontSize.lg,
-            },
-          ]}
-        >
-          Notificări
-        </Text>
-        <View style={{ width: 44 }} />
-      </View>
+      <ScreenHeader title="Notificări" />
 
       <ScrollView
         style={styles.scrollView}
@@ -302,23 +274,6 @@ const NotificationSettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

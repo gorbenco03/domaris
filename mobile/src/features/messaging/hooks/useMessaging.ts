@@ -56,11 +56,12 @@ export const useMessages = (conversationId: string | undefined) => {
 /**
  * Get unread count
  */
-export const useUnreadCount = () => {
+export const useUnreadCount = (enabled: boolean = true) => {
   return useQuery({
     queryKey: [QUERY_KEYS.CONVERSATIONS, 'unread-count'],
     queryFn: messagingApi.getUnreadCount,
     refetchInterval: 60000, // Poll every 60s
+    enabled,
   });
 };
 

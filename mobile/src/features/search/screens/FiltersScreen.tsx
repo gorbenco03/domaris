@@ -17,8 +17,8 @@ import { X, RotateCcw } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton, Button, Chip, Divider } from '@/shared/components';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import type { IAdvancedSearchFilters } from '@/features/search/api/searchApi';
-import { AmenitySelector, type Amenity } from '@/features/properties/components/AmenitySelector';
+import type { IAdvancedSearchFilters } from '@/features/search/services';
+import { AmenitySelector, type Amenity } from '@/shared/components';
 
 // ============================================
 // TYPES
@@ -189,12 +189,6 @@ const FiltersScreen: React.FC = () => {
     Object.keys(activeFilters).forEach(
       (key) => activeFilters[key] === undefined && delete activeFilters[key]
     );
-
-    if (route.params?.onApply) {
-      route.params.onApply(activeFilters);
-      navigation.goBack();
-      return;
-    }
 
     navigation.navigate('SearchResults', { filters: activeFilters });
   };

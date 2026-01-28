@@ -10,9 +10,9 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { authApi } from '@/features/auth/api';
-import { Button, Input, PasswordStrength } from '@/shared/components';
-import { ArrowLeft, Lock, Shield, Check } from 'lucide-react-native';
+import { authApi } from '@/features/auth/services';
+import { Button, Input, PasswordStrength, ScreenHeader } from '@/shared/components';
+import { Lock, Shield, Check } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
 type RoutePropType = RouteProp<AuthStackParamList, 'ResetPassword'>;
@@ -105,11 +105,7 @@ const ResetPasswordScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.surface }]}>
-              <ArrowLeft size={24} color={theme.colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
+          <ScreenHeader title="" />
 
           <View style={styles.content}>
             <View style={[styles.iconContainer, { backgroundColor: `${theme.colors.accent.main}15` }]}>

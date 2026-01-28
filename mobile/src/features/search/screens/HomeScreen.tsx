@@ -13,7 +13,7 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
-import { useTutorialTarget } from '@/features/tutorial';
+import { useTutorialTarget } from '@/shared/services';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,16 +29,21 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { QuickFilters } from '@/features/search/components/QuickFilters';
-import { PropertyCard } from '@/features/properties/components/PropertyCard';
+import { PropertyCard } from '@/shared/components';
 import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
-import { useProperties } from '@/features/properties/hooks/useProperties';
-import { useSearchFacets, useSearch } from '@/features/search/hooks/useSearch';
-import { useFavorites, useToggleFavorite } from '@/features/favorites/hooks/useFavorites';
+import {
+  useProperties,
+  useSearchFacets,
+  useSearch,
+  useFavorites,
+  useToggleFavorite,
+} from '@/features/search/services';
 import { ActivityIndicator } from 'react-native';
 import { SearchStackParamList } from '@/app/navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PAGINATION } from '@/config/constants';
+import { useRequireAuth } from '@/shared/hooks';
 
 type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
@@ -64,10 +69,12 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [quickFilters, setQuickFilters] = useState<string[]>([]);
 
+  const { isAuthenticated, requireAuth } = useRequireAuth();
+
   const { data: favoritesData } = useFavorites({
     page: 1,
     limit: PAGINATION.MAX_PAGE_SIZE,
-  });
+  }, { enabled: isAuthenticated });
   const toggleFavoriteMutation = useToggleFavorite();
   const favoriteIds = useMemo(
     () => new Set((favoritesData?.data || []).map((favorite) => String(favorite.propertyId))),
@@ -91,6 +98,9 @@ const HomeScreen: React.FC = () => {
   };
 
   const handleToggleFavorite = async (propertyId: number, currentlyFavorite: boolean) => {
+    if (!requireAuth({ message: 'Autentifică-te pentru a salva favorite.' })) {
+      return;
+    }
     try {
       await toggleFavoriteMutation.mutateAsync({ propertyId, currentlyFavorite });
     } catch (error) {
@@ -142,7 +152,9 @@ const HomeScreen: React.FC = () => {
       edges={['top']}
     >
       <ScrollView
+        horizontal={false}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ width: '100%', flexGrow: 1 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -166,7 +178,12 @@ const HomeScreen: React.FC = () => {
           </View>
           <TouchableOpacity 
             style={[styles.notificationButton, { backgroundColor: theme.colors.surface }]}
-            onPress={() => navigation.navigate('Notifications' as never)}
+            onPress={() => {
+              if (!requireAuth({ message: 'Autentifică-te pentru a vedea notificările.' })) {
+                return;
+              }
+              navigation.navigate('Notifications' as never);
+            }}
           >
             <Bell size={22} color={theme.colors.textSecondary} />
             <View style={[styles.notificationDot, { backgroundColor: theme.colors.secondary.error }]} />
@@ -258,7 +275,12 @@ const HomeScreen: React.FC = () => {
               Căutări populare
             </Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('SavedSearches' as never)}
+              onPress={() => {
+                if (!requireAuth({ message: 'Autentifică-te pentru a vedea căutările salvate.' })) {
+                  return;
+                }
+                navigation.navigate('SavedSearches' as never);
+              }}
               style={styles.savedSearchesButton}
             >
               <Bookmark size={16} color={theme.colors.primary.main} />

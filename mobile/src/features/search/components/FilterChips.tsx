@@ -14,7 +14,7 @@ import {
 import { SlidersHorizontal } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Chip } from '@/shared/components/Chip';
-import type { IAdvancedSearchFilters } from '@/features/search/api/searchApi';
+import type { IAdvancedSearchFilters } from '@/features/search/services';
 
 // ============================================
 // TYPES

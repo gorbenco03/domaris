@@ -2,8 +2,8 @@
  * 📅 VIEWING CONTROLLER - Viewing Requests & Scheduling
  *
  * Conform ADR-001: Model de Cont Unificat
- * - Cerere vizionare necesită Level 1 (email/phone verified)
- * - Accept/Reject necesită Level 2 pentru owner (are proprietate deci e verificat)
+ * - Cerere vizionare necesită Level 2 (identitate verificată)
+ * - Accept/Reject necesită Level 3 pentru owner (are proprietate deci e verificat)
  */
 
 import {
@@ -47,18 +47,16 @@ export class ViewingController {
   @Get()
   @ApiOperation({
     summary: 'Get my viewings',
-    description: 'Get viewings as seeker (my requests) or as owner (requests for my properties)',
+    description: 'Get all viewings where user is involved (as property owner or as requester)',
   })
   @ApiResponse({ status: 200, description: 'List of viewings' })
   async getViewings(
     @CurrentUserId() userId: number,
-    @Query('role') role?: 'seeker' | 'owner',
     @Query('status') status?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.viewingService.getViewings(userId, {
-      role,
       status,
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 20,
@@ -69,6 +67,24 @@ export class ViewingController {
   @ApiOperation({ summary: 'Get upcoming viewings' })
   async getUpcomingViewings(@CurrentUserId() userId: number) {
     return this.viewingService.getUpcomingViewings(userId);
+  }
+
+  // ============================================================================
+  // AVAILABILITY
+  // ============================================================================
+
+  @Get('availability/:propertyId')
+  @ApiOperation({
+    summary: 'Get available viewing slots for a property',
+    description: 'Returns available dates and time slots for the next 30 days',
+  })
+  @ApiResponse({ status: 200, description: 'Available dates and slots' })
+  async getAvailability(
+    @Param('propertyId', ParseIntPipe) propertyId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.viewingService.getAvailability(propertyId, startDate, endDate);
   }
 
   // ============================================================================
@@ -86,15 +102,15 @@ export class ViewingController {
   }
 
   // ============================================================================
-  // REQUEST VIEWING (requires Level 1)
+  // REQUEST VIEWING (requires Level 2)
   // ============================================================================
 
   @UseGuards(VerificationGuard)
-  @MinVerificationLevel(1)
+  @MinVerificationLevel(2)
   @Post()
   @ApiOperation({
     summary: 'Request a viewing',
-    description: 'Requires email/phone verification (Level 1)',
+    description: 'Requires identity verification (Level 2)',
   })
   @ApiBody({
     schema: {
@@ -108,7 +124,7 @@ export class ViewingController {
     },
   })
   @ApiResponse({ status: 201, description: 'Viewing request created' })
-  @ApiForbiddenResponse({ description: 'Email/phone verification required' })
+  @ApiForbiddenResponse({ description: 'Identity verification required' })
   async requestViewing(
     @CurrentUserId() userId: number,
     @Body('propertyId') propertyId: number,

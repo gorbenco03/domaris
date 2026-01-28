@@ -17,7 +17,7 @@ import {
 import { useTheme } from '@/app/providers/ThemeProvider';
 import Input from '@/shared/components/Input';
 import Chip from '@/shared/components/Chip';
-import { AmenitySelector, Amenity } from '@/features/properties/components/AmenitySelector';
+import { AmenitySelector, Amenity } from '@/shared/components';
 import type { PropertyFormData } from '../CreatePropertyWizard';
 
 // ============================================

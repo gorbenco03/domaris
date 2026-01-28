@@ -3,7 +3,7 @@
  * Main profile view showing user information and settings
  */
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -41,8 +42,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
-import { useUserProfile } from '@/features/profile/hooks/useUser';
-import { useUnreadCount } from '@/features/messaging/hooks/useMessaging';
+import { useUserProfile } from '@/features/profile/services';
+import { useOwnerAnalyticsSummary } from '@/features/analytics/services';
+import { useUnreadCount } from '@/shared/services';
+import { useRequireVerification } from '@/shared/hooks';
 import {
   Avatar,
   ProfileMenuItem,
@@ -50,7 +53,6 @@ import {
   RatingBadge,
   StatCard,
 } from '../components';
-import { OwnerDashboardWidget } from '@/features/analytics';
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
 
@@ -58,14 +60,30 @@ const ProfileScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { user: storeUser, logout: authLogout } = useAuth();
+  const { requireVerification } = useRequireVerification();
   
   // If user is null (shouldn't happen on this screen theoretically), use a fallback or return null
   if (!storeUser) return null;
 
   /* API Hooks */
-  const { data: apiUser, isLoading } = useUserProfile();
-  const { data: unreadData } = useUnreadCount();
+  const { data: apiUser, isLoading, refetch: refetchUser } = useUserProfile();
+  const { data: unreadData, refetch: refetchUnread } = useUnreadCount();
+  const { summary, refetch: refetchSummary, isFetching: isFetchingSummary } = useOwnerAnalyticsSummary();
   const unreadCount = unreadData?.count || 0;
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refetchUser?.(),
+        refetchSummary?.(),
+        refetchUnread?.(),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refetchUser, refetchSummary, refetchUnread]);
 
   // Merge store user (auth context) with full profile details from API
   const user = {
@@ -76,9 +94,9 @@ const ProfileScreen: React.FC = () => {
     bio: apiUser?.bio || '',
     phone: apiUser?.phone || '',
     // Stats (these come from the API user profile)
-    activeListings: apiUser?.activeListingsCount || 0,
-    monthlyViews: 0, // TODO: Get from analytics endpoint
-    monthlyContacts: 0, // TODO: Get from analytics endpoint
+    activeListings: (summary?.activeListings ?? apiUser?.activeListingsCount) || 0,
+    monthlyViews: summary?.totalViews ?? 0,
+    monthlyContacts: summary?.totalContacts ?? 0,
     reviewCount: apiUser?.reviewsCount || 0,
     rating: apiUser?.rating || 5.0,
     memberSince: apiUser?.createdAt ? new Date(apiUser.createdAt).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' }) : 'Recent',
@@ -114,8 +132,16 @@ const ProfileScreen: React.FC = () => {
     >
       <ScrollView
         style={styles.scrollView}
+        horizontal={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ width: '100%', flexGrow: 1, paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing || isFetchingSummary}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary.main}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -286,11 +312,6 @@ const ProfileScreen: React.FC = () => {
             >
               ACTIVITATE IMOBILIARĂ
             </Text>
-            
-            <OwnerDashboardWidget 
-              onPressDetails={() => navigation.navigate('PropertyStats', { propertyId: 'prop-123' })} 
-            />
-            
             <View style={[styles.statsRow, { marginTop: theme.spacing[2] }]}>
               <StatCard
                 icon={<Home />}
@@ -327,7 +348,16 @@ const ProfileScreen: React.FC = () => {
         {/* Add Property Action Card */}
         <View style={{ marginHorizontal: theme.spacing[4], marginTop: theme.spacing[4] }}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('CreateProperty')}
+            onPress={() => {
+              if (
+                requireVerification(3, {
+                  title: 'Proprietar verificat necesar',
+                  message: 'Pentru a posta un anunț trebuie verificarea nivel 3.',
+                })
+              ) {
+                navigation.navigate('CreateProperty');
+              }
+            }}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -365,7 +395,16 @@ const ProfileScreen: React.FC = () => {
             icon={<Home />}
             label="Proprietățile mele"
             description="Anunțuri postate și salvate"
-            onPress={() => navigation.navigate('MyProperties')}
+            onPress={() => {
+              if (
+                requireVerification(3, {
+                  title: 'Proprietar verificat necesar',
+                  message: 'Finalizează nivelul 3 pentru a gestiona anunțuri.',
+                })
+              ) {
+                navigation.navigate('MyProperties');
+              }
+            }}
           />
           <ProfileMenuItem
             icon={<Calendar />}
@@ -377,12 +416,6 @@ const ProfileScreen: React.FC = () => {
 
         {/* Menu Sections */}
         <ProfileSection title="Setări">
-          <ProfileMenuItem
-            icon={<Eye />}
-            label="Vezi profilul public"
-            description="Cum te văd alții"
-            onPress={() => navigation.navigate('PublicProfile', { userId: storeUser?.id || '' })}
-          />
           <ProfileMenuItem
             icon={<Settings />}
             label="Preferințe notificări"

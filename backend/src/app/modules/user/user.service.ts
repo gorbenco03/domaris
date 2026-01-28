@@ -8,6 +8,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { User } from '../../db/entities/user.entity.js';
 import { CompleteProfileDto, UpdateNotificationPreferencesDto } from './user.dto.js';
 import { Listing } from '../../db/entities/listing.entity.js';
+import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { Op } from 'sequelize';
 
 @Injectable()
@@ -153,6 +154,26 @@ export class UserService {
       ...publicProfile,
       activeListingsCount,
     };
+  }
+
+  /**
+   * Get public listings for a user
+   * Returns only listings with status 'public' or 'early_access'
+   */
+  async getUserListings(id: string | number) {
+    const user = await User.findByPk(id);
+    if (!user) throw new NotFoundException('Utilizator negăsit');
+
+    const listings = await Listing.findAll({
+      where: {
+        ownerId: Number(id),
+        status: { [Op.in]: ['public', 'early_access'] },
+      },
+      include: [{ model: ListingImage, as: 'images' }],
+      order: [['createdAt', 'DESC']],
+    });
+
+    return listings;
   }
 
   // ============================================================================

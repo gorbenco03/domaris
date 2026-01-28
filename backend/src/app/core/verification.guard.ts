@@ -50,8 +50,8 @@ export class VerificationGuard implements CanActivate {
     if (userLevel < requiredLevel) {
       const messages: Record<number, string> = {
         1: 'Verifică-ți emailul sau telefonul pentru a continua.',
-        2: 'Verifică-ți identitatea pentru a posta anunțuri.',
-        3: 'Verifică-ți documentele de proprietate pentru acest acces.',
+        2: 'Verifică-ți identitatea pentru a continua.',
+        3: 'Verifică-ți documentele de proprietate pentru a continua.',
       };
 
       throw new ForbiddenException({

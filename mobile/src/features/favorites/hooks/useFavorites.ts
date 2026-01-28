@@ -7,14 +7,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/config/constants';
 import { favoritesApi } from '../api/favoritesApi';
 
-export const useFavorites = (params?: {
+export const useFavorites = (
+  params?: {
   listId?: string;
   page?: number;
   limit?: number;
-}) => {
+  },
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: [QUERY_KEYS.FAVORITES, 'list', params],
     queryFn: () => favoritesApi.getFavorites(params),
+    enabled: options?.enabled ?? true,
   });
 };
 
@@ -73,11 +77,14 @@ export const useMoveFavorite = () => {
   });
 };
 
-export const useFavoriteStatus = (propertyId?: number) => {
+export const useFavoriteStatus = (
+  propertyId?: number,
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: [QUERY_KEYS.FAVORITES, 'status', propertyId],
     queryFn: () => favoritesApi.isFavorite(propertyId!),
-    enabled: !!propertyId,
+    enabled: !!propertyId && (options?.enabled ?? true),
   });
 };
 

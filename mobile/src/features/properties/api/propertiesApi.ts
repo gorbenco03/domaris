@@ -116,6 +116,18 @@ export const getPropertyDetail = async (
   return response.data;
 };
 
+/**
+ * Track property view (PUBLIC - no auth required)
+ */
+export const trackPropertyView = async (
+  id: string | number
+): Promise<{ success: boolean }> => {
+  const response = await apiClient.post<{ success: boolean }>(
+    API_ENDPOINTS.PROPERTIES.VIEW(String(id))
+  );
+  return response.data;
+};
+
 // ============================================================================
 // AUTHENTICATED ENDPOINTS (Level 2+ required)
 // ============================================================================
@@ -243,6 +255,7 @@ export const propertiesApi = {
   // Public
   searchProperties,
   getPropertyDetail,
+  trackPropertyView,
 
   // Authenticated
   getMyProperties,

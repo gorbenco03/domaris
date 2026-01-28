@@ -3,7 +3,7 @@
  * Allows seekers to request a property viewing
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,47 +13,84 @@ import {
   TextInput,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { ProfileStackParamList } from '@/app/navigation/types';
 import { CalendarSelector, TimeSlotPicker } from '../components';
-import { Button } from '@/shared/components';
+import { Button, ScreenHeader } from '@/shared/components';
 import { TimeSlot } from '../types';
-import { ArrowLeft, Home, MapPin, MessageSquare, Info } from 'lucide-react-native';
+import { Home, MapPin, MessageSquare, Info } from 'lucide-react-native';
+import { useRequestViewing, useRescheduleViewing, useViewingAvailability } from '../hooks/useViewings';
+import { useViewing } from '../hooks/useViewings';
+import { getPropertyDetail } from '@/features/properties/api/propertiesApi';
 
-const MOCK_PROPERTY = {
-  id: 'p1',
-  title: 'Apartament 3 camere modern',
-  address: 'Str. Drumul Taberei 45, București',
-  imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400',
-  price: 120000,
-};
-
-const MOCK_AVAILABLE_DATES = ['2026-01-21', '2026-01-22', '2026-01-23', '2026-01-24', '2026-01-25'];
-
-const MOCK_SLOTS: Record<string, TimeSlot[]> = {
-  '2026-01-21': [
-    { date: '2026-01-21', startTime: '09:00', endTime: '09:30' },
-    { date: '2026-01-21', startTime: '10:00', endTime: '10:30' },
-    { date: '2026-01-21', startTime: '14:00', endTime: '14:30' },
-    { date: '2026-01-21', startTime: '15:00', endTime: '15:30' },
-  ],
-  '2026-01-22': [
-    { date: '2026-01-22', startTime: '10:00', endTime: '10:30' },
-    { date: '2026-01-22', startTime: '11:00', endTime: '11:30' },
-  ],
-};
+type RequestViewingRouteProp = RouteProp<ProfileStackParamList, 'RequestViewing'>;
 
 const RequestViewingScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute<RequestViewingRouteProp>();
   const { theme } = useTheme();
   
+  const { propertyId, viewingId } = route.params;
+  const isReschedule = !!viewingId;
+  
+  const [property, setProperty] = useState<any>(null);
+  const [existingViewing, setExistingViewing] = useState<any>(null);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>([]);
   const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [currentDate, setCurrentDate] = useState<string | null>(null);
+  const [isLoadingProperty, setIsLoadingProperty] = useState(true);
+  
+  const requestMutation = useRequestViewing();
+  const rescheduleMutation = useRescheduleViewing();
+  const { data: viewingData } = useViewing(viewingId);
+  const { data: availabilityData, isLoading: isLoadingAvailability } = useViewingAvailability(
+    propertyId,
+    undefined,
+    undefined
+  );
+  
+  // Fetch property
+  useEffect(() => {
+    const fetchProperty = async () => {
+      try {
+        setIsLoadingProperty(true);
+        const prop = await getPropertyDetail(propertyId);
+        setProperty(prop);
+      } catch (error) {
+        Alert.alert('Eroare', 'Nu s-a putut încărca proprietatea', [
+          { text: 'OK', onPress: () => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            }
+          }}
+        ]);
+      } finally {
+        setIsLoadingProperty(false);
+      }
+    };
+    fetchProperty();
+  }, [propertyId]);
+  
+  // Pre-populate if reschedule
+  useEffect(() => {
+    if (isReschedule && viewingData) {
+      setExistingViewing(viewingData);
+      const slot = viewingData.confirmedSlot || viewingData.requestedSlots[0];
+      if (slot) {
+        setSelectedDates([slot.date]);
+        setSelectedSlots([slot]);
+        setCurrentDate(slot.date);
+      }
+      if (viewingData.notes) {
+        setMessage(viewingData.notes);
+      }
+    }
+  }, [isReschedule, viewingData]);
   
   const handleDateSelect = (date: string) => {
     if (selectedDates.includes(date)) {
@@ -79,55 +116,166 @@ const RequestViewingScreen: React.FC = () => {
       Alert.alert('Atenție', 'Selectează cel puțin un slot.');
       return;
     }
-    setIsLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setIsLoading(false);
-    Alert.alert('Cerere trimisă!', 'Proprietarul va confirma în curând.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+    
+    // Validate slot is in the future
+    const firstSlot = selectedSlots[0];
+    const slotDateTime = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
+    if (slotDateTime <= new Date()) {
+      Alert.alert('Atenție', 'Slot-ul trebuie să fie în viitor.');
+      return;
+    }
+    
+    // Use first selected slot (backend currently supports single slot)
+    const slot = selectedSlots[0];
+    const slotISO = `${slot.date}T${slot.startTime}:00`;
+    
+    if (isReschedule && viewingId) {
+      rescheduleMutation.mutate(
+        {
+          id: viewingId,
+          newSlot: slotISO,
+          reason: message || undefined,
+        },
+        {
+          onSuccess: () => {
+            Alert.alert('Succes', 'Vizionarea a fost reprogramată.', [
+              { text: 'OK', onPress: () => {
+                // Navigate back to ViewingDetail or Viewings list
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  navigation.navigate('Viewings');
+                }
+              }},
+            ]);
+          },
+          onError: (error: any) => {
+            Alert.alert('Eroare', error?.message || 'Nu s-a putut reprograma vizionarea');
+          },
+        }
+      );
+    } else {
+      requestMutation.mutate(
+        {
+          propertyId: parseInt(propertyId),
+          slot: slotISO,
+          notes: message || undefined,
+        },
+        {
+          onSuccess: () => {
+            Alert.alert('Succes', 'Cererea de vizionare a fost trimisă.', [
+              { text: 'OK', onPress: () => {
+                // Navigate back or to Viewings list
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  navigation.navigate('Viewings');
+                }
+              }},
+            ]);
+          },
+          onError: (error: any) => {
+            Alert.alert('Eroare', error?.message || 'Nu s-a putut trimite cererea');
+          },
+        }
+      );
+    }
   };
+  
+  if (isLoadingProperty || !property) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: theme.colors.surface }]}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Programează vizionare</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader
+        title={isReschedule ? 'Reprogramează vizionare' : 'Programează vizionare'}
+        onBackPress={() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('Viewings');
+          }
+        }}
+      />
       
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.scroll} 
+        horizontal={false}
+        contentContainerStyle={[styles.scrollContent, { width: '100%' }]}
+      >
         <View style={[styles.propCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <View style={[styles.propImg, { backgroundColor: theme.colors.divider }]}>
-            {MOCK_PROPERTY.imageUrl ? <Image source={{ uri: MOCK_PROPERTY.imageUrl }} style={styles.img} /> : <Home size={28} color={theme.colors.textTertiary} />}
+            {property.mainImage || property.images?.[0] ? (
+              <Image source={{ uri: property.mainImage || property.images[0] }} style={styles.img} />
+            ) : (
+              <Home size={28} color={theme.colors.textTertiary} />
+            )}
           </View>
           <View style={styles.propInfo}>
-            <Text style={[styles.propTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>{MOCK_PROPERTY.title}</Text>
+            <Text style={[styles.propTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+              {property.title || 'Proprietate'}
+            </Text>
             <View style={styles.addrRow}>
               <MapPin size={12} color={theme.colors.textTertiary} />
-              <Text style={[styles.addrText, { color: theme.colors.textSecondary }]} numberOfLines={1}>{MOCK_PROPERTY.address}</Text>
+              <Text style={[styles.addrText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                {property.address || property.addressText || ''}
+              </Text>
             </View>
           </View>
         </View>
         
         <View style={styles.section}>
-          <Text style={[styles.secTitle, { color: theme.colors.textPrimary }]}>1. Selectează datele</Text>
-          <CalendarSelector selectedDates={selectedDates} onDateSelect={handleDateSelect} availableDates={MOCK_AVAILABLE_DATES} maxSelections={3} />
+          <Text style={[styles.secTitle, { color: theme.colors.textPrimary }]}>1. Selectează data</Text>
+          <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>
+            Selectează o dată în viitor
+          </Text>
+          <CalendarSelector 
+            selectedDates={selectedDates} 
+            onDateSelect={handleDateSelect} 
+            availableDates={availabilityData?.availableDates || []}
+            maxSelections={1} // Backend currently supports single slot
+          />
         </View>
         
         {selectedDates.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.secTitle, { color: theme.colors.textPrimary }]}>2. Alege orele</Text>
+            <Text style={[styles.secTitle, { color: theme.colors.textPrimary }]}>2. Alege ora</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateTabs}>
               {selectedDates.map(date => (
-                <TouchableOpacity key={date} style={[styles.dateTab, { backgroundColor: currentDate === date ? theme.colors.primary.main : theme.colors.surface, borderColor: theme.colors.border }]} onPress={() => setCurrentDate(date)}>
-                  <Text style={{ color: currentDate === date ? '#fff' : theme.colors.textSecondary, fontWeight: '600' }}>{new Date(date).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}</Text>
+                <TouchableOpacity 
+                  key={date} 
+                  style={[
+                    styles.dateTab, 
+                    { 
+                      backgroundColor: currentDate === date ? theme.colors.primary.main : theme.colors.surface, 
+                      borderColor: theme.colors.border 
+                    }
+                  ]} 
+                  onPress={() => setCurrentDate(date)}
+                >
+                  <Text style={{ color: currentDate === date ? '#fff' : theme.colors.textSecondary, fontWeight: '600' }}>
+                    {new Date(date).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            {currentDate && MOCK_SLOTS[currentDate] && (
-              <TimeSlotPicker date={currentDate} availableSlots={MOCK_SLOTS[currentDate]} selectedSlots={selectedSlots.filter(s => s.date === currentDate)} onSlotSelect={handleSlotSelect} />
+            {currentDate && (
+              <TimeSlotPicker 
+                date={currentDate} 
+                availableSlots={
+                  availabilityData?.availability[currentDate] || 
+                  generateTimeSlots(currentDate) // Fallback to default if no API data
+                } 
+                selectedSlots={selectedSlots.filter(s => s.date === currentDate)} 
+                onSlotSelect={handleSlotSelect} 
+              />
             )}
           </View>
         )}
@@ -151,7 +299,13 @@ const RequestViewingScreen: React.FC = () => {
       </ScrollView>
       
       <View style={[styles.footer, { backgroundColor: theme.colors.background, borderTopColor: theme.colors.border }]}>
-        <Button title={selectedSlots.length > 0 ? `Trimite (${selectedSlots.length})` : 'Selectează'} onPress={handleSubmit} loading={isLoading} disabled={selectedSlots.length === 0} fullWidth />
+        <Button 
+          title={selectedSlots.length > 0 ? (isReschedule ? 'Reprogramează' : 'Trimite cerere') : 'Selectează slot'} 
+          onPress={handleSubmit} 
+          loading={requestMutation.isPending || rescheduleMutation.isPending} 
+          disabled={selectedSlots.length === 0} 
+          fullWidth 
+        />
       </View>
     </SafeAreaView>
   );
@@ -159,11 +313,8 @@ const RequestViewingScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-  backBtn: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', textAlign: 'center' },
   scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 32 },
+  scrollContent: { padding: 20, paddingBottom: 32, width: '100%' },
   propCard: { flexDirection: 'row', padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 24 },
   propImg: { width: 64, height: 64, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   img: { width: '100%', height: '100%' },
@@ -180,6 +331,39 @@ const styles = StyleSheet.create({
   info: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, gap: 10 },
   infoText: { fontSize: 14 },
   footer: { padding: 16, borderTopWidth: 1 },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hint: {
+    fontSize: 13,
+    marginBottom: 12,
+  },
 });
+
+// Generate time slots for a date (9:00 - 18:00, every 30 minutes)
+function generateTimeSlots(date: string): TimeSlot[] {
+  const slots: TimeSlot[] = [];
+  const startHour = 9;
+  const endHour = 18;
+  
+  for (let hour = startHour; hour < endHour; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      const endHourCalc = minute === 30 ? hour + 1 : hour;
+      const endMinute = minute === 30 ? 0 : 30;
+      const endTime = `${endHourCalc.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+      
+      slots.push({
+        date,
+        startTime,
+        endTime,
+      });
+    }
+  }
+  
+  return slots;
+}
 
 export default RequestViewingScreen;

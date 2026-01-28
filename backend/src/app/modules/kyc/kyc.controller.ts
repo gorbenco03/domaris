@@ -132,11 +132,11 @@ export class KycController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['propertyId', 'docType', 'file'],
+      required: ['docType', 'file'],
       properties: {
         propertyId: {
           type: 'integer',
-          description: 'ID of the property to verify',
+          description: 'Optional property ID (if already created)',
         },
         docType: {
           type: 'string',
@@ -156,7 +156,7 @@ export class KycController {
   async uploadPropertyDoc(
     @CurrentUserId() userId: number,
     @UploadedFiles() files: { file?: Express.Multer.File[] },
-    @Body('propertyId') propertyId: number,
+    @Body('propertyId') propertyId?: number,
     @Body('docType') docType: string,
   ) {
     return this.kycService.verifyProperty(
@@ -194,8 +194,11 @@ export class KycController {
   @ApiResponse({ status: 200, description: 'Verification approved' })
   @ApiResponse({ status: 404, description: 'Verification not found' })
   @ApiResponse({ status: 403, description: 'Admin privileges required' })
-  async approveVerification(@Param('userId', ParseIntPipe) userId: number) {
-    return this.kycService.approveVerification(userId);
+  async approveVerification(
+    @Param('userId', ParseIntPipe) userId: number,
+    @CurrentUserId() adminId: number,
+  ) {
+    return this.kycService.approveVerification(userId, adminId);
   }
 
   @Post('admin/reject/:userId')
@@ -224,7 +227,8 @@ export class KycController {
   async rejectVerification(
     @Param('userId', ParseIntPipe) userId: number,
     @Body('reason') reason: string,
+    @CurrentUserId() adminId: number,
   ) {
-    return this.kycService.rejectVerification(userId, reason);
+    return this.kycService.rejectVerification(userId, reason, adminId);
   }
 }

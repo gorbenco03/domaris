@@ -7,8 +7,8 @@
  * Verification Levels:
  * 0 = Cont nou
  * 1 = Email/Telefon verificat
- * 2 = Identitate verificată (KYC complet) - POATE POSTA
- * 3 = Proprietar verificat cu documente
+ * 2 = Identitate verificată (poate contacta/programează vizionări)
+ * 3 = Proprietar verificat cu documente (POATE POSTA)
  */
 
 import {
@@ -16,38 +16,54 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { Op } from 'sequelize';
 import { User } from '../../db/entities/user.entity';
-
-// Types
-export interface KycDocument {
-  id: string;
-  userId: number;
-  type: 'ID_CARD' | 'PASSPORT' | 'DRIVING_LICENSE' | 'PROPERTY_DEED' | 'UTILITY_BILL' | 'SELFIE';
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  fileUrl?: string;
-  uploadedAt: Date;
-  reviewedAt?: Date;
-  rejectionReason?: string;
-}
-
-export interface KycVerification {
-  id: string;
-  userId: number;
-  status: 'NOT_STARTED' | 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
-  targetLevel: number;
-  submittedAt?: Date;
-  reviewedAt?: Date;
-  rejectionReason?: string;
-  documents: KycDocument[];
-  expiresAt?: Date;
-}
-
-// In-memory storage for demo (replace with DB in production)
-const kycVerifications: Map<number, KycVerification> = new Map();
-const kycDocuments: KycDocument[] = [];
+import { KycVerification } from '../../db/entities/kyc-verification.entity';
+import { KycDocument } from '../../db/entities/kyc-document.entity';
 
 @Injectable()
 export class KycService {
+  private async getVerification(userId: number) {
+    return KycVerification.findOne({
+      where: { userId },
+      include: [KycDocument],
+    });
+  }
+
+  private buildStatusResponse(user: User, verification: KycVerification | null) {
+    const effectiveStatus =
+      verification?.status ||
+      (user.verificationLevel >= 2 ? 'APPROVED' : 'NOT_STARTED');
+    const effectiveTargetLevel =
+      verification?.targetLevel ||
+      (user.verificationLevel >= 3
+        ? 3
+        : user.verificationLevel >= 2
+        ? 2
+        : null);
+
+    return {
+      userId: String(user.id),
+      status: effectiveStatus,
+      currentLevel: user.verificationLevel,
+      targetLevel: effectiveTargetLevel,
+      submittedAt: verification?.submittedAt ?? null,
+      reviewedAt: verification?.reviewedAt ?? null,
+      rejectionReason: verification?.rejectionReason ?? null,
+      documents:
+        verification?.documents?.map((doc) => ({
+          id: String(doc.id),
+          type: doc.type,
+          status: doc.status,
+          uploadedAt: doc.uploadedAt,
+          reviewedAt: doc.reviewedAt ?? null,
+          rejectionReason: doc.rejectionReason ?? null,
+        })) ?? [],
+      canResubmit: effectiveStatus === 'REJECTED',
+      expiresAt: verification?.expiresAt ?? null,
+    };
+  }
+
   /**
    * Start identity verification process (pentru nivel 2)
    */
@@ -67,29 +83,44 @@ export class KycService {
 
     // Check if user already has level 2+
     if (user.verificationLevel >= 2) {
-      return {
-        success: true,
-        message: 'Identitatea este deja verificată',
-        currentLevel: user.verificationLevel,
-      };
+      return this.getStatus(userId);
     }
 
-    // Check if there's a pending verification
-    const existing = kycVerifications.get(userId);
-    if (existing && existing.status === 'PENDING') {
+    const existing = await this.getVerification(userId);
+    if (existing && ['PENDING', 'IN_REVIEW'].includes(existing.status)) {
       throw new BadRequestException({
         code: 'KYC_PENDING',
         message: 'Ai deja o verificare în curs. Așteaptă rezultatul.',
       });
     }
 
-    // Create documents
-    const documents: KycDocument[] = [];
     const now = new Date();
+    let verification = existing;
+
+    if (verification) {
+      verification.status = 'PENDING';
+      verification.targetLevel = 2;
+      verification.submittedAt = now;
+      verification.reviewedAt = null;
+      verification.reviewedBy = null;
+      verification.rejectionReason = null;
+      verification.expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      await verification.save();
+      await KycDocument.destroy({ where: { verificationId: verification.id } });
+    } else {
+      verification = await KycVerification.create({
+        userId,
+        status: 'PENDING',
+        targetLevel: 2,
+        provider: 'MANUAL',
+        submittedAt: now,
+        expiresAt: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+      });
+    }
 
     if (files.docFront?.[0]) {
-      documents.push({
-        id: `doc_${Date.now()}_front`,
+      await KycDocument.create({
+        verificationId: verification.id,
         userId,
         type: docType.toUpperCase() as any,
         status: 'PENDING',
@@ -97,55 +128,33 @@ export class KycService {
         fileUrl: `uploads/kyc/${userId}/${Date.now()}_front.jpg`,
         uploadedAt: now,
       });
-      kycDocuments.push(documents[documents.length - 1]);
     }
 
     if (files.docBack?.[0]) {
-      documents.push({
-        id: `doc_${Date.now()}_back`,
+      await KycDocument.create({
+        verificationId: verification.id,
         userId,
         type: docType.toUpperCase() as any,
         status: 'PENDING',
         fileUrl: `uploads/kyc/${userId}/${Date.now()}_back.jpg`,
         uploadedAt: now,
       });
-      kycDocuments.push(documents[documents.length - 1]);
     }
 
     if (files.selfie?.[0]) {
-      documents.push({
-        id: `doc_${Date.now()}_selfie`,
+      await KycDocument.create({
+        verificationId: verification.id,
         userId,
         type: 'SELFIE',
         status: 'PENDING',
         fileUrl: `uploads/kyc/${userId}/${Date.now()}_selfie.jpg`,
         uploadedAt: now,
       });
-      kycDocuments.push(documents[documents.length - 1]);
     }
-
-    // Create verification record
-    const verification: KycVerification = {
-      id: `kyc_${Date.now()}`,
-      userId,
-      status: 'PENDING',
-      targetLevel: 2,
-      submittedAt: now,
-      documents,
-      expiresAt: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000), // 1 year
-    };
-
-    kycVerifications.set(userId, verification);
 
     console.log(`[KYC] User ${userId} submitted identity verification with ${docType}`);
 
-    return {
-      success: true,
-      verificationId: verification.id,
-      status: verification.status,
-      message: 'Documente primite. Verificarea este în curs.',
-      estimatedTime: '24-48 ore',
-    };
+    return this.getStatus(userId);
   }
 
   /**
@@ -157,41 +166,19 @@ export class KycService {
       throw new NotFoundException('Utilizator negăsit');
     }
 
-    const verification = kycVerifications.get(userId);
+    const verification = await this.getVerification(userId);
 
     return {
-      userId,
-      currentLevel: user.verificationLevel,
-      emailVerified: user.emailVerified,
-      phoneVerified: user.phoneVerified,
-      
-      // Verification process status
-      verification: verification
-        ? {
-            id: verification.id,
-            status: verification.status,
-            targetLevel: verification.targetLevel,
-            submittedAt: verification.submittedAt,
-            reviewedAt: verification.reviewedAt,
-            rejectionReason: verification.rejectionReason,
-            documentsCount: verification.documents.length,
-            canResubmit: verification.status === 'REJECTED',
-            expiresAt: verification.expiresAt,
-          }
-        : null,
-
-      // What user can do
+      ...this.buildStatusResponse(user, verification),
       permissions: {
         canBrowse: true,
         canSearch: true,
         canAddFavorites: true,
-        canContact: user.verificationLevel >= 1,
-        canRequestViewing: user.verificationLevel >= 1,
-        canPostListing: user.verificationLevel >= 2,
+        canContact: user.verificationLevel >= 2,
+        canRequestViewing: user.verificationLevel >= 2,
+        canPostListing: user.verificationLevel >= 3,
         canBoostListing: user.verificationLevel >= 3,
       },
-
-      // Next steps
       nextSteps: this.getNextSteps(user),
     };
   }
@@ -207,11 +194,11 @@ export class KycService {
     }
 
     if (user.verificationLevel < 2) {
-      steps.push('Verifică-ți identitatea pentru a posta anunțuri');
+      steps.push('Verifică-ți identitatea pentru a putea contacta proprietari');
     }
 
     if (user.verificationLevel === 2) {
-      steps.push('Adaugă documente de proprietate pentru badge-ul de proprietar verificat');
+      steps.push('Adaugă documente de proprietate pentru a putea posta anunțuri');
     }
 
     return steps;
@@ -222,7 +209,7 @@ export class KycService {
    */
   async verifyProperty(
     userId: number,
-    propertyId: number,
+    propertyId: number | undefined,
     docType: string,
     file: Express.Multer.File | undefined,
   ) {
@@ -238,29 +225,59 @@ export class KycService {
       });
     }
 
+    if (user.verificationLevel >= 3) {
+      return this.getStatus(userId);
+    }
+
     if (!file) {
       throw new BadRequestException('Fișierul este obligatoriu');
     }
 
-    const document: KycDocument = {
-      id: `doc_property_${Date.now()}`,
+    const existing = await this.getVerification(userId);
+    if (existing && ['PENDING', 'IN_REVIEW'].includes(existing.status)) {
+      throw new BadRequestException({
+        code: 'KYC_PENDING',
+        message: 'Ai deja o verificare în curs. Așteaptă rezultatul.',
+      });
+    }
+
+    const now = new Date();
+    let verification = existing;
+
+    if (verification) {
+      verification.status = 'PENDING';
+      verification.targetLevel = 3;
+      verification.submittedAt = now;
+      verification.reviewedAt = null;
+      verification.reviewedBy = null;
+      verification.rejectionReason = null;
+      verification.expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      await verification.save();
+      await KycDocument.destroy({ where: { verificationId: verification.id } });
+    } else {
+      verification = await KycVerification.create({
+        userId,
+        status: 'PENDING',
+        targetLevel: 3,
+        provider: 'MANUAL',
+        submittedAt: now,
+        expiresAt: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+      });
+    }
+
+    await KycDocument.create({
+      verificationId: verification.id,
       userId,
+      propertyId: propertyId ?? null,
       type: docType.toUpperCase() as any,
       status: 'PENDING',
-      fileUrl: `uploads/kyc/${userId}/property_${propertyId}_${Date.now()}.pdf`,
-      uploadedAt: new Date(),
-    };
-
-    kycDocuments.push(document);
+      fileUrl: `uploads/kyc/${userId}/ownership_${propertyId ?? 'unknown'}_${Date.now()}.pdf`,
+      uploadedAt: now,
+    });
 
     console.log(`[KYC] User ${userId} uploaded property document for property ${propertyId}`);
 
-    return {
-      success: true,
-      documentId: document.id,
-      status: 'PENDING',
-      message: 'Document de proprietate încarcat. Verificarea este în curs.',
-    };
+    return this.getStatus(userId);
   }
 
   // ============================================================================
@@ -270,13 +287,13 @@ export class KycService {
   /**
    * Approve KYC verification (called by admin or automated system)
    */
-  async approveVerification(userId: number) {
+  async approveVerification(userId: number, adminId: number) {
     const user = await User.findByPk(userId);
     if (!user) {
       throw new NotFoundException('Utilizator negăsit');
     }
 
-    const verification = kycVerifications.get(userId);
+    const verification = await this.getVerification(userId);
     if (!verification) {
       throw new NotFoundException('Verificare negăsită');
     }
@@ -284,15 +301,17 @@ export class KycService {
     // Update verification
     verification.status = 'APPROVED';
     verification.reviewedAt = new Date();
+    verification.reviewedBy = adminId;
+    verification.rejectionReason = null;
+    await verification.save();
 
-    // Update documents
-    verification.documents.forEach((doc) => {
-      doc.status = 'APPROVED';
-      doc.reviewedAt = new Date();
-    });
+    await KycDocument.update(
+      { status: 'APPROVED', reviewedAt: verification.reviewedAt },
+      { where: { verificationId: verification.id } },
+    );
 
     // Update user level
-    user.verificationLevel = verification.targetLevel;
+    user.verificationLevel = Math.max(user.verificationLevel, verification.targetLevel);
     await user.save();
 
     console.log(`[KYC] User ${userId} verified to level ${verification.targetLevel}`);
@@ -307,22 +326,26 @@ export class KycService {
   /**
    * Reject KYC verification
    */
-  async rejectVerification(userId: number, reason: string) {
-    const verification = kycVerifications.get(userId);
+  async rejectVerification(userId: number, reason: string, adminId: number) {
+    const verification = await this.getVerification(userId);
     if (!verification) {
       throw new NotFoundException('Verificare negăsită');
     }
 
     verification.status = 'REJECTED';
     verification.reviewedAt = new Date();
+    verification.reviewedBy = adminId;
     verification.rejectionReason = reason;
+    await verification.save();
 
-    // Update documents
-    verification.documents.forEach((doc) => {
-      doc.status = 'REJECTED';
-      doc.reviewedAt = new Date();
-      doc.rejectionReason = reason;
-    });
+    await KycDocument.update(
+      {
+        status: 'REJECTED',
+        reviewedAt: verification.reviewedAt,
+        rejectionReason: reason,
+      },
+      { where: { verificationId: verification.id } },
+    );
 
     console.log(`[KYC] User ${userId} verification rejected: ${reason}`);
 
@@ -337,12 +360,10 @@ export class KycService {
    * Get all pending verifications (for admin)
    */
   async getPendingVerifications() {
-    const pending: KycVerification[] = [];
-    kycVerifications.forEach((v) => {
-      if (v.status === 'PENDING') {
-        pending.push(v);
-      }
+    return KycVerification.findAll({
+      where: { status: { [Op.in]: ['PENDING', 'IN_REVIEW'] } },
+      include: [KycDocument],
+      order: [['submittedAt', 'ASC']],
     });
-    return pending;
   }
 }

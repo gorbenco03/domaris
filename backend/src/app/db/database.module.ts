@@ -15,6 +15,8 @@ import { Notification } from './entities/notification.entity.js';
 import { Device } from './entities/device.entity.js';
 import { ListingView } from './entities/listing-view.entity.js';
 import { SavedSearch } from './entities/saved-search.entity.js';
+import { KycVerification } from './entities/kyc-verification.entity.js';
+import { KycDocument } from './entities/kyc-document.entity.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
@@ -49,6 +51,8 @@ pg.defaults.parseInt8 = true;
             Device,
             ListingView,
             SavedSearch,
+            KycVerification,
+            KycDocument,
           ],
           synchronize: true,
           sync: { alter: true }, // Force alter to add missing columns

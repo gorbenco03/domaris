@@ -13,6 +13,7 @@ import {
   Image,
   Animated,
   Alert,
+  Platform,
 } from 'react-native';
 import {
   Camera,
@@ -61,7 +62,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
-    if (status !== 'granted') {
+    if (status !== 'granted' && status !== 'limited') {
       Alert.alert(
         'Permisiune necesară',
         'Avem nevoie de acces la galeria ta pentru a încărca fotografii.'
@@ -77,15 +78,19 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 
     try {
       setIsLoading(true);
+      const mediaTypes =
+        (ImagePicker as any).MediaTypeOptions?.Images ??
+        (ImagePicker as any).MediaType?.Images;
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'] as any,
-        allowsMultipleSelection: true,
+        mediaTypes,
+        allowsMultipleSelection: Platform.OS === 'ios',
         quality: 0.8,
-        selectionLimit: remainingSlots,
+        selectionLimit: Platform.OS === 'ios' ? remainingSlots : 1,
       });
 
-      if (!result.canceled && result.assets.length > 0) {
-        const newPhotos: Photo[] = result.assets.map((asset, index) => ({
+      const assets = result.assets ?? [];
+      if (!result.canceled && assets.length > 0) {
+        const newPhotos: Photo[] = assets.map((asset, index) => ({
           id: `photo-${Date.now()}-${index}`,
           uri: asset.uri,
           isPrimary: photos.length === 0 && index === 0,

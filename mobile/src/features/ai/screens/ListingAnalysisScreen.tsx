@@ -32,8 +32,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Button } from '@/shared/components';
-import { usePropertyDetail } from '@/features/properties/hooks/useProperties';
+import { Button, IconButton } from '@/shared/components';
+import { usePropertyDetail } from '@/shared/services';
 import { aiApi } from '../api/aiApi';
 import { QUERY_KEYS } from '@/config/constants';
 
@@ -209,12 +209,13 @@ const ListingAnalysisScreen: React.FC = () => {
           },
         ]}
       >
-        <TouchableOpacity
-          style={styles.backButton}
+        <IconButton
+          icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
           onPress={() => navigation.goBack()}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+          variant="surface"
+          size="md"
+          style={[styles.backButton, { borderWidth: 1, borderColor: theme.colors.border }]}
+        />
         <View style={styles.headerCenter}>
           <LinearGradient
             colors={['#6366f1', '#8b5cf6', '#10b981']}
@@ -249,7 +250,8 @@ const ListingAnalysisScreen: React.FC = () => {
       ) : (
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        horizontal={false}
+        contentContainerStyle={[styles.scrollContent, { width: '100%' }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Property Info */}

@@ -21,13 +21,12 @@ import {
   Sparkles,
   Home,
   MessageCircle,
-  TrendingUp,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Button } from '@/shared/components';
+import { Button, IconButton } from '@/shared/components';
 import { aiApi } from '../api/aiApi';
 
 interface Message {
@@ -44,9 +43,24 @@ interface PropertySuggestion {
   location: string;
   price: string;
   area: string;
-  matchScore: number;
+  matchScore?: number; // Optional - only show if we have real data
   raw?: any;
 }
+
+/**
+ * Remove markdown formatting from text
+ * Converts **bold** to plain text, removes other markdown symbols
+ */
+const cleanMarkdown = (text: string): string => {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1') // Remove **bold**
+    .replace(/\*(.*?)\*/g, '$1')     // Remove *italic*
+    .replace(/__(.*?)__/g, '$1')     // Remove __bold__
+    .replace(/_(.*?)_/g, '$1')       // Remove _italic_
+    .replace(/`(.*?)`/g, '$1')       // Remove `code`
+    .replace(/#{1,6}\s/g, '')        // Remove # headers
+    .trim();
+};
 
 const AIChatScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -102,7 +116,7 @@ const AIChatScreen: React.FC = () => {
       });
 
       const mappedProperties: PropertySuggestion[] =
-        (response.properties || []).map((property: any, index: number) => ({
+        (response.properties || []).map((property: any) => ({
           id: String(property.id),
           title: property.title || 'Proprietate',
           location: [property.neighborhood, property.city].filter(Boolean).join(', '),
@@ -118,7 +132,6 @@ const AIChatScreen: React.FC = () => {
               : property.area
                 ? `${property.area} mp`
                 : '-',
-          matchScore: 92 - index * 3,
           raw: property,
         })) || [];
 
@@ -169,12 +182,13 @@ const AIChatScreen: React.FC = () => {
           },
         ]}
       >
-        <TouchableOpacity
-          style={styles.backButton}
+        <IconButton
+          icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
           onPress={() => navigation.goBack()}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+          variant="surface"
+          size="md"
+          style={[styles.backButton, { borderWidth: 1, borderColor: theme.colors.border }]}
+        />
         <View style={styles.headerCenter}>
           <LinearGradient
             colors={['#6366f1', '#8b5cf6', '#10b981']}
@@ -260,7 +274,7 @@ const AIChatScreen: React.FC = () => {
                         },
                       ]}
                     >
-                      {message.content}
+                      {cleanMarkdown(message.content)}
                     </Text>
 
                     {/* Property Suggestions */}
@@ -284,32 +298,12 @@ const AIChatScreen: React.FC = () => {
                               },
                             ]}
                           >
-                            <View style={styles.propertyHeader}>
-                              <View style={styles.matchBadge}>
-                                <TrendingUp
-                                  size={12}
-                                  color={theme.colors.accent.main}
-                                />
-                                <Text
-                                  style={[
-                                    styles.matchScore,
-                                    {
-                                      color: theme.colors.accent.main,
-                                      fontSize: theme.typography.fontSize.xs,
-                                    },
-                                  ]}
-                                >
-                                  {property.matchScore}% Potrivire
-                                </Text>
-                              </View>
-                            </View>
                             <Text
                               style={[
                                 styles.propertyTitle,
                                 {
                                   color: theme.colors.textPrimary,
                                   fontSize: theme.typography.fontSize.base,
-                                  marginTop: theme.spacing[2],
                                 },
                               ]}
                             >
@@ -641,18 +635,6 @@ const styles = StyleSheet.create({
   propertyCard: {
     padding: 12,
     borderWidth: 1,
-  },
-  propertyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  matchBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  matchScore: {
-    fontWeight: '600',
   },
   propertyTitle: {
     fontWeight: '600',

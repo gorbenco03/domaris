@@ -21,12 +21,13 @@ import { ArrowLeft, X, Save } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { ProgressBar } from '@/shared/components/ProgressBar';
 import Button from '@/shared/components/Button';
+import { IconButton } from '@/shared/components';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import { 
   usePropertyDetail, 
   useUpdateProperty, 
   useUploadPropertyPhotos 
-} from '@/features/properties/hooks/useProperties';
+} from '@/features/properties/services';
 import { IPropertyListing } from '@/core/api/types';
 
 // Import Steps
@@ -333,9 +334,13 @@ const EditPropertyScreen: React.FC = () => {
     >
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
+        <IconButton
+          icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
+          onPress={handleBack}
+          variant="surface"
+          size="md"
+          style={[styles.headerButton, { borderWidth: 1, borderColor: theme.colors.border }]}
+        />
 
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
@@ -370,7 +375,8 @@ const EditPropertyScreen: React.FC = () => {
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          horizontal={false}
+          contentContainerStyle={[styles.scrollContent, { width: '100%' }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

@@ -9,9 +9,9 @@ import { viewingsApi } from '../api/viewingsApi';
 
 /**
  * Get all viewings
+ * Unified account model - returns all viewings where user is involved (as property owner or as requester)
  */
 export const useViewings = (params?: {
-  role?: 'seeker' | 'owner';
   status?: string;
   page?: number;
   limit?: number;
@@ -103,5 +103,62 @@ export const useCancelViewing = () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.VIEWINGS, variables.id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.VIEWINGS] });
     },
+  });
+};
+
+/**
+ * Reschedule viewing mutation
+ */
+export const useRescheduleViewing = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, newSlot, reason }: { id: string; newSlot: string; reason?: string }) =>
+      viewingsApi.rescheduleViewing(id, newSlot, reason),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.VIEWINGS, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.VIEWINGS] });
+    },
+  });
+};
+
+/**
+ * Submit viewing feedback mutation
+ */
+export const useSubmitViewingFeedback = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      rating,
+      comment,
+      interested,
+    }: {
+      id: string;
+      rating: number;
+      comment?: string;
+      interested?: boolean;
+    }) => viewingsApi.submitViewingFeedback(id, rating, comment, interested),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.VIEWINGS, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.VIEWINGS] });
+    },
+  });
+};
+
+/**
+ * Get viewing availability for a property
+ */
+export const useViewingAvailability = (
+  propertyId: string | number | undefined,
+  startDate?: string,
+  endDate?: string
+) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.VIEWINGS, 'availability', propertyId, startDate, endDate],
+    queryFn: () => viewingsApi.getViewingAvailability(propertyId!, startDate, endDate),
+    enabled: !!propertyId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };

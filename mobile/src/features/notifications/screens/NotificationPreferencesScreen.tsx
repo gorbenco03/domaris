@@ -6,9 +6,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { ArrowLeft, Bell, Mail, MessageSquare, Moon } from 'lucide-react-native';
+import { Bell, Mail, MessageSquare, Moon } from 'lucide-react-native';
+import { ScreenHeader } from '@/shared/components';
 import { NotificationPreferences } from '../types';
 
 const DEFAULT_PREFS: NotificationPreferences = {
@@ -27,7 +27,6 @@ const DEFAULT_PREFS: NotificationPreferences = {
 };
 
 const NotificationPreferencesScreen: React.FC = () => {
-  const navigation = useNavigation();
   const { theme } = useTheme();
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
 
@@ -56,13 +55,7 @@ const NotificationPreferencesScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: theme.colors.surface }]}>
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>Setări notificări</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader title="Setări notificări" />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {/* Push Section */}
@@ -135,9 +128,6 @@ const NotificationPreferencesScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-  backBtn: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', textAlign: 'center' },
   scroll: { flex: 1 },
   scrollContent: { padding: 20 },
   section: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, marginBottom: 20 },

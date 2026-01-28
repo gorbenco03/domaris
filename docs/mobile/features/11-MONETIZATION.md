@@ -48,6 +48,22 @@ Strategia de monetizare este crucială pentru sustenabilitatea platformei. Model
 - Verificare proprietate prioritară: 19.99€
 - Consultanță prețare: 29.99€
 
+### 5. Ecosistem Parteneri (Brokeri, Notari, Bănci)
+
+Scop: să păstrăm utilizatorul în platformă pe tot parcursul tranzacției, oferind servicii verificate și integrate. Modelul este hybrid: recomandări + marketplace + comision de succes.
+
+**Surse de venit:**
+- Comision referral pe fiecare lead calificat (brokeri, notari, bănci)
+- Taxă fixă per programare / consultanță
+- Pachete premium B2B pentru parteneri (promovare și prioritate în listări)
+
+**Tipuri de parteneri și roluri:**
+- **Brokeri**: consultanță, negociere, organizare vizionări, suport achiziție
+- **Notari**: programare, pre-verificare acte, pregătire documente
+- **Bănci**: pre-aprobare credit, simulare rate, oferte personalizate
+
+**Regula cheie:** platforma rămâne P2P, partenerii sunt opționali, dar foarte vizibili în momentul potrivit.
+
 ### 📈 Eficiența Costurilor AI (DigitalOcean GPT-oss-120b)
 
 Bazat pe tarifele de **$0.10 / 1M input** și **$0.70 / 1M output**:
@@ -140,6 +156,36 @@ interface Transaction {
 - 14 zile Premium gratis
 - Fără card necesar
 - Downgrade automat la Free
+
+### RF-MON-005: Parteneri & Journey
+
+- Utilizatorul primește opțiuni de parteneri în funcție de etapă (vizionare, ofertă, tranzacție)
+- Se pot cere:
+  - consultanță broker
+  - pre-aprobare credit
+  - programare notar
+- Toate interacțiunile se pot face în app (request → confirmare → reminder)
+- Tracking funnel complet (lead creat → acceptat → finalizat)
+
+---
+
+## ✅ Use Case: Journey Tranzacție cu Parteneri
+
+**Scenariu:** Cumpărătorul găsește o proprietate, vizionează, face ofertă acceptată → platforma îl ghidează prin pașii următori.
+
+### Flow Simplificat
+
+| Etapă | Ce se întâmplă | Parteneri disponibili |
+|-------|----------------|----------------------|
+| 1. Ofertă acceptată | Se deblochează ecranul „Pașii tranzacției" | - |
+| 2. Finanțare | Cumpărătorul poate cere pre-aprobare credit | Bănci partenere |
+| 3. Verificare acte | Programare notar, upload documente | Notari parteneri |
+| 4. Finalizare | Semnare contract, feedback | - |
+
+### Reguli cheie
+- Partenerii sunt **opționali** — utilizatorul poate bifa „Am rezolvat extern"
+- Platforma generează lead-uri către parteneri și trackuiește statusul (creat → acceptat → finalizat)
+- Notificări automate la fiecare pas important
 
 ---
 
@@ -238,6 +284,24 @@ interface Transaction {
 └─────────────────────────────────────┘
 ```
 
+### Journey Screen (After Offer Accepted)
+
+```
+┌─────────────────────────────────────┐
+│  ← Pașii tranzacției                │
+├─────────────────────────────────────┤
+│  ✅ Vizionare programată            │
+│  ✅ Ofertă acceptată                │
+│  ⏳ Pre-aprobare credit             │
+│  ⏳ Notar & Acte                     │
+│  ⏳ Semnare contract                 │
+│                                     │
+│  Parteneri recomandați:             │
+│  [Banca X] [Notar Y] [Broker Z]     │
+│                                     │
+└─────────────────────────────────────┘
+```
+
 ---
 
 ## ✅ Criterii de Acceptanță
@@ -247,6 +311,8 @@ interface Transaction {
 - [x] Facturi generate automat
 - [x] Boost se activează instant
 - [x] Trial 14 zile funcțional
+- [ ] Parteneri integrați în journey
+- [ ] Lead tracking complet (request → confirmat → finalizat)
 
 ---
 
@@ -269,6 +335,12 @@ GET    /api/v1/properties/:id/boosts
 POST   /api/v1/payments/create-intent
 GET    /api/v1/users/me/transactions
 GET    /api/v1/users/me/invoices/:id
+
+# Partners (Brokeri/Notari/Bănci)
+GET    /api/v1/partners
+POST   /api/v1/partners/lead
+GET    /api/v1/partners/leads
+PATCH  /api/v1/partners/leads/:id/status
 ```
 
 ---

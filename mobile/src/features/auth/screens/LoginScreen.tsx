@@ -22,8 +22,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
-import { Button, Input } from '@/shared/components';
-import { ArrowLeft, Mail, Lock, Home, Phone } from 'lucide-react-native';
+import { Button, Input, ScreenHeader } from '@/shared/components';
+import { Mail, Lock, Home, Phone } from 'lucide-react-native';
 
 const { height } = Dimensions.get('window');
 
@@ -80,6 +80,10 @@ const LoginScreen: React.FC = () => {
       } else {
         await loginWithPhone(phone, password);
       }
+      navigation.getParent()?.reset({
+        index: 0,
+        routes: [{ name: 'Main' as never }],
+      });
     } catch (error: any) {
       console.error('Login error:', error);
       const isInvalidAuthResponse = error?.message === 'AUTH_RESPONSE_INVALID';
@@ -116,15 +120,10 @@ const LoginScreen: React.FC = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-            >
-              <ArrowLeft size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          <ScreenHeader
+            title=""
+            style={{ backgroundColor: 'transparent', borderBottomColor: 'transparent' }}
+          />
 
           {/* Logo & Title */}
           <View style={styles.brandSection}>

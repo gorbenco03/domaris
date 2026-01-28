@@ -116,13 +116,15 @@ export type ProfileStackParamList = {
   PropertyStats: { propertyId: string };
   Viewings: undefined;
   ViewingDetail: { viewingId: string };
-  RequestViewing: { propertyId: string };
+  RequestViewing: { propertyId: string; viewingId?: string };
   AvailabilitySettings: undefined;
   Notifications: undefined;
   Settings: undefined;
   NotificationSettings: undefined;
   ChangePassword: undefined;
   VerificationHub: undefined;
+  IdentityVerification: undefined;
+  OwnershipVerification: undefined;
   AIAnalysis: { propertyId: string };
   // Monetization and AI features
   Pricing: undefined;

@@ -14,9 +14,11 @@ import * as Font from 'expo-font';
 import { QueryProvider } from '@/app/providers/QueryProvider';
 import { ThemeProvider, useTheme } from '@/app/providers/ThemeProvider';
 import { AuthProvider } from '@/app/providers/AuthProvider';
+import { SocketProvider } from '@/features/messaging/providers/SocketProvider';
+import { PushNotificationsProvider } from '@/features/notifications/providers/PushNotificationsProvider';
 
 // Tutorial
-import { TutorialProvider } from '@/features/tutorial';
+import { TutorialGate, TutorialProvider } from '@/features/tutorial';
 
 // Navigation
 import RootNavigator from '@/app/navigation/RootNavigator';
@@ -95,7 +97,12 @@ export default function App() {
           <ThemeProvider>
             <AuthProvider>
               <TutorialProvider>
-                <AppContent />
+                <SocketProvider>
+                  <PushNotificationsProvider>
+                    <AppContent />
+                    <TutorialGate />
+                  </PushNotificationsProvider>
+                </SocketProvider>
               </TutorialProvider>
             </AuthProvider>
           </ThemeProvider>

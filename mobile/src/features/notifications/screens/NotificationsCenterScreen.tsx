@@ -18,7 +18,8 @@ import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { NotificationItem } from '../components';
 import { Notification } from '../types';
-import { ArrowLeft, CheckCheck, Bell, Settings } from 'lucide-react-native';
+import { CheckCheck, Bell, Settings } from 'lucide-react-native';
+import { ScreenHeader } from '@/shared/components';
 import {
   useNotifications,
   useMarkNotificationAsRead,
@@ -138,56 +139,49 @@ const NotificationsCenterScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={[styles.backBtn, { backgroundColor: theme.colors.surface }]}
-        >
-          <ArrowLeft size={24} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
-            Notificări
-          </Text>
-          {unreadCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: theme.colors.accent.main }]}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.headerActions}>
-          {unreadCount > 0 && (
-            <TouchableOpacity onPress={markAllAsRead} style={styles.headerBtn}>
-              <CheckCheck size={22} color={theme.colors.accent.main} />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={() => {
-              navigation.goBack();
-              navigation.dispatch(
-                CommonActions.navigate({
-                  name: 'Main',
-                  params: {
-                    screen: 'ProfileTab',
+      <ScreenHeader
+        title="Notificări"
+        rightSlot={
+          <View style={styles.headerActions}>
+            {unreadCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: theme.colors.accent.main }]}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            )}
+            {unreadCount > 0 && (
+              <TouchableOpacity onPress={markAllAsRead} style={styles.headerBtn}>
+                <CheckCheck size={22} color={theme.colors.accent.main} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => {
+                navigation.goBack();
+                navigation.dispatch(
+                  CommonActions.navigate({
+                    name: 'Main',
                     params: {
-                      screen: 'NotificationSettings',
+                      screen: 'ProfileTab',
+                      params: {
+                        screen: 'NotificationSettings',
+                      },
                     },
-                  },
-                })
-              );
-            }}
-            style={styles.headerBtn}
-          >
-            <Settings size={22} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+                  })
+                );
+              }}
+              style={styles.headerBtn}
+            >
+              <Settings size={22} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       <FlatList
         data={groupByDate(mappedNotifications)}
         keyExtractor={([date]) => date}
+        horizontal={false}
         renderItem={({ item: [date, items] }) => (
-          <View>
+          <View style={{ width: '100%' }}>
             <Text style={[styles.sectionHeader, { color: theme.colors.textTertiary }]}>
               {date}
             </Text>
@@ -201,7 +195,9 @@ const NotificationsCenterScreen: React.FC = () => {
           </View>
         )}
         contentContainerStyle={
-          mappedNotifications.length === 0 ? styles.emptyContainer : styles.listContent
+          mappedNotifications.length === 0 
+            ? [styles.emptyContainer, { width: '100%' }] 
+            : [styles.listContent, { width: '100%' }]
         }
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -227,30 +223,9 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerCenter: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  headerTitle: { fontSize: 18, fontWeight: '600' },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  headerActions: { flexDirection: 'row', gap: 4 },
+  headerActions: { flexDirection: 'row', gap: 4, alignItems: 'center' },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   listContent: { paddingBottom: 24 },
   sectionHeader: {

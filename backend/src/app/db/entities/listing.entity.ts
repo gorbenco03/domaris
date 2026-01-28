@@ -164,13 +164,26 @@ export class Listing extends ExtModel {
   @Column(DataType.STRING)
   addressText!: string;
 
-  @ApiProperty({ example: 44.4 })
-  @Column(DataType.DECIMAL(9, 6))
-  lat!: number;
+  @ApiProperty({ example: 44.4, required: false })
+  @Column({
+    type: DataType.DECIMAL(10, 8),
+    allowNull: true,
+  })
+  lat?: number;
 
-  @ApiProperty({ example: 26.1 })
-  @Column(DataType.DECIMAL(9, 6))
-  lng!: number;
+  @ApiProperty({ example: 26.1, required: false })
+  @Column({
+    type: DataType.DECIMAL(11, 8),
+    allowNull: true,
+  })
+  lng?: number;
+
+  @ApiProperty({ required: false, description: 'Whether location was manually set on map' })
+  @Column({
+    type: DataType.BOOLEAN,
+    defaultValue: false,
+  })
+  locationSetManually?: boolean;
 
   // ----------------- TIMING -----------------
 
