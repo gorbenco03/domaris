@@ -13,7 +13,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {
-  X,
   Search,
   Filter,
   List,
@@ -22,9 +21,9 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton } from '@/shared/components';
-import { PropertyCard } from '@/shared/components';
 import { useNavigation } from '@react-navigation/native';
 import { MapViewComponent } from '@/features/maps/components';
+import { PropertyPreviewCard } from '@/features/maps/components/PropertyPreviewCard';
 import { useMapProperties } from '@/features/maps/hooks/useMapProperties';
 import { getUserLocation } from '@/features/maps/services/mapService';
 import type { MapProperty } from '@/features/maps/hooks/useMapProperties';
@@ -34,7 +33,7 @@ const MapSearchScreen: React.FC = () => {
   const navigation = useNavigation<any>();
 
   const [selectedProperty, setSelectedProperty] = useState<MapProperty | null>(null);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([24.7536, 45.9432]); // Bucharest
+  const [mapCenter, setMapCenter] = useState<[number, number]>([28.8638, 47.0105]); // Chișinău, Moldova
   const [mapBounds, setMapBounds] = useState<{
     neLat: number;
     neLng: number;
@@ -93,7 +92,7 @@ const MapSearchScreen: React.FC = () => {
           >
             <Search size={20} color={theme.colors.textTertiary} />
             <Text style={[styles.searchText, { color: theme.colors.textSecondary }]}>
-              București, România
+              Chișinău, Moldova
             </Text>
           </TouchableOpacity>
           <IconButton
@@ -132,39 +131,26 @@ const MapSearchScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Property Preview Card */}
+      {/* Airbnb-style Property Preview Card */}
       {selectedProperty && (
-        <View style={styles.previewContainer}>
-          <PropertyCard
-            id={selectedProperty.id}
-            title={selectedProperty.title}
-            price={selectedProperty.priceEur}
-            surface={selectedProperty.surfaceSqm}
-            rooms={selectedProperty.rooms}
-            city={selectedProperty.city}
-            neighborhood={selectedProperty.neighborhood}
-            transactionType={selectedProperty.transactionType}
-            propertyType={selectedProperty.propertyType}
-            images={selectedProperty.images?.map((img) => img.url) || []}
-            onPress={() =>
-              navigation.navigate('PropertyDetail', {
-                propertyId: String(selectedProperty.id),
-              })
-            }
-          />
-          <IconButton
-            icon={<X size={20} color="#ffffff" />}
-            onPress={() => setSelectedProperty(null)}
-            variant="ghost"
-            style={{
-              ...styles.closePreview,
-              backgroundColor: theme.colors.primary.main,
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-            }}
-          />
-        </View>
+        <PropertyPreviewCard
+          id={selectedProperty.id}
+          title={selectedProperty.title}
+          price={selectedProperty.priceEur}
+          currency={selectedProperty.currency}
+          city={selectedProperty.city}
+          neighborhood={selectedProperty.neighborhood}
+          surface={selectedProperty.surfaceSqm}
+          rooms={selectedProperty.rooms}
+          transactionType={selectedProperty.transactionType}
+          imageUrl={selectedProperty.images?.[0]?.url}
+          onPress={() =>
+            navigation.navigate('PropertyDetail', {
+              propertyId: String(selectedProperty.id),
+            })
+          }
+          onClose={() => setSelectedProperty(null)}
+        />
       )}
     </View>
   );
@@ -239,19 +225,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
   },
-  previewContainer: {
-    position: 'absolute',
-    bottom: 110,
-    left: 16,
-    right: 16,
-    zIndex: 20,
-  },
-  closePreview: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    zIndex: 30,
-  },
-});
+  });
 
 export default MapSearchScreen;

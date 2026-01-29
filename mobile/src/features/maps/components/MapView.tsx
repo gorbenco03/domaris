@@ -40,7 +40,7 @@ export const MapViewComponent: React.FC<MapViewProps> = ({
   properties,
   onPropertyPress,
   onRegionChange,
-  initialCenter = [24.7536, 45.9432], // Bucharest
+  initialCenter = [28.8638, 47.0105], // Chișinău, Moldova
   initialZoom = 12,
 }) => {
   const mapRef = useRef<Mapbox.MapView>(null);
