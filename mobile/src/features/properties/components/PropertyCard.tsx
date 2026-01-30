@@ -200,15 +200,15 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Characteristics */}
         <View style={styles.characteristicsRow}>
-          {characteristics.bedrooms && (
+          {(characteristics.rooms && characteristics.rooms > 0) && (
             <View style={styles.characteristic}>
               <Bed size={16} color={theme.colors.textSecondary} />
               <Text style={[styles.characteristicText, { color: theme.colors.textSecondary }]}>
-                {characteristics.bedrooms}
+                {characteristics.rooms} {characteristics.rooms === 1 ? 'cameră' : 'camere'}
               </Text>
             </View>
           )}
-          {characteristics.bathrooms && (
+          {(characteristics.bathrooms && characteristics.bathrooms > 0) && (
             <View style={styles.characteristic}>
               <Bath size={16} color={theme.colors.textSecondary} />
               <Text style={[styles.characteristicText, { color: theme.colors.textSecondary }]}>
@@ -216,12 +216,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               </Text>
             </View>
           )}
-          <View style={styles.characteristic}>
-            <Maximize2 size={16} color={theme.colors.textSecondary} />
-            <Text style={[styles.characteristicText, { color: theme.colors.textSecondary }]}>
-              {characteristics.totalArea} m²
-            </Text>
-          </View>
+          {(characteristics.totalArea && characteristics.totalArea > 0) && (
+            <View style={styles.characteristic}>
+              <Maximize2 size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.characteristicText, { color: theme.colors.textSecondary }]}>
+                {characteristics.totalArea} m²
+              </Text>
+            </View>
+          )}
           {(characteristics.floor !== undefined && characteristics.floor !== null) && (
             <Text style={[styles.floorText, { color: theme.colors.textTertiary }]}>
               {characteristics.totalFloors

@@ -84,7 +84,7 @@ export interface SearchFilters {
 }
 
 export interface SearchResult {
-  data: Listing[];
+  data: (Listing & { isPromoted?: boolean; promotionBadge?: boolean })[];
   meta: {
     total: number;
     page: number;
@@ -98,6 +98,14 @@ export interface SearchResult {
     priceRanges: { label: string; min: number; max: number; count: number }[];
     roomCounts: { rooms: number; count: number }[];
   };
+}
+
+// Promoted listing info from monetization module
+interface PromotedListingInfo {
+  listingId: number;
+  boostMultiplier: number;
+  showBadge: boolean;
+  showOnHomepage: boolean;
 }
 
 @Injectable()
@@ -121,7 +129,44 @@ export class SearchService {
   }
 
   /**
+   * Obține lista de listing-uri promovate
+   * Lazy import pentru a evita dependențe circulare
+   */
+  private async getPromotedListings(): Promise<Map<number, PromotedListingInfo>> {
+    try {
+      const { ListingPromotion } = await import('../../db/entities/listing-promotion.entity.js');
+      const now = new Date();
+
+      const promotions = await ListingPromotion.findAll({
+        where: {
+          status: 'active',
+          startDate: { [Op.lte]: now },
+          endDate: { [Op.gt]: now },
+        },
+        attributes: ['listingId', 'searchBoostMultiplier', 'showBadge', 'showOnHomepage'],
+        raw: true,
+      });
+
+      const map = new Map<number, PromotedListingInfo>();
+      for (const p of promotions) {
+        map.set(p.listingId, {
+          listingId: p.listingId,
+          boostMultiplier: Number(p.searchBoostMultiplier),
+          showBadge: p.showBadge,
+          showOnHomepage: p.showOnHomepage,
+        });
+      }
+
+      return map;
+    } catch (error) {
+      this.logger.warn('Could not load promoted listings:', error);
+      return new Map();
+    }
+  }
+
+  /**
    * Căutare principală cu full-text și filtre
+   * PROMOVARE: Listing-urile promovate sunt afișate primele
    */
   async search(filters: SearchFilters): Promise<SearchResult> {
     const page = filters.page || 1;
@@ -265,6 +310,10 @@ export class SearchService {
 
     this.logger.log(`Search whereConditions count: ${whereConditions.length}`);
 
+    // Get promoted listings for prioritization
+    const promotedListings = await this.getPromotedListings();
+    const promotedIds = Array.from(promotedListings.keys());
+
     // Execute query
     const { count, rows } = await Listing.findAndCountAll({
       where: { [Op.and]: whereConditions },
@@ -282,15 +331,22 @@ export class SearchService {
         },
       ],
       order,
-      limit,
-      offset,
+      limit: limit + promotedIds.length, // Fetch extra to allow reordering
+      offset: Math.max(0, offset - (page === 1 ? 0 : promotedIds.length)),
       distinct: true,
     });
+
+    // Sort results: promoted listings first, then by original order
+    // Also add promotion metadata to results
+    const sortedRows = this.sortWithPromotedFirst(rows, promotedListings);
+
+    // Apply limit after sorting
+    const finalRows = sortedRows.slice(0, limit);
 
     const totalPages = Math.ceil(count / limit);
 
     return {
-      data: rows,
+      data: finalRows,
       meta: {
         total: count,
         page,
@@ -300,6 +356,45 @@ export class SearchService {
         hasPrevPage: page > 1,
       },
     };
+  }
+
+  /**
+   * Sortează rezultatele cu listing-urile promovate primele
+   * Adaugă metadata de promovare la rezultate
+   */
+  private sortWithPromotedFirst(
+    rows: Listing[],
+    promotedListings: Map<number, PromotedListingInfo>,
+  ): (Listing & { isPromoted?: boolean; promotionBadge?: boolean })[] {
+    // Split into promoted and non-promoted
+    const promoted: (Listing & { isPromoted?: boolean; promotionBadge?: boolean })[] = [];
+    const nonPromoted: (Listing & { isPromoted?: boolean; promotionBadge?: boolean })[] = [];
+
+    for (const row of rows) {
+      const promoInfo = promotedListings.get(row.id);
+      if (promoInfo) {
+        // Add promotion metadata
+        const enhancedRow = row as Listing & { isPromoted?: boolean; promotionBadge?: boolean };
+        enhancedRow.isPromoted = true;
+        enhancedRow.promotionBadge = promoInfo.showBadge;
+        promoted.push(enhancedRow);
+      } else {
+        const enhancedRow = row as Listing & { isPromoted?: boolean; promotionBadge?: boolean };
+        enhancedRow.isPromoted = false;
+        enhancedRow.promotionBadge = false;
+        nonPromoted.push(enhancedRow);
+      }
+    }
+
+    // Sort promoted by boost multiplier (higher first)
+    promoted.sort((a, b) => {
+      const aBoost = promotedListings.get(a.id)?.boostMultiplier || 1;
+      const bBoost = promotedListings.get(b.id)?.boostMultiplier || 1;
+      return bBoost - aBoost;
+    });
+
+    // Combine: promoted first, then non-promoted
+    return [...promoted, ...nonPromoted];
   }
 
   /**
@@ -365,6 +460,7 @@ export class SearchService {
 
   /**
    * Date pentru afișare pe hartă (lightweight)
+   * Include informații despre promoții
    */
   async getMapData(filters: SearchFilters) {
     // Reuse search logic but only return coordinates
@@ -404,22 +500,30 @@ export class SearchService {
       raw: true,
     });
 
+    // Get promoted listings
+    const promotedListings = await this.getPromotedListings();
+
     // Return as GeoJSON FeatureCollection
     return {
       type: 'FeatureCollection',
-      features: listings.map(l => ({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [Number(l.lng), Number(l.lat)],
-        },
-        properties: {
-          id: l.id,
-          price: l.priceEur,
-          rooms: l.rooms,
-          title: l.title,
-        },
-      })),
+      features: listings.map(l => {
+        const promoInfo = promotedListings.get(l.id);
+        return {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [Number(l.lng), Number(l.lat)],
+          },
+          properties: {
+            id: l.id,
+            price: l.priceEur,
+            rooms: l.rooms,
+            title: l.title,
+            isPromoted: !!promoInfo,
+            promotionBadge: promoInfo?.showBadge || false,
+          },
+        };
+      }),
     };
   }
 

@@ -1,0 +1,142 @@
+.
+├── dist
+│   ├── assets
+│   ├── main.js
+│   ├── main.js.map
+│   ├── package.json
+│   └── pnpm-lock.yaml
+├── docs
+│   └── DATABASE_SETUP.md
+├── eslint.config.mjs
+├── jest.config.cts
+├── migrations
+│   ├── 002-cleanup-unified-account.sql
+│   └── 003-add-listing-views-anonymous-id.sql
+├── package.json
+├── scripts
+│   └── list-users.js
+├── src
+│   ├── app
+│   │   ├── app.controller.ts
+│   │   ├── app.module.ts
+│   │   ├── auth
+│   │   │   ├── auth.controller.ts
+│   │   │   ├── auth.guard.ts
+│   │   │   ├── auth.module.ts
+│   │   │   ├── auth.service.ts
+│   │   │   └── dto
+│   │   │       └── auth.dto.ts
+│   │   ├── core
+│   │   │   ├── admin.guard.ts
+│   │   │   ├── config-validation.ts
+│   │   │   ├── constants.ts
+│   │   │   ├── decorators.ts
+│   │   │   ├── email
+│   │   │   │   └── email.service.ts
+│   │   │   ├── exception.filter.ts
+│   │   │   ├── helper.ts
+│   │   │   ├── messaging.module.ts
+│   │   │   ├── prompts.ts
+│   │   │   ├── push
+│   │   │   │   └── push.service.ts
+│   │   │   ├── redis.module.ts
+│   │   │   ├── sms
+│   │   │   │   └── sms.service.ts
+│   │   │   └── verification.guard.ts
+│   │   ├── db
+│   │   │   ├── database.module.ts
+│   │   │   └── entities
+│   │   │       ├── conversation.entity.ts
+│   │   │       ├── device.entity.ts
+│   │   │       ├── enums.ts
+│   │   │       ├── extend.model.ts
+│   │   │       ├── favorite.entity.ts
+│   │   │       ├── gisNode.entity.ts
+│   │   │       ├── index.ts
+│   │   │       ├── kyc-document.entity.ts
+│   │   │       ├── kyc-verification.entity.ts
+│   │   │       ├── listing-view.entity.ts
+│   │   │       ├── listing.entity.ts
+│   │   │       ├── listingImage.entity.ts
+│   │   │       ├── message.entity.ts
+│   │   │       ├── notification.entity.ts
+│   │   │       ├── saved-search.entity.ts
+│   │   │       ├── user.entity.ts
+│   │   │       ├── userOnboarding.entity.ts
+│   │   │       └── viewing.entity.ts
+│   │   ├── modules
+│   │   │   ├── admin
+│   │   │   │   ├── admin.controller.ts
+│   │   │   │   ├── admin.module.ts
+│   │   │   │   └── admin.service.ts
+│   │   │   ├── ai
+│   │   │   │   ├── ai.controller.ts
+│   │   │   │   ├── ai.module.ts
+│   │   │   │   └── ai.service.ts
+│   │   │   ├── analytics
+│   │   │   │   ├── analytics.controller.ts
+│   │   │   │   ├── analytics.module.ts
+│   │   │   │   └── analytics.service.ts
+│   │   │   ├── chat
+│   │   │   │   ├── chat.controller.ts
+│   │   │   │   ├── chat.gateway.ts
+│   │   │   │   ├── chat.module.ts
+│   │   │   │   └── chat.service.ts
+│   │   │   ├── cron
+│   │   │   │   ├── cron.module.ts
+│   │   │   │   └── cron.service.ts
+│   │   │   ├── favorite
+│   │   │   │   ├── favorite.controller.ts
+│   │   │   │   ├── favorite.module.ts
+│   │   │   │   └── favorite.service.ts
+│   │   │   ├── geocoding
+│   │   │   │   ├── geocoding.module.ts
+│   │   │   │   └── geocoding.service.ts
+│   │   │   ├── kyc
+│   │   │   │   ├── kyc.controller.ts
+│   │   │   │   ├── kyc.module.ts
+│   │   │   │   └── kyc.service.ts
+│   │   │   ├── listing
+│   │   │   │   ├── listing.controller.ts
+│   │   │   │   ├── listing.dto.ts
+│   │   │   │   ├── listing.module.ts
+│   │   │   │   └── listing.service.ts
+│   │   │   ├── notification
+│   │   │   │   ├── notification.controller.ts
+│   │   │   │   ├── notification.module.ts
+│   │   │   │   └── notification.service.ts
+│   │   │   ├── saved-search
+│   │   │   │   ├── saved-search.controller.ts
+│   │   │   │   ├── saved-search.module.ts
+│   │   │   │   └── saved-search.service.ts
+│   │   │   ├── search
+│   │   │   │   ├── search.controller.ts
+│   │   │   │   ├── search.module.ts
+│   │   │   │   └── search.service.ts
+│   │   │   ├── user
+│   │   │   │   ├── user.controller.ts
+│   │   │   │   ├── user.dto.ts
+│   │   │   │   ├── user.module.ts
+│   │   │   │   └── user.service.ts
+│   │   │   └── viewing
+│   │   │       ├── viewing.controller.ts
+│   │   │       ├── viewing.module.ts
+│   │   │       └── viewing.service.ts
+│   │   ├── s3
+│   │   │   ├── s3.module.ts
+│   │   │   └── s3.service.ts
+│   │   └── services
+│   │       ├── openai.service.ts
+│   │       └── textract.service.ts
+│   ├── assets
+│   └── main.ts
+├── structura.txt
+├── structure.txt
+├── structure1.txt
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.spec.json
+├── tsconfig.tsbuildinfo
+└── webpack.config.js
+
+34 directories, 106 files

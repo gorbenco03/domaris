@@ -405,23 +405,28 @@ const SearchResultsScreen: React.FC = () => {
   const renderProperty = ({ item }: { item: IPropertyListItem }) => {
     // Map API item to PropertyCard props
     const anyItem = item as any;
-    const mappedProps = {
-      ...anyItem,
-      id: String(anyItem.id),
-      location: anyItem.neighborhood ? `${anyItem.neighborhood}, ${anyItem.city}` : anyItem.city,
-      characteristics: [
-        anyItem.rooms ? `${anyItem.rooms} camere` : '',
-        anyItem.surfaceSqm ? `${anyItem.surfaceSqm} mp` : '',
-      ].filter(Boolean),
-      image: anyItem.images?.[0]?.url || 'https://via.placeholder.com/300',
-      price: anyItem.priceEur || 0,
-      currency: (anyItem.currency === 'RON' ? 'RON' : 'EUR') as 'EUR' | 'RON',
-    };
 
     return (
       <View style={styles.propertyCard}>
         <PropertyCard
-          {...mappedProps}
+          id={String(anyItem.id)}
+          title={anyItem.title}
+          transactionType={anyItem.transactionType || 'SALE'}
+          price={anyItem.priceEur ?? anyItem.price ?? 0}
+          currency={(anyItem.currency === 'RON' ? 'RON' : 'EUR') as 'EUR' | 'RON'}
+          location={{
+            neighborhood: anyItem.neighborhood || undefined,
+            city: anyItem.city || '',
+          }}
+          characteristics={{
+            rooms: anyItem.rooms,
+            bedrooms: anyItem.bedrooms,
+            bathrooms: anyItem.bathrooms,
+            totalArea: anyItem.surfaceSqm ?? anyItem.surface ?? 0,
+            floor: anyItem.floor,
+            totalFloors: anyItem.totalFloors,
+          }}
+          image={anyItem.images?.[0]?.url || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'}
           onPress={() => handlePropertyPress(String(item.id))}
           isFavorite={favoriteIds.has(String(item.id))}
           onFavoritePress={() =>

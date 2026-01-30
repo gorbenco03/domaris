@@ -1,15 +1,22 @@
 /**
- * RIVA - Boost Purchase Screen
- * Screen for purchasing property boost/promotion options
+ * 🚀 BOOST PURCHASE SCREEN
+ *
+ * Ecran pentru achiziționarea promoțiilor pentru listări.
+ * Detectează automat platforma și folosește provider-ul corect:
+ * - iOS: Apple IAP
+ * - Android: Google Play Billing
+ * - Web: PAYNET / MAIB / MPAY (Moldova)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -19,95 +26,243 @@ import {
   Eye,
   Zap,
   CheckCircle,
+  Gift,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Button, ScreenHeader } from '@/shared/components';
+import {
+  usePayments,
+  usePromotionPlans,
+  useMonetizationStatus,
+  useListingPromotion,
+} from '../hooks/usePayments';
+import { PromotionPlan } from '../types';
+import * as paymentService from '../services/paymentService';
 
-interface BoostOption {
-  id: string;
-  title: string;
-  subtitle: string;
-  price: number;
-  duration: string;
-  icon: any;
-  gradient: string[];
-  benefits: string[];
-  impact: string;
-  popular?: boolean;
-}
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type BoostPurchaseRouteParams = {
+  BoostPurchase: {
+    listingId: number;
+    listingTitle?: string;
+    listingLocation?: string;
+    listingPrice?: string;
+  };
+};
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
 const BoostPurchaseScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
-  const [selectedBoost, setSelectedBoost] = useState<string | null>(null);
+  const route = useRoute<RouteProp<BoostPurchaseRouteParams, 'BoostPurchase'>>();
 
-  // Mock property data
-  const property = {
-    title: 'Apartament 3 camere',
-    location: 'Drumul Taberei, București',
-    price: '95,000€',
+  // Get listing info from route params
+  const listingId = route.params?.listingId || 0;
+  const listingTitle = route.params?.listingTitle || 'Anunț';
+  const listingLocation = route.params?.listingLocation || '';
+  const listingPrice = route.params?.listingPrice || '';
+
+  // State
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [useFreeBoost, setUseFreeBoost] = useState(false);
+
+  // Hooks
+  const { plans, isLoading: plansLoading, error: plansError } = usePromotionPlans();
+  const { freeBoostsRemaining, refetch: refetchStatus } = useMonetizationStatus();
+  const { hasActivePromotion, promotion, isLoading: promotionLoading } = useListingPromotion(listingId);
+  const {
+    state: paymentState,
+    platformConfig,
+    purchasePromotion,
+    formatPrice,
+    resetState,
+  } = usePayments();
+
+  // Get icon component for plan
+  const getPlanIcon = (code: string) => {
+    switch (code) {
+      case 'boost_24h':
+        return Zap;
+      case 'boost_7d':
+        return Rocket;
+      case 'boost_14d':
+        return Rocket;
+      case 'highlight':
+        return Star;
+      case 'homepage':
+        return Eye;
+      default:
+        return Zap;
+    }
   };
 
-  const boostOptions: BoostOption[] = [
-    {
-      id: 'boost_24h',
-      title: 'Boost 24h',
-      subtitle: 'Promovare rapidă',
-      price: 1.99,
-      duration: '24 ore',
-      icon: Zap,
-      gradient: [theme.colors.secondary.info, '#60a5fa'],
-      benefits: [
-        'Top lista în zonă',
-        'Vizibilitate maximă',
-        'Potrivit pentru teste',
-      ],
-      impact: '+150% views estimate',
-    },
-    {
-      id: 'boost_7d',
-      title: 'Boost 7 zile',
-      subtitle: 'Promovare optimă',
-      price: 9.99,
-      duration: '7 zile',
-      icon: Rocket,
-      gradient: [theme.colors.primary.main, theme.colors.primary.light],
-      benefits: [
-        'Top lista 7 zile',
-        '+50% mai multe views',
-        'Notificări speciale',
-      ],
-      impact: '+300% views estimate',
-      popular: true,
-    },
-    {
-      id: 'highlight',
-      title: 'Highlight',
-      subtitle: 'Badge special',
-      price: 4.99,
-      duration: '14 zile',
-      icon: Star,
-      gradient: [theme.colors.secondary.warning, '#d97706'],
-      benefits: [
-        'Badge "Promovat"',
-        'Evidențiere în listă',
-        'Atenție crescută',
-      ],
-      impact: '+200% engagement',
-    },
-  ];
-
-  const selectedOption = boostOptions.find((opt) => opt.id === selectedBoost);
-  const totalPrice = selectedOption ? selectedOption.price : 0;
-
-  const handlePurchase = () => {
-    if (!selectedBoost) return;
-    console.log('Purchase boost:', selectedBoost);
-    // Navigate to payment
+  // Get gradient for plan
+  const getPlanGradient = (code: string): string[] => {
+    switch (code) {
+      case 'boost_24h':
+        return [theme.colors.secondary.info, '#60a5fa'];
+      case 'boost_7d':
+        return [theme.colors.primary.main, theme.colors.primary.light];
+      case 'boost_14d':
+        return ['#7c3aed', '#a855f7'];
+      case 'highlight':
+        return [theme.colors.secondary.warning, '#d97706'];
+      case 'homepage':
+        return [theme.colors.accent.main, '#34d399'];
+      default:
+        return [theme.colors.primary.main, theme.colors.primary.light];
+    }
   };
+
+  // Get selected plan
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+
+  // Calculate total price
+  const getTotalPrice = (): number => {
+    if (!selectedPlan) return 0;
+    if (useFreeBoost && freeBoostsRemaining > 0 && selectedPlan.code.includes('boost')) return 0;
+    return selectedPlan.price;
+  };
+
+  // Check if can use free boost
+  const canUseFreeBoost = (plan: PromotionPlan): boolean => {
+    return freeBoostsRemaining > 0 && plan.code.includes('boost');
+  };
+
+  // Handle purchase
+  const handlePurchase = async () => {
+    if (!selectedPlan || !listingId) return;
+
+    const isFree = useFreeBoost && canUseFreeBoost(selectedPlan);
+    const priceText = isFree ? 'GRATUIT' : formatPrice(selectedPlan.price, selectedPlan.currency);
+
+    Alert.alert(
+      `Promovează Anunțul`,
+      `Dorești să activezi "${selectedPlan.name}" pentru ${priceText}?\n\n` +
+        `Durata: ${selectedPlan.durationDays} zile\n` +
+        (isFree
+          ? `(Folosești 1 din ${freeBoostsRemaining} boost-uri gratuite)`
+          : `Plata se va face prin ${paymentService.getProviderInfo(platformConfig.preferredProvider).name}.`),
+      [
+        { text: 'Anulează', style: 'cancel' },
+        {
+          text: isFree ? 'Activează Gratuit' : 'Continuă',
+          onPress: async () => {
+            const success = await purchasePromotion(selectedPlan, listingId, isFree);
+
+            if (success) {
+              if (!paymentState.requiresPolling || isFree) {
+                Alert.alert(
+                  'Succes! 🚀',
+                  `Promoția "${selectedPlan.name}" a fost activată pentru anunțul tău!`,
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        refetchStatus();
+                        resetState();
+                        navigation.goBack();
+                      },
+                    },
+                  ],
+                );
+              } else {
+                Alert.alert(
+                  'Redirecționare',
+                  'Vei fi redirecționat către pagina de plată. După finalizare, revino în aplicație.',
+                );
+              }
+            } else if (paymentState.error) {
+              Alert.alert('Eroare', paymentState.error);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // Loading state
+  if (plansLoading || promotionLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScreenHeader title="Promovează Anunțul" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+            Se încarcă opțiunile...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Already has active promotion
+  if (hasActivePromotion && promotion) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScreenHeader title="Promovează Anunțul" />
+        <View style={styles.alreadyPromotedContainer}>
+          <View
+            style={[
+              styles.alreadyPromotedCard,
+              {
+                backgroundColor: theme.colors.surface,
+                padding: theme.spacing[6],
+                borderRadius: theme.borderRadius.xl,
+                ...theme.shadows.md,
+              },
+            ]}
+          >
+            <CheckCircle size={64} color={theme.colors.accent.main} />
+            <Text
+              style={[
+                styles.alreadyPromotedTitle,
+                {
+                  color: theme.colors.textPrimary,
+                  fontSize: theme.typography.fontSize['2xl'],
+                  marginTop: theme.spacing[4],
+                },
+              ]}
+            >
+              Anunț deja promovat!
+            </Text>
+            <Text
+              style={[
+                styles.alreadyPromotedText,
+                {
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.typography.fontSize.base,
+                  marginTop: theme.spacing[2],
+                },
+              ]}
+            >
+              Promoția "{promotion.promotionPlan?.name}" este activă încă {promotion.remainingDays} zile.
+            </Text>
+            <Button
+              title="Înapoi"
+              onPress={() => navigation.goBack()}
+              variant="primary"
+              style={{ marginTop: theme.spacing[6] }}
+            />
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -146,48 +301,92 @@ const BoostPurchaseScreen: React.FC = () => {
                   },
                 ]}
               >
-                {property.title}
+                {listingTitle}
               </Text>
-              <Text
-                style={[
-                  styles.propertyLocation,
-                  {
-                    color: theme.colors.textSecondary,
-                    fontSize: theme.typography.fontSize.sm,
-                    marginTop: theme.spacing[1],
-                  },
-                ]}
-              >
-                {property.location}
-              </Text>
+              {listingLocation && (
+                <Text
+                  style={[
+                    styles.propertyLocation,
+                    {
+                      color: theme.colors.textSecondary,
+                      fontSize: theme.typography.fontSize.sm,
+                      marginTop: theme.spacing[1],
+                    },
+                  ]}
+                >
+                  {listingLocation}
+                </Text>
+              )}
             </View>
           </View>
-          <View
-            style={[
-              styles.priceTag,
-              {
-                backgroundColor: theme.colors.accent.main + '15',
-                marginTop: theme.spacing[3],
-                paddingVertical: theme.spacing[2],
-                paddingHorizontal: theme.spacing[3],
-                borderRadius: theme.borderRadius.lg,
-              },
-            ]}
-          >
-            <Text
+          {listingPrice && (
+            <View
               style={[
-                styles.priceText,
+                styles.priceTag,
                 {
-                  color: theme.colors.accent.main,
-                  fontSize: theme.typography.fontSize.xl,
-                  fontWeight: '700',
+                  backgroundColor: theme.colors.accent.main + '15',
+                  marginTop: theme.spacing[3],
+                  paddingVertical: theme.spacing[2],
+                  paddingHorizontal: theme.spacing[3],
+                  borderRadius: theme.borderRadius.lg,
                 },
               ]}
             >
-              {property.price}
-            </Text>
-          </View>
+              <Text
+                style={[
+                  styles.priceText,
+                  {
+                    color: theme.colors.accent.main,
+                    fontSize: theme.typography.fontSize.xl,
+                    fontWeight: '700',
+                  },
+                ]}
+              >
+                {listingPrice}
+              </Text>
+            </View>
+          )}
         </View>
+
+        {/* Free Boosts Banner */}
+        {freeBoostsRemaining > 0 && (
+          <View
+            style={[
+              styles.freeBoostBanner,
+              {
+                backgroundColor: theme.colors.accent.main + '15',
+                marginHorizontal: theme.spacing[4],
+                marginTop: theme.spacing[4],
+                padding: theme.spacing[4],
+                borderRadius: theme.borderRadius.xl,
+                borderWidth: 1,
+                borderColor: theme.colors.accent.main + '30',
+              },
+            ]}
+          >
+            <View style={styles.freeBoostContent}>
+              <Gift size={24} color={theme.colors.accent.main} />
+              <View style={styles.freeBoostText}>
+                <Text
+                  style={[
+                    styles.freeBoostTitle,
+                    { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.base },
+                  ]}
+                >
+                  {freeBoostsRemaining} boost-uri gratuite disponibile!
+                </Text>
+                <Text
+                  style={[
+                    styles.freeBoostSubtitle,
+                    { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm },
+                  ]}
+                >
+                  Incluse în abonamentul tău
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Section Title */}
         <Text
@@ -207,13 +406,16 @@ const BoostPurchaseScreen: React.FC = () => {
 
         {/* Boost Options */}
         <View style={styles.boostOptionsContainer}>
-          {boostOptions.map((option) => {
-            const Icon = option.icon;
-            const isSelected = selectedBoost === option.id;
+          {plans.map((plan) => {
+            const Icon = getPlanIcon(plan.code);
+            const gradient = getPlanGradient(plan.code);
+            const isSelected = selectedPlanId === plan.id;
+            const hasFreeOption = canUseFreeBoost(plan);
+            const isPopular = plan.code === 'boost_7d';
 
             return (
               <TouchableOpacity
-                key={option.id}
+                key={plan.id}
                 style={[
                   styles.boostCard,
                   {
@@ -221,33 +423,39 @@ const BoostPurchaseScreen: React.FC = () => {
                     marginHorizontal: theme.spacing[4],
                     marginBottom: theme.spacing[3],
                     borderWidth: 2,
-                    borderColor: isSelected
-                      ? option.gradient[0]
-                      : theme.colors.border,
+                    borderColor: isSelected ? gradient[0] : theme.colors.border,
                     borderRadius: theme.borderRadius.xl,
                     ...theme.shadows.md,
                   },
                 ]}
-                onPress={() => setSelectedBoost(option.id)}
+                onPress={() => {
+                  setSelectedPlanId(plan.id);
+                  // Auto-enable free boost if available
+                  if (hasFreeOption && freeBoostsRemaining > 0) {
+                    setUseFreeBoost(true);
+                  } else {
+                    setUseFreeBoost(false);
+                  }
+                }}
               >
                 {/* Popular Badge */}
-                {option.popular && (
+                {isPopular && (
                   <View
                     style={[
                       styles.popularBadge,
-                      {
-                        backgroundColor: theme.colors.accent.main,
-                      },
+                      { backgroundColor: theme.colors.accent.main },
                     ]}
                   >
-                    <Text style={[styles.popularText, { color: theme.colors.surface }]}>RECOMANDAT</Text>
+                    <Text style={[styles.popularText, { color: theme.colors.surface }]}>
+                      RECOMANDAT
+                    </Text>
                   </View>
                 )}
 
                 <View style={styles.boostCardContent}>
                   {/* Icon */}
                   <LinearGradient
-                    colors={option.gradient as [string, string, ...string[]]}
+                    colors={gradient as [string, string, ...string[]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.boostIcon}
@@ -267,7 +475,7 @@ const BoostPurchaseScreen: React.FC = () => {
                           },
                         ]}
                       >
-                        {option.title}
+                        {plan.name}
                       </Text>
                       {isSelected && (
                         <CheckCircle size={20} color={theme.colors.accent.main} />
@@ -282,25 +490,55 @@ const BoostPurchaseScreen: React.FC = () => {
                         },
                       ]}
                     >
-                      {option.subtitle} • {option.duration}
+                      {plan.description} • {plan.durationDays} zile
                     </Text>
                   </View>
 
                   {/* Price */}
-                  <Text
-                    style={[
-                      styles.boostPrice,
-                      {
-                        color: option.gradient[0],
-                        fontSize: theme.typography.fontSize.xl,
-                      },
-                    ]}
-                  >
-                    {option.price}€
-                  </Text>
+                  <View style={styles.priceColumn}>
+                    {hasFreeOption && freeBoostsRemaining > 0 ? (
+                      <>
+                        <Text
+                          style={[
+                            styles.freePrice,
+                            {
+                              color: theme.colors.accent.main,
+                              fontSize: theme.typography.fontSize.lg,
+                            },
+                          ]}
+                        >
+                          GRATUIT
+                        </Text>
+                        <Text
+                          style={[
+                            styles.originalPrice,
+                            {
+                              color: theme.colors.textTertiary,
+                              fontSize: theme.typography.fontSize.sm,
+                              textDecorationLine: 'line-through',
+                            },
+                          ]}
+                        >
+                          {formatPrice(plan.price, plan.currency)}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text
+                        style={[
+                          styles.boostPrice,
+                          {
+                            color: gradient[0],
+                            fontSize: theme.typography.fontSize.xl,
+                          },
+                        ]}
+                      >
+                        {formatPrice(plan.price, plan.currency)}
+                      </Text>
+                    )}
+                  </View>
                 </View>
 
-                {/* Benefits */}
+                {/* Benefits (shown when selected) */}
                 {isSelected && (
                   <View
                     style={[
@@ -313,8 +551,8 @@ const BoostPurchaseScreen: React.FC = () => {
                       },
                     ]}
                   >
-                    {option.benefits.map((benefit, index) => (
-                      <View key={index} style={styles.benefitRow}>
+                    {plan.showBadge && (
+                      <View style={styles.benefitRow}>
                         <TrendingUp size={16} color={theme.colors.accent.main} />
                         <Text
                           style={[
@@ -325,34 +563,77 @@ const BoostPurchaseScreen: React.FC = () => {
                             },
                           ]}
                         >
-                          {benefit}
+                          Badge "Promovat" pe anunț
                         </Text>
                       </View>
-                    ))}
-                    <View
-                      style={[
-                        styles.impactBadge,
-                        {
-                          backgroundColor: theme.colors.accent.main + '15',
-                          marginTop: theme.spacing[2],
-                          padding: theme.spacing[2],
-                          borderRadius: theme.borderRadius.md,
-                        },
-                      ]}
-                    >
-                      <Eye size={14} color={theme.colors.accent.main} />
-                      <Text
+                    )}
+                    {plan.searchBoostMultiplier > 1 && (
+                      <View style={styles.benefitRow}>
+                        <TrendingUp size={16} color={theme.colors.accent.main} />
+                        <Text
+                          style={[
+                            styles.benefitText,
+                            {
+                              color: theme.colors.textSecondary,
+                              fontSize: theme.typography.fontSize.sm,
+                            },
+                          ]}
+                        >
+                          +{((plan.searchBoostMultiplier - 1) * 100).toFixed(0)}% prioritate în căutări
+                        </Text>
+                      </View>
+                    )}
+                    {plan.showOnHomepage && (
+                      <View style={styles.benefitRow}>
+                        <Eye size={16} color={theme.colors.accent.main} />
+                        <Text
+                          style={[
+                            styles.benefitText,
+                            {
+                              color: theme.colors.textSecondary,
+                              fontSize: theme.typography.fontSize.sm,
+                            },
+                          ]}
+                        >
+                          Afișat pe pagina principală
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Free boost toggle */}
+                    {hasFreeOption && freeBoostsRemaining > 0 && (
+                      <TouchableOpacity
                         style={[
-                          styles.impactText,
+                          styles.freeBoostToggle,
                           {
-                            color: theme.colors.accent.main,
-                            fontSize: theme.typography.fontSize.xs,
+                            backgroundColor: useFreeBoost
+                              ? theme.colors.accent.main + '20'
+                              : theme.colors.background,
+                            marginTop: theme.spacing[2],
+                            padding: theme.spacing[2],
+                            borderRadius: theme.borderRadius.md,
+                            borderWidth: 1,
+                            borderColor: useFreeBoost
+                              ? theme.colors.accent.main
+                              : theme.colors.border,
                           },
                         ]}
+                        onPress={() => setUseFreeBoost(!useFreeBoost)}
                       >
-                        {option.impact}
-                      </Text>
-                    </View>
+                        <Gift size={16} color={theme.colors.accent.main} />
+                        <Text
+                          style={[
+                            styles.freeBoostToggleText,
+                            {
+                              color: theme.colors.textPrimary,
+                              fontSize: theme.typography.fontSize.sm,
+                            },
+                          ]}
+                        >
+                          {useFreeBoost ? 'Folosești boost gratuit ✓' : 'Folosește boost gratuit'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
               </TouchableOpacity>
@@ -403,7 +684,7 @@ const BoostPurchaseScreen: React.FC = () => {
       </ScrollView>
 
       {/* Bottom Bar */}
-      {selectedBoost && (
+      {selectedPlanId && (
         <View
           style={[
             styles.bottomBar,
@@ -430,25 +711,36 @@ const BoostPurchaseScreen: React.FC = () => {
               style={[
                 styles.totalPrice,
                 {
-                  color: theme.colors.textPrimary,
+                  color: getTotalPrice() === 0 ? theme.colors.accent.main : theme.colors.textPrimary,
                   fontSize: theme.typography.fontSize['2xl'],
                 },
               ]}
             >
-              {totalPrice.toFixed(2)}€
+              {getTotalPrice() === 0 ? 'GRATUIT' : formatPrice(getTotalPrice(), selectedPlan?.currency || 'MDL')}
             </Text>
           </View>
           <Button
-            title="Plătește cu Apple Pay"
+            title={
+              paymentState.isProcessing
+                ? 'Se procesează...'
+                : getTotalPrice() === 0
+                ? 'Activează Gratuit'
+                : paymentService.getPayButtonText(platformConfig.preferredProvider)
+            }
             onPress={handlePurchase}
             variant="primary"
             fullWidth
+            disabled={paymentState.isProcessing}
           />
         </View>
       )}
     </SafeAreaView>
   );
 };
+
+// ============================================================================
+// STYLES
+// ============================================================================
 
 const styles = StyleSheet.create({
   container: {
@@ -459,6 +751,32 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+  },
+  alreadyPromotedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alreadyPromotedCard: {
+    alignItems: 'center',
+    maxWidth: 320,
+  },
+  alreadyPromotedTitle: {
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  alreadyPromotedText: {
+    textAlign: 'center',
   },
   propertyCard: {},
   propertyHeader: {
@@ -476,6 +794,19 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   priceText: {},
+  freeBoostBanner: {},
+  freeBoostContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  freeBoostText: {
+    flex: 1,
+  },
+  freeBoostTitle: {
+    fontWeight: '600',
+  },
+  freeBoostSubtitle: {},
   sectionTitle: {
     fontWeight: '600',
   },
@@ -497,7 +828,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
   },
   popularText: {
-    // color applied dynamically
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -527,9 +857,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   boostSubtitle: {},
+  priceColumn: {
+    alignItems: 'flex-end',
+  },
   boostPrice: {
     fontWeight: '700',
   },
+  freePrice: {
+    fontWeight: '700',
+  },
+  originalPrice: {},
   benefitsContainer: {},
   benefitRow: {
     flexDirection: 'row',
@@ -540,14 +877,13 @@ const styles = StyleSheet.create({
   benefitText: {
     flex: 1,
   },
-  impactBadge: {
+  freeBoostToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
+    gap: 8,
   },
-  impactText: {
-    fontWeight: '600',
+  freeBoostToggleText: {
+    fontWeight: '500',
   },
   infoSection: {},
   infoTitle: {

@@ -1,15 +1,22 @@
 /**
- * RIVA - Pricing Screen
- * Subscription plans and pricing options
+ * 💰 PRICING SCREEN
+ *
+ * Ecran pentru afișarea și achiziționarea planurilor de abonament.
+ * Detectează automat platforma și folosește provider-ul corect:
+ * - iOS: Apple IAP
+ * - Android: Google Play Billing
+ * - Web: PAYNET / MAIB / MPAY (Moldova)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -19,89 +26,189 @@ import {
   Zap,
   Star,
   Sparkles,
+  Building2,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Button, ScreenHeader } from '@/shared/components';
+import {
+  usePayments,
+  useSubscriptionPlans,
+  useMonetizationStatus,
+} from '../hooks/usePayments';
+import { SubscriptionPlan, BillingCycle } from '../types';
+import * as paymentService from '../services/paymentService';
 
-interface PricingPlan {
-  id: string;
-  name: string;
-  price: number;
-  period: string;
-  icon: React.ReactNode;
-  badge?: string;
-  gradient?: string[];
-  features: {
-    text: string;
-    included: boolean;
-  }[];
-  popular?: boolean;
-}
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
 const PricingScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-  const plans: PricingPlan[] = [
-    {
-      id: 'free',
-      name: 'Gratuit',
-      price: 0,
-      period: 'lună',
-      icon: <Star size={32} color={theme.colors.textSecondary} />,
-      features: [
-        { text: '1 anunț activ', included: true },
-        { text: '5 fotografii', included: true },
-        { text: 'Statistici de bază', included: true },
-        { text: 'Promovare anunțuri', included: false },
-        { text: 'Suport prioritar', included: false },
-        { text: 'Badge Premium', included: false },
-      ],
-    },
-    {
-      id: 'standard',
-      name: 'Standard',
-      price: billingCycle === 'monthly' ? 9.99 : 7.99,
-      period: billingCycle === 'monthly' ? 'lună' : 'lună',
-      icon: <Zap size={32} color={theme.colors.primary.main} />,
-      gradient: [theme.colors.primary.main, theme.colors.primary.light],
-      features: [
-        { text: '5 anunțuri active', included: true },
-        { text: '15 fotografii/anunț', included: true },
-        { text: 'Statistici avansate', included: true },
-        { text: 'Suport prioritar', included: true },
-        { text: 'AI Analysis', included: true },
-        { text: 'Badge Premium', included: false },
-      ],
-    },
-    {
-      id: 'premium',
-      name: 'Premium',
-      price: billingCycle === 'monthly' ? 19.99 : 15.99,
-      period: billingCycle === 'monthly' ? 'lună' : 'lună',
-      icon: <Crown size={32} color={theme.colors.secondary.warning} />,
-      badge: 'CEL MAI POPULAR',
-      gradient: [theme.colors.secondary.warning, '#d97706'],
-      popular: true,
-      features: [
-        { text: '15 anunțuri active', included: true },
-        { text: '30 fotografii/anunț', included: true },
-        { text: 'Video tour', included: true },
-        { text: 'Badge Premium', included: true },
-        { text: 'Prioritate în căutări', included: true },
-        { text: 'AI generare descrieri', included: true },
-      ],
-    },
-  ];
+  // State
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
 
-  const handleSubscribe = (planId: string) => {
-    console.log('Subscribe to:', planId, 'billing:', billingCycle);
-    // Navigate to payment screen
+  // Hooks
+  const { plans, isLoading: plansLoading, error: plansError } = useSubscriptionPlans();
+  const { subscription, isLoading: statusLoading, refetch: refetchStatus } = useMonetizationStatus();
+  const {
+    state: paymentState,
+    platformConfig,
+    purchaseSubscription,
+    getPayButtonText,
+    formatPrice,
+    resetState,
+  } = usePayments();
+
+  // Get icon for plan
+  const getPlanIcon = (code: string, color: string) => {
+    switch (code) {
+      case 'free':
+        return <Star size={32} color={color} />;
+      case 'standard':
+        return <Zap size={32} color={color} />;
+      case 'premium':
+        return <Crown size={32} color={color} />;
+      case 'business':
+        return <Building2 size={32} color={color} />;
+      default:
+        return <Star size={32} color={color} />;
+    }
   };
+
+  // Get gradient colors for plan
+  const getPlanGradient = (code: string): string[] | undefined => {
+    switch (code) {
+      case 'standard':
+        return [theme.colors.primary.main, theme.colors.primary.light];
+      case 'premium':
+        return [theme.colors.secondary.warning, '#d97706'];
+      case 'business':
+        return ['#7c3aed', '#a855f7'];
+      default:
+        return undefined;
+    }
+  };
+
+  // Check if plan is current
+  const isCurrentPlan = (plan: SubscriptionPlan): boolean => {
+    if (!subscription) return plan.code === 'free';
+    return subscription.plan?.code === plan.code;
+  };
+
+  // Handle subscribe
+  const handleSubscribe = async (plan: SubscriptionPlan) => {
+    if (isCurrentPlan(plan)) return;
+
+    // Free plan - just show message
+    if (plan.code === 'free') {
+      Alert.alert(
+        'Plan Gratuit',
+        'Ești deja pe planul gratuit sau poți face downgrade după ce expiră abonamentul curent.',
+      );
+      return;
+    }
+
+    // Confirm purchase
+    const price = billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly;
+    const priceText = formatPrice(price, plan.currency);
+    const periodText = billingCycle === 'yearly' ? 'an' : 'lună';
+
+    Alert.alert(
+      `Abonament ${plan.name}`,
+      `Dorești să te abonezi la planul ${plan.name} pentru ${priceText}/${periodText}?\n\n` +
+        `Plata se va face prin ${paymentService.getProviderInfo(platformConfig.preferredProvider).name}.`,
+      [
+        { text: 'Anulează', style: 'cancel' },
+        {
+          text: 'Continuă',
+          onPress: async () => {
+            setSelectedPlanId(plan.id);
+            const success = await purchaseSubscription(plan, billingCycle);
+
+            if (success) {
+              // Pentru providerii care nu necesită polling (Apple/Google),
+              // succesul înseamnă că plata s-a finalizat
+              if (!paymentState.requiresPolling) {
+                Alert.alert(
+                  'Succes! 🎉',
+                  `Ai fost abonat la planul ${plan.name}!`,
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        refetchStatus();
+                        resetState();
+                      },
+                    },
+                  ],
+                );
+              } else {
+                // Pentru PAYNET/MAIB/MPAY, utilizatorul a fost redirecționat
+                Alert.alert(
+                  'Redirecționare',
+                  'Vei fi redirecționat către pagina de plată. După finalizare, revino în aplicație.',
+                );
+              }
+            } else if (paymentState.error) {
+              Alert.alert('Eroare', paymentState.error);
+            }
+
+            setSelectedPlanId(null);
+          },
+        },
+      ],
+    );
+  };
+
+  // Get button text for plan
+  const getButtonText = (plan: SubscriptionPlan): string => {
+    if (isCurrentPlan(plan)) return 'Plan Curent';
+    if (plan.code === 'free') return 'Downgrade';
+    if (plan.trialDays > 0 && !subscription) return `Încearcă ${plan.trialDays} zile gratis`;
+    return 'Upgrade Acum';
+  };
+
+  // Loading state
+  if (plansLoading || statusLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScreenHeader title="Planuri și Prețuri" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+            Se încarcă planurile...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (plansError) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScreenHeader title="Planuri și Prețuri" />
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: theme.colors.secondary.error }]}>
+            {plansError}
+          </Text>
+          <Button title="Reîncearcă" onPress={() => {}} variant="secondary" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -142,6 +249,26 @@ const PricingScreen: React.FC = () => {
           >
             Publică anunțuri și ajunge la mii de căutători
           </Text>
+
+          {/* Current subscription info */}
+          {subscription && (
+            <View
+              style={[
+                styles.currentPlanBadge,
+                {
+                  backgroundColor: theme.colors.accent.main + '20',
+                  marginTop: theme.spacing[3],
+                  paddingVertical: theme.spacing[2],
+                  paddingHorizontal: theme.spacing[3],
+                  borderRadius: theme.borderRadius.lg,
+                },
+              ]}
+            >
+              <Text style={[styles.currentPlanText, { color: theme.colors.accent.main }]}>
+                Plan curent: {subscription.plan?.name || 'Gratuit'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Billing Toggle */}
@@ -213,170 +340,229 @@ const PricingScreen: React.FC = () => {
                   },
                 ]}
               >
-                <Text style={[styles.discountText, { color: theme.colors.accent.main }]}>-20%</Text>
+                <Text style={[styles.discountText, { color: theme.colors.accent.main }]}>
+                  -20%
+                </Text>
               </View>
             </View>
           </TouchableOpacity>
         </View>
 
+        {/* Provider Info */}
+        <View
+          style={[
+            styles.providerInfo,
+            {
+              backgroundColor: theme.colors.surface,
+              marginHorizontal: theme.spacing[4],
+              marginBottom: theme.spacing[4],
+              padding: theme.spacing[3],
+              borderRadius: theme.borderRadius.lg,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.providerText, { color: theme.colors.textSecondary }]}>
+            💳 Plata se face prin{' '}
+            <Text style={{ fontWeight: '600', color: theme.colors.textPrimary }}>
+              {paymentService.getProviderInfo(platformConfig.preferredProvider).name}
+            </Text>
+          </Text>
+        </View>
+
         {/* Pricing Cards */}
         <View style={styles.plansContainer}>
-          {plans.map((plan) => (
-            <View
-              key={plan.id}
-              style={[
-                styles.planCard,
-                {
-                  backgroundColor: theme.colors.surface,
-                  marginHorizontal: theme.spacing[4],
-                  marginBottom: theme.spacing[4],
-                  borderWidth: plan.popular ? 2 : 1,
-                  borderColor: plan.popular
-                    ? theme.colors.secondary.warning
-                    : theme.colors.border,
-                  ...theme.shadows.md,
-                },
-              ]}
-            >
-              {/* Popular Badge */}
-              {plan.badge && (
-                <View style={styles.popularBadgeContainer}>
-                  <View
-                    style={[
-                      styles.popularBadge,
-                      {
-                        backgroundColor: theme.colors.secondary.warning,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.popularBadgeText, { color: theme.colors.surface }]}>{plan.badge}</Text>
-                  </View>
-                </View>
-              )}
+          {plans.map((plan) => {
+            const gradient = getPlanGradient(plan.code);
+            const isCurrent = isCurrentPlan(plan);
+            const isPopular = plan.code === 'premium';
+            const isProcessing = paymentState.isProcessing && selectedPlanId === plan.id;
+            const price = billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly;
 
-              {/* Plan Header */}
-              <View style={styles.planHeader}>
-                {plan.gradient ? (
-                  <LinearGradient
-                    colors={plan.gradient as [string, string, ...string[]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.iconContainer}
-                  >
-                    <View style={styles.iconWrapper}>{plan.icon}</View>
-                  </LinearGradient>
-                ) : (
-                  <View
-                    style={[
-                      styles.iconContainer,
-                      {
-                        backgroundColor: theme.colors.textTertiary + '20',
-                      },
-                    ]}
-                  >
-                    {plan.icon}
-                  </View>
-                )}
-                <Text
-                  style={[
-                    styles.planName,
-                    {
-                      color: theme.colors.textPrimary,
-                      fontSize: theme.typography.fontSize.xl,
-                      marginTop: theme.spacing[3],
-                    },
-                  ]}
-                >
-                  {plan.name}
-                </Text>
-              </View>
-
-              {/* Price */}
-              <View style={[styles.priceContainer, { marginTop: theme.spacing[4] }]}>
-                <Text
-                  style={[
-                    styles.price,
-                    {
-                      color: plan.gradient
-                        ? plan.gradient[0]
-                        : theme.colors.textSecondary,
-                      fontSize: theme.typography.fontSize['4xl'],
-                    },
-                  ]}
-                >
-                  {plan.price}€
-                </Text>
-                <Text
-                  style={[
-                    styles.period,
-                    {
-                      color: theme.colors.textSecondary,
-                      fontSize: theme.typography.fontSize.sm,
-                    },
-                  ]}
-                >
-                  /{plan.period}
-                </Text>
-              </View>
-
-              {billingCycle === 'yearly' && plan.price > 0 && (
-                <Text
-                  style={[
-                    styles.savingsText,
-                    {
-                      color: theme.colors.accent.main,
-                      fontSize: theme.typography.fontSize.xs,
-                      marginTop: theme.spacing[1],
-                    },
-                  ]}
-                >
-                  Economisești {((plan.price / 0.8 - plan.price) * 12).toFixed(0)}€/an
-                </Text>
-              )}
-
-              {/* Features */}
-              <View style={[styles.featuresContainer, { marginTop: theme.spacing[5] }]}>
-                {plan.features.map((feature, index) => (
-                  <View key={index} style={styles.featureRow}>
-                    {feature.included ? (
-                      <Check size={18} color={theme.colors.accent.main} />
-                    ) : (
-                      <X size={18} color={theme.colors.textTertiary} />
-                    )}
-                    <Text
+            return (
+              <View
+                key={plan.id}
+                style={[
+                  styles.planCard,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    marginHorizontal: theme.spacing[4],
+                    marginBottom: theme.spacing[4],
+                    borderWidth: isPopular ? 2 : 1,
+                    borderColor: isPopular
+                      ? theme.colors.secondary.warning
+                      : isCurrent
+                      ? theme.colors.accent.main
+                      : theme.colors.border,
+                    ...theme.shadows.md,
+                  },
+                ]}
+              >
+                {/* Popular Badge */}
+                {isPopular && (
+                  <View style={styles.popularBadgeContainer}>
+                    <View
                       style={[
-                        styles.featureText,
-                        {
-                          color: feature.included
-                            ? theme.colors.textPrimary
-                            : theme.colors.textTertiary,
-                          fontSize: theme.typography.fontSize.sm,
-                        },
+                        styles.popularBadge,
+                        { backgroundColor: theme.colors.secondary.warning },
                       ]}
                     >
-                      {feature.text}
-                    </Text>
+                      <Text style={[styles.popularBadgeText, { color: theme.colors.surface }]}>
+                        CEL MAI POPULAR
+                      </Text>
+                    </View>
                   </View>
-                ))}
-              </View>
+                )}
 
-              {/* CTA Button */}
-              <Button
-                title={
-                  plan.id === 'free'
-                    ? 'Plan Curent'
-                    : plan.id === 'standard'
-                    ? 'Încearcă 14 zile gratis'
-                    : 'Upgrade Acum'
-                }
-                onPress={() => handleSubscribe(plan.id)}
-                variant={plan.popular ? 'primary' : 'secondary'}
-                fullWidth
-                style={{ marginTop: theme.spacing[5] }}
-                disabled={plan.id === 'free'}
-              />
-            </View>
-          ))}
+                {/* Current Badge */}
+                {isCurrent && !isPopular && (
+                  <View style={styles.popularBadgeContainer}>
+                    <View
+                      style={[
+                        styles.popularBadge,
+                        { backgroundColor: theme.colors.accent.main },
+                      ]}
+                    >
+                      <Text style={[styles.popularBadgeText, { color: theme.colors.surface }]}>
+                        PLAN CURENT
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Plan Header */}
+                <View style={styles.planHeader}>
+                  {gradient ? (
+                    <LinearGradient
+                      colors={gradient as [string, string, ...string[]]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.iconContainer}
+                    >
+                      <View style={styles.iconWrapper}>
+                        {getPlanIcon(plan.code, theme.colors.surface)}
+                      </View>
+                    </LinearGradient>
+                  ) : (
+                    <View
+                      style={[
+                        styles.iconContainer,
+                        { backgroundColor: theme.colors.textTertiary + '20' },
+                      ]}
+                    >
+                      {getPlanIcon(plan.code, theme.colors.textSecondary)}
+                    </View>
+                  )}
+                  <Text
+                    style={[
+                      styles.planName,
+                      {
+                        color: theme.colors.textPrimary,
+                        fontSize: theme.typography.fontSize.xl,
+                        marginTop: theme.spacing[3],
+                      },
+                    ]}
+                  >
+                    {plan.name}
+                  </Text>
+                </View>
+
+                {/* Price */}
+                <View style={[styles.priceContainer, { marginTop: theme.spacing[4] }]}>
+                  <Text
+                    style={[
+                      styles.price,
+                      {
+                        color: gradient ? gradient[0] : theme.colors.textSecondary,
+                        fontSize: theme.typography.fontSize['4xl'],
+                      },
+                    ]}
+                  >
+                    {formatPrice(price, plan.currency)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.period,
+                      {
+                        color: theme.colors.textSecondary,
+                        fontSize: theme.typography.fontSize.sm,
+                      },
+                    ]}
+                  >
+                    /lună
+                  </Text>
+                </View>
+
+                {/* Savings text */}
+                {billingCycle === 'yearly' && price > 0 && (
+                  <Text
+                    style={[
+                      styles.savingsText,
+                      {
+                        color: theme.colors.accent.main,
+                        fontSize: theme.typography.fontSize.xs,
+                        marginTop: theme.spacing[1],
+                      },
+                    ]}
+                  >
+                    Economisești {formatPrice(paymentService.calculateYearlySavings(plan), plan.currency)}/an
+                  </Text>
+                )}
+
+                {/* Features */}
+                <View style={[styles.featuresContainer, { marginTop: theme.spacing[5] }]}>
+                  <FeatureRow
+                    included={true}
+                    text={`${plan.maxActiveListings} anunțuri active`}
+                    theme={theme}
+                  />
+                  <FeatureRow
+                    included={true}
+                    text={`${plan.maxPhotosPerListing} fotografii/anunț`}
+                    theme={theme}
+                  />
+                  {plan.freeMonthlyBoosts > 0 && (
+                    <FeatureRow
+                      included={true}
+                      text={`${plan.freeMonthlyBoosts} boost-uri gratuite/lună`}
+                      theme={theme}
+                    />
+                  )}
+                  <FeatureRow
+                    included={plan.hasVideoTour}
+                    text="Video tour"
+                    theme={theme}
+                  />
+                  <FeatureRow
+                    included={plan.hasPrioritySearch}
+                    text="Prioritate în căutări"
+                    theme={theme}
+                  />
+                  <FeatureRow
+                    included={plan.hasAdvancedStats}
+                    text="Statistici avansate"
+                    theme={theme}
+                  />
+                  <FeatureRow
+                    included={plan.hasAiFeatures}
+                    text="Funcții AI"
+                    theme={theme}
+                  />
+                </View>
+
+                {/* CTA Button */}
+                <Button
+                  title={isProcessing ? 'Se procesează...' : getButtonText(plan)}
+                  onPress={() => handleSubscribe(plan)}
+                  variant={isPopular ? 'primary' : 'secondary'}
+                  fullWidth
+                  style={{ marginTop: theme.spacing[5] }}
+                  disabled={isCurrent || isProcessing || paymentState.isProcessing}
+                />
+              </View>
+            );
+          })}
         </View>
 
         {/* FAQ Section */}
@@ -425,6 +611,41 @@ const PricingScreen: React.FC = () => {
   );
 };
 
+// ============================================================================
+// FEATURE ROW COMPONENT
+// ============================================================================
+
+interface FeatureRowProps {
+  included: boolean;
+  text: string;
+  theme: any;
+}
+
+const FeatureRow: React.FC<FeatureRowProps> = ({ included, text, theme }) => (
+  <View style={styles.featureRow}>
+    {included ? (
+      <Check size={18} color={theme.colors.accent.main} />
+    ) : (
+      <X size={18} color={theme.colors.textTertiary} />
+    )}
+    <Text
+      style={[
+        styles.featureText,
+        {
+          color: included ? theme.colors.textPrimary : theme.colors.textTertiary,
+          fontSize: theme.typography.fontSize.sm,
+        },
+      ]}
+    >
+      {text}
+    </Text>
+  </View>
+);
+
+// ============================================================================
+// STYLES
+// ============================================================================
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -434,6 +655,26 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   heroSection: {
     paddingTop: 32,
@@ -449,12 +690,17 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: 280,
   },
+  currentPlanBadge: {},
+  currentPlanText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
   billingToggle: {
     flexDirection: 'row',
     backgroundColor: 'transparent',
     borderRadius: 12,
     padding: 4,
-    marginBottom: 24,
+    marginBottom: 16,
     gap: 8,
   },
   toggleButton: {
@@ -480,9 +726,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   discountText: {
-    // color applied dynamically
     fontSize: 11,
     fontWeight: '700',
+  },
+  providerInfo: {},
+  providerText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
   plansContainer: {
     marginTop: 8,
@@ -506,7 +756,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   popularBadgeText: {
-    // color applied dynamically
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,

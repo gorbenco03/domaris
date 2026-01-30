@@ -17,6 +17,11 @@ import { ListingView } from './entities/listing-view.entity.js';
 import { SavedSearch } from './entities/saved-search.entity.js';
 import { KycVerification } from './entities/kyc-verification.entity.js';
 import { KycDocument } from './entities/kyc-document.entity.js';
+import { SubscriptionPlan } from './entities/subscription-plan.entity.js';
+import { UserSubscription } from './entities/user-subscription.entity.js';
+import { PromotionPlan } from './entities/promotion-plan.entity.js';
+import { ListingPromotion } from './entities/listing-promotion.entity.js';
+import { Transaction } from './entities/transaction.entity.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
@@ -53,6 +58,12 @@ pg.defaults.parseInt8 = true;
             SavedSearch,
             KycVerification,
             KycDocument,
+            // Monetization entities
+            SubscriptionPlan,
+            UserSubscription,
+            PromotionPlan,
+            ListingPromotion,
+            Transaction,
           ],
           synchronize: true,
           sync: { alter: true }, // Force alter to add missing columns
