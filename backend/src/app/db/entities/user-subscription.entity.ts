@@ -24,7 +24,6 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
-  Index,
 } from 'sequelize-typescript';
 import { ApiProperty } from '@nestjs/swagger';
 import { ExtModel } from './extend.model.js';
@@ -63,7 +62,6 @@ export class UserSubscription extends ExtModel {
   // ======================== RELATIONS ========================
 
   @ForeignKey(() => User)
-  @Index
   @Column({
     type: DataType.BIGINT,
     allowNull: false,
@@ -86,7 +84,6 @@ export class UserSubscription extends ExtModel {
   // ======================== STATUS ========================
 
   @ApiProperty({ example: 'active', enum: ['active', 'cancelled', 'past_due', 'expired', 'trialing'] })
-  @Index
   @Column({
     type: DataType.ENUM('active', 'cancelled', 'past_due', 'expired', 'trialing'),
     allowNull: false,

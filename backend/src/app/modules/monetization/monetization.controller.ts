@@ -60,7 +60,6 @@ import {
   Req,
   HttpCode,
   HttpStatus,
-  RawBodyRequest,
   Logger,
 } from '@nestjs/common';
 import {
@@ -72,7 +71,8 @@ import {
   ApiForbiddenResponse,
   ApiBody,
 } from '@nestjs/swagger';
-import { Request } from 'express';
+// Request type - using any to avoid express dependency issue
+type Request = any;
 
 import { AuthGuard } from '../../auth/auth.guard.js';
 import { VerificationGuard } from '../../core/verification.guard.js';
@@ -535,7 +535,7 @@ export class MonetizationController {
     summary: 'Stripe webhook',
     description: 'Receives payment events from Stripe',
   })
-  async handleStripeWebhook(@Req() req: RawBodyRequest<Request>) {
+  async handleStripeWebhook(@Req() req: Request) {
     // TODO: Implement Stripe webhook handling
     // 1. Verify webhook signature
     // 2. Handle events:
@@ -632,7 +632,7 @@ export class MonetizationController {
     //    - SUBSCRIPTION_CANCELLED → anulează abonament
 
     try {
-      const { event, transactionId, externalId, amount, status, signature } = body;
+      const { event, transactionId } = body;
 
       // Verificare semnătură (implementați cu cheia secretă PAYNET)
       // const isValid = this.verifyPaynetSignature(body, signature);
@@ -719,7 +719,7 @@ export class MonetizationController {
     // 2. Procesează evenimentele
 
     try {
-      const { event_type, transaction_id, merchant_order_id, amount, card_token } = body;
+      const { event_type, transaction_id } = body;
 
       switch (event_type) {
         case 'transaction.success':
@@ -791,7 +791,7 @@ export class MonetizationController {
     // TODO: Implement MPAY webhook handling
 
     try {
-      const { action, payment_id, order_id, amount, phone, hash } = body;
+      const { action, payment_id } = body;
 
       // Verificare hash MPAY
       // const isValid = this.verifyMpayHash(body, hash);
@@ -992,7 +992,7 @@ export class MonetizationController {
       amount: Number(transaction.amount),
       currency: transaction.currency,
       completedAt: transaction.completedAt,
-      failureReason: transaction.failureReason,
+      failureReason: transaction.failureMessage,
     };
   }
 }

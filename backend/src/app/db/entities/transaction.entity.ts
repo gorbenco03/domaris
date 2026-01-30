@@ -20,7 +20,6 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
-  Index,
 } from 'sequelize-typescript';
 import { ApiProperty } from '@nestjs/swagger';
 import { ExtModel } from './extend.model.js';
@@ -79,7 +78,6 @@ export class Transaction extends ExtModel {
   // ======================== RELATIONS ========================
 
   @ForeignKey(() => User)
-  @Index
   @Column({
     type: DataType.BIGINT,
     allowNull: false,
@@ -92,7 +90,6 @@ export class Transaction extends ExtModel {
   // ======================== TYPE & STATUS ========================
 
   @ApiProperty({ example: 'subscription', enum: ['subscription', 'promotion', 'service', 'refund'] })
-  @Index
   @Column({
     type: DataType.ENUM('subscription', 'promotion', 'service', 'refund'),
     allowNull: false,
@@ -100,7 +97,6 @@ export class Transaction extends ExtModel {
   type!: TransactionType;
 
   @ApiProperty({ example: 'completed', enum: ['pending', 'completed', 'failed', 'refunded', 'cancelled'] })
-  @Index
   @Column({
     type: DataType.ENUM('pending', 'completed', 'failed', 'refunded', 'cancelled'),
     allowNull: false,
