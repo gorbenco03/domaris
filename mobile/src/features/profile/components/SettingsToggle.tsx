@@ -57,12 +57,7 @@ const SettingsToggle: React.FC<SettingsToggleProps> = ({
           },
         ]}
       >
-        {React.isValidElement(icon) 
-          ? React.cloneElement(icon, {
-              color: theme.colors.textSecondary,
-              size: 22,
-            } as any)
-          : icon}
+        {icon}
       </View>
 
       <View style={styles.content}>

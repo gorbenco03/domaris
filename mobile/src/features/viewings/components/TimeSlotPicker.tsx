@@ -1,6 +1,6 @@
 /**
  * RIVA - Time Slot Picker Component
- * Modern, user-friendly time slot selection
+ * Clean, intuitive time slot selection with proper scrolling
  */
 
 import React, { useMemo } from 'react';
@@ -9,10 +9,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
 } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Clock, Check, Sun, Sunrise, Moon } from 'lucide-react-native';
+import { Check, Sun, Sunrise, Sunset } from 'lucide-react-native';
 import { TimeSlot } from '../types';
 
 interface SimpleTimeSlot {
@@ -24,22 +23,8 @@ interface TimeSlotPickerProps {
   date: string;
   availableSlots: SimpleTimeSlot[];
   selectedSlot: TimeSlot | null;
-  onSlotSelect: (slot: TimeSlot) => void;
+  onSlotSelect: (slot: TimeSlot | null) => void;
 }
-
-/**
- * Format date string to readable Romanian format
- */
-const formatDateDisplay = (dateStr: string): string => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-
-  const weekdays = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'];
-  const months = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
-    'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
-
-  return `${weekdays[date.getDay()]}, ${day} ${months[month - 1]}`;
-};
 
 const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
   date,
@@ -56,7 +41,12 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
 
   const handleSlotPress = (slot: SimpleTimeSlot) => {
     const fullSlot: TimeSlot = { date, startTime: slot.startTime, endTime: slot.endTime };
-    onSlotSelect(fullSlot);
+    // Toggle selection - if already selected, deselect
+    if (isSlotSelected(slot)) {
+      onSlotSelect(null);
+    } else {
+      onSlotSelect(fullSlot);
+    }
   };
 
   // Group slots by time of day
@@ -98,9 +88,6 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
           <Text style={[styles.groupTitle, { color: theme.colors.textPrimary }]}>
             {title}
           </Text>
-          <Text style={[styles.groupCount, { color: theme.colors.textTertiary }]}>
-            {slots.length} disponibile
-          </Text>
         </View>
         <View style={styles.slotsGrid}>
           {slots.map((slot, index) => {
@@ -122,17 +109,17 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                 onPress={() => handleSlotPress(slot)}
                 activeOpacity={0.7}
               >
-                {selected && (
-                  <View style={styles.checkIcon}>
-                    <Check size={12} color="#fff" strokeWidth={3} />
-                  </View>
-                )}
                 <Text style={[
                   styles.slotTime,
                   { color: selected ? '#fff' : theme.colors.textPrimary },
                 ]}>
                   {slot.startTime}
                 </Text>
+                {selected && (
+                  <View style={styles.checkBadge}>
+                    <Check size={10} color="#fff" strokeWidth={3} />
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -141,61 +128,46 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     );
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
-      {/* Date Header */}
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <Clock size={20} color={theme.colors.primary.main} />
-        <Text style={[styles.dateText, { color: theme.colors.textPrimary }]}>
-          {formatDateDisplay(date)}
+  if (availableSlots.length === 0) {
+    return (
+      <View style={[styles.emptyContainer, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>
+          Fără disponibilitate
+        </Text>
+        <Text style={[styles.emptyHint, { color: theme.colors.textSecondary }]}>
+          Nu există sloturi disponibile pentru această dată. Încearcă altă zi.
         </Text>
       </View>
+    );
+  }
 
-      <ScrollView
-        style={styles.slotsContainer}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.slotsContent}
-      >
-        {renderSlotGroup(
-          'Dimineață',
-          groupedSlots.morning,
-          <Sunrise size={16} color="#f59e0b" />,
-          '#fef3c7'
-        )}
-        {renderSlotGroup(
-          'După-amiază',
-          groupedSlots.afternoon,
-          <Sun size={16} color="#f97316" />,
-          '#ffedd5'
-        )}
-        {renderSlotGroup(
-          'Seară',
-          groupedSlots.evening,
-          <Moon size={16} color="#6366f1" />,
-          '#e0e7ff'
-        )}
+  return (
+    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+      {renderSlotGroup(
+        'Dimineață',
+        groupedSlots.morning,
+        <Sunrise size={16} color="#f59e0b" />,
+        '#fef3c7'
+      )}
+      {renderSlotGroup(
+        'După-amiază',
+        groupedSlots.afternoon,
+        <Sun size={16} color="#f97316" />,
+        '#ffedd5'
+      )}
+      {renderSlotGroup(
+        'Seară',
+        groupedSlots.evening,
+        <Sunset size={16} color="#6366f1" />,
+        '#e0e7ff'
+      )}
 
-        {availableSlots.length === 0 && (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIcon, { backgroundColor: theme.colors.border }]}>
-              <Clock size={32} color={theme.colors.textTertiary} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>
-              Fără disponibilitate
-            </Text>
-            <Text style={[styles.emptyHint, { color: theme.colors.textSecondary }]}>
-              Nu există sloturi disponibile pentru această dată. Încercați altă zi.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Selected slot indicator */}
+      {/* Selected indicator at bottom */}
       {selectedSlot && selectedSlot.date === date && (
-        <View style={[styles.selectedBar, { backgroundColor: theme.colors.primary.main + '10' }]}>
-          <Check size={18} color={theme.colors.primary.main} />
+        <View style={[styles.selectedBar, { backgroundColor: theme.colors.primary.main + '15' }]}>
+          <Check size={16} color={theme.colors.primary.main} />
           <Text style={[styles.selectedText, { color: theme.colors.primary.main }]}>
-            Ai selectat ora {selectedSlot.startTime}
+            Ora selectată: {selectedSlot.startTime} - {selectedSlot.endTime}
           </Text>
         </View>
       )}
@@ -205,34 +177,16 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
-    overflow: 'hidden',
+    borderRadius: 16,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  dateText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-  slotsContainer: {
-    maxHeight: 350,
-  },
-  slotsContent: {
-    padding: 16,
-    paddingTop: 8,
-  },
   slotGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   groupHeader: {
     flexDirection: 'row',
@@ -250,64 +204,36 @@ const styles = StyleSheet.create({
   groupTitle: {
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
-    flex: 1,
-  },
-  groupCount: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
   },
   slotsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   slotButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1.5,
-    minWidth: 70,
+    minWidth: 68,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   slotTime: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
-  checkIcon: {
+  checkBadge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: -5,
+    right: -5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#10b981',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 8,
-  },
-  emptyHint: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    textAlign: 'center',
-    paddingHorizontal: 32,
   },
   selectedBar: {
     flexDirection: 'row',
@@ -316,10 +242,27 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
+    borderRadius: 10,
+    marginTop: 8,
   },
   selectedText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
+  },
+  emptyContainer: {
+    padding: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 8,
+  },
+  emptyHint: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
   },
 });
 

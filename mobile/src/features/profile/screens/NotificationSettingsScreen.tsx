@@ -151,7 +151,7 @@ const NotificationSettingsScreen: React.FC = () => {
         {/* Push Notifications */}
         <ProfileSection title="Notificări Push">
           <SettingsToggle
-            icon={<MessageSquare />}
+            icon={<MessageSquare size={22} color={theme.colors.textSecondary} />}
             label="Mesaje noi"
             description="Când primești un mesaj nou"
             value={preferences.push.newMessages}
@@ -159,7 +159,7 @@ const NotificationSettingsScreen: React.FC = () => {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.divider, marginLeft: 74 }]} />
           <SettingsToggle
-            icon={<Calendar />}
+            icon={<Calendar size={22} color={theme.colors.textSecondary} />}
             label="Reminder vizionări"
             description="Cu 1 oră înainte de vizionare"
             value={preferences.push.viewingReminders}
@@ -167,7 +167,7 @@ const NotificationSettingsScreen: React.FC = () => {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.divider, marginLeft: 74 }]} />
           <SettingsToggle
-            icon={<TrendingUp />}
+            icon={<TrendingUp size={22} color={theme.colors.textSecondary} />}
             label="Schimbări de preț"
             description="La proprietățile din favorite"
             value={preferences.push.priceChanges}
@@ -175,7 +175,7 @@ const NotificationSettingsScreen: React.FC = () => {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.divider, marginLeft: 74 }]} />
           <SettingsToggle
-            icon={<Home />}
+            icon={<Home size={22} color={theme.colors.textSecondary} />}
             label="Anunțuri noi"
             description="Potrivite cu căutările tale"
             value={preferences.push.newListings}
@@ -183,7 +183,7 @@ const NotificationSettingsScreen: React.FC = () => {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.divider, marginLeft: 74 }]} />
           <SettingsToggle
-            icon={<Megaphone />}
+            icon={<Megaphone size={22} color={theme.colors.textSecondary} />}
             label="Promoții și oferte"
             description="Reduceri și pachete speciale"
             value={preferences.push.promotions}
@@ -194,7 +194,7 @@ const NotificationSettingsScreen: React.FC = () => {
         {/* Email Notifications */}
         <ProfileSection title="Email">
           <SettingsToggle
-            icon={<Mail />}
+            icon={<Mail size={22} color={theme.colors.textSecondary} />}
             label="Rezumat săptămânal"
             description="Sumar al activității tale"
             value={preferences.email.weeklyDigest}
@@ -202,7 +202,7 @@ const NotificationSettingsScreen: React.FC = () => {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.divider, marginLeft: 74 }]} />
           <SettingsToggle
-            icon={<MessageSquare />}
+            icon={<MessageSquare size={22} color={theme.colors.textSecondary} />}
             label="Mesaje noi"
             description="Copie prin email"
             value={preferences.email.newMessages}
@@ -210,7 +210,7 @@ const NotificationSettingsScreen: React.FC = () => {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.divider, marginLeft: 74 }]} />
           <SettingsToggle
-            icon={<Shield />}
+            icon={<Shield size={22} color={theme.colors.textSecondary} />}
             label="Alerte de securitate"
             description="Login-uri și modificări cont"
             value={preferences.email.accountAlerts}
@@ -218,7 +218,7 @@ const NotificationSettingsScreen: React.FC = () => {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.divider, marginLeft: 74 }]} />
           <SettingsToggle
-            icon={<Megaphone />}
+            icon={<Megaphone size={22} color={theme.colors.textSecondary} />}
             label="Newsletter"
             description="Știri și articole imobiliare"
             value={preferences.email.newsletter}
@@ -229,7 +229,7 @@ const NotificationSettingsScreen: React.FC = () => {
         {/* SMS Notifications */}
         <ProfileSection title="SMS">
           <SettingsToggle
-            icon={<Calendar />}
+            icon={<Calendar size={22} color={theme.colors.textSecondary} />}
             label="Reminder vizionări"
             description="Cu 2 ore înainte de vizionare"
             value={preferences.sms.viewingReminders}
@@ -237,7 +237,7 @@ const NotificationSettingsScreen: React.FC = () => {
           />
           <View style={[styles.divider, { backgroundColor: theme.colors.divider, marginLeft: 74 }]} />
           <SettingsToggle
-            icon={<Shield />}
+            icon={<Shield size={22} color={theme.colors.textSecondary} />}
             label="Alerte urgente"
             description="Probleme de securitate"
             value={preferences.sms.urgentAlerts}

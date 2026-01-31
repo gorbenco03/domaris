@@ -201,6 +201,53 @@ const RequestViewingScreen: React.FC = () => {
 
     const slotISO = `${selectedSlot.date}T${selectedSlot.startTime}:00`;
 
+    const handleError = (error: any) => {
+      console.log('Viewing request error:', JSON.stringify(error, null, 2));
+
+      // Extract error details from Axios error
+      const status = error?.response?.status;
+      const errorData = error?.response?.data;
+      const errorCode = errorData?.code;
+      const errorMessage = errorData?.message;
+
+      // Handle verification level errors (403)
+      if (status === 403 || errorCode === 'VERIFICATION_REQUIRED') {
+        Alert.alert(
+          'Verificare necesară',
+          errorMessage || 'Pentru a programa o vizionare, trebuie să îți verifici identitatea.',
+          [
+            { text: 'Mai târziu', style: 'cancel' },
+            {
+              text: 'Verifică acum',
+              onPress: () => {
+                navigation.goBack();
+                // Navigate to verification screen
+                (navigation as any).navigate('ProfileStack', { screen: 'Verification' });
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // Handle other common errors
+      if (status === 401) {
+        Alert.alert('Sesiune expirată', 'Te rugăm să te autentifici din nou.');
+        return;
+      }
+
+      if (status === 400) {
+        Alert.alert('Date invalide', errorMessage || 'Verifică datele introduse și încearcă din nou.');
+        return;
+      }
+
+      // Generic error
+      Alert.alert(
+        'Eroare',
+        errorMessage || error?.message || 'A apărut o eroare. Încearcă din nou.'
+      );
+    };
+
     if (isReschedule && viewingId) {
       rescheduleMutation.mutate(
         {
@@ -216,9 +263,7 @@ const RequestViewingScreen: React.FC = () => {
               [{ text: 'OK', onPress: () => navigation.goBack() }]
             );
           },
-          onError: (error: any) => {
-            Alert.alert('Eroare', error?.message || 'Nu s-a putut reprograma vizionarea');
-          },
+          onError: handleError,
         }
       );
     } else {
@@ -236,9 +281,7 @@ const RequestViewingScreen: React.FC = () => {
               [{ text: 'Perfect', onPress: () => navigation.goBack() }]
             );
           },
-          onError: (error: any) => {
-            Alert.alert('Eroare', error?.message || 'Nu s-a putut trimite cererea');
-          },
+          onError: handleError,
         }
       );
     }
@@ -450,7 +493,7 @@ const RequestViewingScreen: React.FC = () => {
           loading={requestMutation.isPending || rescheduleMutation.isPending}
           disabled={!selectedSlot}
           fullWidth
-          icon={selectedSlot ? (isReschedule ? RefreshCw : Send) : undefined}
+          icon={selectedSlot ? (isReschedule ? <RefreshCw size={18} color="#fff" /> : <Send size={18} color="#fff" />) : undefined}
         />
       </View>
     </SafeAreaView>
