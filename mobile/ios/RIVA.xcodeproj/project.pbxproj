@@ -7,29 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		015887B26AF978B88F0BD2CB /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C89C1B3662FC48F5B5525D /* ExpoModulesProvider.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		44FF5A83C942D11A5156695C /* libPods-RIVA.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AE3402E7AFFA606A69C3492E /* libPods-RIVA.a */; };
-		48C3BD28C2DAACD6C5C5E2E5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C2339AC31EFCC91F0D46DD78 /* PrivacyInfo.xcprivacy */; };
-		77E6401377A7A243ED280044 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3FD29B625030E6043502C9F /* ExpoModulesProvider.swift */; };
+		53701F839510C7E54F56AA46 /* libPods-RIVA.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 46A8EB67C5EA16B8710A48C4 /* libPods-RIVA.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		D07E8C6356596D5823A8C02A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E7DB8A9A6EF9E99BC4D9A51A /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		116B7A3F46639FE4748397D5 /* Pods-RIVA.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RIVA.release.xcconfig"; path = "Target Support Files/Pods-RIVA/Pods-RIVA.release.xcconfig"; sourceTree = "<group>"; };
+		03CBF66FC2D71A38B250EA2E /* Pods-RIVA.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RIVA.debug.xcconfig"; path = "Target Support Files/Pods-RIVA/Pods-RIVA.debug.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* RIVA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RIVA.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = RIVA/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = RIVA/Info.plist; sourceTree = "<group>"; };
+		40C89C1B3662FC48F5B5525D /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-RIVA/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		46A8EB67C5EA16B8710A48C4 /* libPods-RIVA.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-RIVA.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = RIVA/SplashScreen.storyboard; sourceTree = "<group>"; };
-		AE3402E7AFFA606A69C3492E /* libPods-RIVA.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-RIVA.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C2339AC31EFCC91F0D46DD78 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = RIVA/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		E3FD29B625030E6043502C9F /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-RIVA/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		D3CAACAB63AB302479C24632 /* Pods-RIVA.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RIVA.release.xcconfig"; path = "Target Support Files/Pods-RIVA/Pods-RIVA.release.xcconfig"; sourceTree = "<group>"; };
+		E7DB8A9A6EF9E99BC4D9A51A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = RIVA/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = RIVA/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* RIVA-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "RIVA-Bridging-Header.h"; path = "RIVA/RIVA-Bridging-Header.h"; sourceTree = "<group>"; };
-		FC167437B4D165A654556BFB /* Pods-RIVA.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RIVA.debug.xcconfig"; path = "Target Support Files/Pods-RIVA/Pods-RIVA.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				44FF5A83C942D11A5156695C /* libPods-RIVA.a in Frameworks */,
+				53701F839510C7E54F56AA46 /* libPods-RIVA.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,7 +53,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				C2339AC31EFCC91F0D46DD78 /* PrivacyInfo.xcprivacy */,
+				E7DB8A9A6EF9E99BC4D9A51A /* PrivacyInfo.xcprivacy */,
 			);
 			name = RIVA;
 			sourceTree = "<group>";
@@ -62,35 +62,9 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				AE3402E7AFFA606A69C3492E /* libPods-RIVA.a */,
+				46A8EB67C5EA16B8710A48C4 /* libPods-RIVA.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		356F928FADD21823255479B7 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				FC167437B4D165A654556BFB /* Pods-RIVA.debug.xcconfig */,
-				116B7A3F46639FE4748397D5 /* Pods-RIVA.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		42770773437D2523CB76C601 /* RIVA */ = {
-			isa = PBXGroup;
-			children = (
-				E3FD29B625030E6043502C9F /* ExpoModulesProvider.swift */,
-			);
-			name = RIVA;
-			sourceTree = "<group>";
-		};
-		490FF6D40719A85A66490DD8 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				42770773437D2523CB76C601 /* RIVA */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -107,8 +81,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				356F928FADD21823255479B7 /* Pods */,
-				490FF6D40719A85A66490DD8 /* ExpoModulesProviders */,
+				BD244959BDC5A779AF31C5F7 /* Pods */,
+				B91AA7E4B10D69832F112748 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -123,6 +97,22 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		B8748ABCAAFA1B27B769CB3A /* RIVA */ = {
+			isa = PBXGroup;
+			children = (
+				40C89C1B3662FC48F5B5525D /* ExpoModulesProvider.swift */,
+			);
+			name = RIVA;
+			sourceTree = "<group>";
+		};
+		B91AA7E4B10D69832F112748 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				B8748ABCAAFA1B27B769CB3A /* RIVA */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -130,6 +120,16 @@
 			);
 			name = Supporting;
 			path = RIVA/Supporting;
+			sourceTree = "<group>";
+		};
+		BD244959BDC5A779AF31C5F7 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				03CBF66FC2D71A38B250EA2E /* Pods-RIVA.debug.xcconfig */,
+				D3CAACAB63AB302479C24632 /* Pods-RIVA.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "RIVA" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				69C5A495AC3B612F49D9B52F /* [Expo] Configure project */,
+				7596C5AD188DBC2D13504FB0 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				A9A4AB99AFA7BC8E2EEE58C5 /* [CP] Embed Pods Frameworks */,
+				3683F47B110433DCCACFE11E /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -167,8 +167,6 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
-						DevelopmentTeam = "CJ7BR3M5D9";
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -198,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				48C3BD28C2DAACD6C5C5E2E5 /* PrivacyInfo.xcprivacy in Resources */,
+				D07E8C6356596D5823A8C02A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,7 +242,37 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		69C5A495AC3B612F49D9B52F /* [Expo] Configure project */ = {
+		3683F47B110433DCCACFE11E /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-RIVA/Pods-RIVA-frameworks.sh",
+				"${BUILT_PRODUCTS_DIR}/MapboxMaps/MapboxMaps.framework",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/MapboxCommon/MapboxCommon.framework/MapboxCommon",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/MapboxCoreMaps/MapboxCoreMaps.framework/MapboxCoreMaps",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/Turf/Turf.framework/Turf",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MapboxMaps.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MapboxCommon.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MapboxCoreMaps.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Turf.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RIVA/Pods-RIVA-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		7596C5AD188DBC2D13504FB0 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -302,36 +330,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RIVA/Pods-RIVA-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		A9A4AB99AFA7BC8E2EEE58C5 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-RIVA/Pods-RIVA-frameworks.sh",
-				"${BUILT_PRODUCTS_DIR}/MapboxMaps/MapboxMaps.framework",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/MapboxCommon/MapboxCommon.framework/MapboxCommon",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/MapboxCoreMaps/MapboxCoreMaps.framework/MapboxCoreMaps",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/Turf/Turf.framework/Turf",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MapboxMaps.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MapboxCommon.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MapboxCoreMaps.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Turf.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RIVA/Pods-RIVA-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -340,7 +338,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				77E6401377A7A243ED280044 /* ExpoModulesProvider.swift in Sources */,
+				015887B26AF978B88F0BD2CB /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -349,7 +347,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = FC167437B4D165A654556BFB /* Pods-RIVA.debug.xcconfig */;
+			baseConfigurationReference = 03CBF66FC2D71A38B250EA2E /* Pods-RIVA.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -380,15 +378,12 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
-				DEVELOPMENT_TEAM = "CJ7BR3M5D9";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Debug;
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 116B7A3F46639FE4748397D5 /* Pods-RIVA.release.xcconfig */;
+			baseConfigurationReference = D3CAACAB63AB302479C24632 /* Pods-RIVA.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -413,9 +408,6 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
-				DEVELOPMENT_TEAM = "CJ7BR3M5D9";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Release;
 		};
