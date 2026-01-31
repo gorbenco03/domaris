@@ -1,5 +1,5 @@
 /**
- * IMOBI - Search Bar Component
+ * RIVA - Search Bar Component
  * Main search input with autocomplete suggestions
  */
 

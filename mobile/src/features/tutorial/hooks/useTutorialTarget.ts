@@ -1,5 +1,5 @@
 /**
- * IMOBI - useTutorialTarget Hook
+ * RIVA - useTutorialTarget Hook
  * Registers a component as a tutorial target
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Root Navigator
+ * RIVA - Root Navigator
  * Main navigation structure
  */
 

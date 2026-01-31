@@ -1,5 +1,5 @@
 /**
- * IMOBI - Auth Navigator
+ * RIVA - Auth Navigator
  * Authentication flow navigation
  * Based on Unified Account Model - no role selection needed
  */

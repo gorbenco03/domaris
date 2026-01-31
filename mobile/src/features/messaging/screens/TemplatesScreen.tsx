@@ -1,5 +1,5 @@
 /**
- * IMOBI - Templates Screen
+ * RIVA - Templates Screen
  * Manage quick response templates for messaging
  */
 

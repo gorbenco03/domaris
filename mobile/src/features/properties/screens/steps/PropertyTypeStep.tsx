@@ -1,5 +1,5 @@
 /**
- * IMOBI - Property Type Step
+ * RIVA - Property Type Step
  * Step 1 of property creation wizard
  */
 

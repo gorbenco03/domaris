@@ -1,5 +1,5 @@
 /**
- * IMOBI - Chip Component
+ * RIVA - Chip Component
  * Filter chips and selection tags
  */
 

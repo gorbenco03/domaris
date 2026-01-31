@@ -1,5 +1,5 @@
 /**
- * IMOBI - API Client Configuration
+ * RIVA - API Client Configuration
  * Axios client with interceptors for auth and error handling
  */
 

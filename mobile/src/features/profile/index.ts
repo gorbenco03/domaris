@@ -1,5 +1,5 @@
 /**
- * IMOBI - Profile Feature Index
+ * RIVA - Profile Feature Index
  */
 
 // Screens

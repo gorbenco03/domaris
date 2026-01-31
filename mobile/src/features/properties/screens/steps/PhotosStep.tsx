@@ -1,5 +1,5 @@
 /**
- * IMOBI - Photos Step
+ * RIVA - Photos Step
  * Step 4 of property creation wizard
  */
 

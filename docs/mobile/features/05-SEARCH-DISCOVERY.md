@@ -202,7 +202,7 @@ interface SearchFilters {
 ┌─────────────────────────────────────┐
 │                            [👤]     │
 │                                     │
-│  🏠 IMOBI                           │
+│  🏠 RIVA                           │
 │                                     │
 │  Găsește-ți casa visurilor          │
 │                                     │

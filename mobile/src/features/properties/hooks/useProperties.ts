@@ -1,5 +1,5 @@
 /**
- * IMOBI - Properties Hooks
+ * RIVA - Properties Hooks
  * React Query hooks for properties
  */
 

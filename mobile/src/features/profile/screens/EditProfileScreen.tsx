@@ -1,5 +1,5 @@
 /**
- * IMOBI - Edit Profile Screen
+ * RIVA - Edit Profile Screen
  * Screen for editing user profile information
  */
 

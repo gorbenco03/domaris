@@ -1,5 +1,5 @@
 /**
- * IMOBI - Forgot Password Screen
+ * RIVA - Forgot Password Screen
  * Request password reset via email
  */
 

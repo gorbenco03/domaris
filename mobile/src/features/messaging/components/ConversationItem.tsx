@@ -1,5 +1,5 @@
 /**
- * IMOBI - Conversation Item Component
+ * RIVA - Conversation Item Component
  * Single conversation preview in the list
  */
 

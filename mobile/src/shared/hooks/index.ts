@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Hooks Index
+ * RIVA - Shared Hooks Index
  */
 
 export { useDebounce } from './useDebounce';

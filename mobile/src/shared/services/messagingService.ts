@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Messaging Service
+ * RIVA - Shared Messaging Service
  * Explicit contract for messaging interactions used across features.
  */
 

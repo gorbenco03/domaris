@@ -1,5 +1,5 @@
 /**
- * IMOBI - Pricing Step
+ * RIVA - Pricing Step
  * Step 5 of property creation wizard
  */
 

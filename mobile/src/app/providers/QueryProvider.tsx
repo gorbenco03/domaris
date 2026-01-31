@@ -1,5 +1,5 @@
 /**
- * IMOBI - Query Provider
+ * RIVA - Query Provider
  * React Query configuration and provider
  */
 

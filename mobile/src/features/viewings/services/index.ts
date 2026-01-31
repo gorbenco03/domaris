@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewings Application Services
+ * RIVA - Viewings Application Services
  */
 
 export {

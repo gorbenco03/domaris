@@ -1,5 +1,5 @@
 /**
- * IMOBI - Change Password Screen
+ * RIVA - Change Password Screen
  * Screen for changing user password
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Favorites Hooks
+ * RIVA - Favorites Hooks
  * React Query hooks for favorites
  */
 

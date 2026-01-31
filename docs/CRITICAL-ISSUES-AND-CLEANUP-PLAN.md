@@ -61,7 +61,7 @@ Am identificat **3 probleme majore** care necesită rezolvare urgentă:
 ```typescript
 ❌ ListingSourceType.FACEBOOK
 ❌ ListingSourceType.OLX
-❌ ListingSourceType.IMOBILIARE
+❌ ListingSourceType.RIVALIARE
 ```
 
 #### Packages/Types:
@@ -290,7 +290,7 @@ rm backend/src/app/db/entities/groupSource.entity.ts
 export enum ListingSourceType {
   FACEBOOK = 'facebook', // ❌ ȘTERGE
   OLX = 'olx', // ❌ ȘTERGE
-  IMOBILIARE = 'imobiliare', // ❌ ȘTERGE
+  RIVALIARE = 'rivaliare', // ❌ ȘTERGE
   MANUAL = 'manual',
   OTHER = 'other',
 }

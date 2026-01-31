@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewing Card Component
+ * RIVA - Viewing Card Component
  * Displays a viewing appointment with status and actions
  */
 

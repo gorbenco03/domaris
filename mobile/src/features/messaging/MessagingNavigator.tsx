@@ -1,5 +1,5 @@
 /**
- * IMOBI - Messaging Navigator
+ * RIVA - Messaging Navigator
  * Stack navigator for messaging feature
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Favorites List Screen
+ * RIVA - Favorites List Screen
  * Main screen for viewing and managing favorite properties
  */
 

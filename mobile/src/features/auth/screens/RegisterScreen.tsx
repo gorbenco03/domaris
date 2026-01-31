@@ -1,5 +1,5 @@
 /**
- * IMOBI - Register Screen
+ * RIVA - Register Screen
  * New user registration with email or phone
  * Step 1: Email or Phone
  */

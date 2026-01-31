@@ -1,5 +1,5 @@
 /**
- * IMOBI - Divider Component
+ * RIVA - Divider Component
  * Horizontal divider with optional text
  */
 

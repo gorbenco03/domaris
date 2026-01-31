@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Gate
+ * RIVA - Tutorial Gate
  * Controls tutorial prompt and overlay presentation.
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Verification Hub Screen
+ * RIVA - Verification Hub Screen
  * Main screen for identity verification (KYC)
  */
 
@@ -201,7 +201,7 @@ const VerificationHubScreen: React.FC = () => {
               },
             ]}
           >
-            Verifică-ți identitatea pentru access complet la toate funcțiile IMOBI
+            Verifică-ți identitatea pentru access complet la toate funcțiile RIVA
           </Text>
 
           {/* Current Level Badge */}

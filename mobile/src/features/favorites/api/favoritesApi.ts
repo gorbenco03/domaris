@@ -1,5 +1,5 @@
 /**
- * IMOBI - Favorites API
+ * RIVA - Favorites API
  * Favorites API client functions
  */
 

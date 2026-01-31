@@ -1,5 +1,5 @@
 /**
- * IMOBI - WebSocket Service
+ * RIVA - WebSocket Service
  * Real-time messaging with Socket.IO
  */
 

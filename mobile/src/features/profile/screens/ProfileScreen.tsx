@@ -1,5 +1,5 @@
 /**
- * IMOBI - Profile Screen
+ * RIVA - Profile Screen
  * Main profile view showing user information and settings
  */
 
@@ -310,7 +310,7 @@ const ProfileScreen: React.FC = () => {
                 },
               ]}
             >
-              ACTIVITATE IMOBILIARĂ
+              ACTIVITATE RIVALIARĂ
             </Text>
             <View style={[styles.statsRow, { marginTop: theme.spacing[2] }]}>
               <StatCard
@@ -480,7 +480,7 @@ const ProfileScreen: React.FC = () => {
             },
           ]}
         >
-          IMOBI v1.0.0
+          RIVA v1.0.0
         </Text>
       </ScrollView>
     </SafeAreaView>

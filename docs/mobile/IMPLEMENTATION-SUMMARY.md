@@ -22,7 +22,7 @@
 - ✅ Capabilities overview
 - ✅ Call-to-action buttons for available levels
 - ✅ Security information banner
-- ✅ Fully integrated with IMOBI Design System
+- ✅ Fully integrated with RIVA Design System
 
 #### Navigation Integration:
 
@@ -101,7 +101,7 @@
 
 ## 🎨 Design System Compliance
 
-All screens strictly follow the IMOBI Design System:
+All screens strictly follow the RIVA Design System:
 
 ### Colors Used:
 

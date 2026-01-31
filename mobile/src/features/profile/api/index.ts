@@ -3,3 +3,4 @@
  */
 
 export * from './userApi';
+export * from './reviewsApi';

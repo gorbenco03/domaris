@@ -1,5 +1,5 @@
 /**
- * IMOBI - Application Constants
+ * RIVA - Application Constants
  */
 
 // ============================================
@@ -171,9 +171,9 @@ export const MAP_CONFIG = {
 // ============================================
 
 export const APP_INFO = {
-  NAME: 'IMOBI',
+  NAME: 'RIVA',
   VERSION: '1.0.0',
   DESCRIPTION: 'Platforma Imobiliară Direct de la Proprietari',
-  CONTACT_EMAIL: 'contact@imobi.ro',
-  SUPPORT_EMAIL: 'support@imobi.ro',
+  CONTACT_EMAIL: 'contact@riva.ro',
+  SUPPORT_EMAIL: 'support@riva.ro',
 } as const;

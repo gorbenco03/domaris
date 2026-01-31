@@ -1,5 +1,5 @@
 /**
- * IMOBI - OTP Verification Screen
+ * RIVA - OTP Verification Screen
  * Phone/Email verification with OTP code
  */
 

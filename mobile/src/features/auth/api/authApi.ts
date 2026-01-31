@@ -1,5 +1,5 @@
 /**
- * IMOBI - Auth API
+ * RIVA - Auth API
  * Authentication API client functions
  */
 

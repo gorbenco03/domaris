@@ -1,5 +1,5 @@
 /**
- * IMOBI - Properties Components Index
+ * RIVA - Properties Components Index
  */
 
 export { PropertyCard } from './PropertyCard';

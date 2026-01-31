@@ -1,5 +1,5 @@
 /**
- * IMOBI - API Types
+ * RIVA - API Types
  * Re-exports from @domaris/types for mobile app
  */
 

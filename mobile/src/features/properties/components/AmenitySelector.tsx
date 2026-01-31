@@ -1,5 +1,5 @@
 /**
- * IMOBI - Amenity Selector Component
+ * RIVA - Amenity Selector Component
  * Multi-select amenities/features grid
  */
 
@@ -88,7 +88,7 @@ const AMENITIES: (iconColor: string, iconSize: number) => AmenityOption[] = (ico
   { id: 'FIREPLACE', label: 'Șemineu', icon: <Flame size={iconSize} color={iconColor} />, category: 'comfort' },
   { id: 'ELEVATOR', label: 'Lift', icon: <ArrowUp size={iconSize} color={iconColor} />, category: 'comfort' },
   { id: 'FURNISHED', label: 'Mobilat', icon: <Sofa size={iconSize} color={iconColor} />, category: 'comfort' },
-  { id: 'SEMI_FURNISHED', label: 'Semimobilat', icon: <Sofa size={iconSize} color={iconColor} />, category: 'comfort' },
+  { id: 'SEMI_FURNISHED', label: 'Semrivalat', icon: <Sofa size={iconSize} color={iconColor} />, category: 'comfort' },
   
   // Appliances
   { id: 'KITCHEN_APPLIANCES', label: 'Bucătărie utilată', icon: <Utensils size={iconSize} color={iconColor} />, category: 'appliances' },

@@ -1,5 +1,5 @@
 /**
- * IMOBI - AI Feature Exports
+ * RIVA - AI Feature Exports
  */
 
 // Screens

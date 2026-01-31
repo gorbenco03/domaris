@@ -1,5 +1,5 @@
 /**
- * IMOBI - Viewings List Screen
+ * RIVA - Viewings List Screen
  * Shows all viewings with tabs: Upcoming, Past, Cancelled
  */
 

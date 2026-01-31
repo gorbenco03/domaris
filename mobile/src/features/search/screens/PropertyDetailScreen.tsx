@@ -1,5 +1,5 @@
 /**
- * IMOBI - Property Detail Screen
+ * RIVA - Property Detail Screen
  * Comprehensive property information view
  */
 
@@ -167,7 +167,7 @@ const PropertyDetailScreen: React.FC = () => {
     if (!property) return;
     try {
       await Share.share({
-        message: `Vezi acest apartament pe IMOBI: ${property.title} - ${property.price}€`,
+        message: `Vezi acest apartament pe RIVA: ${property.title} - ${property.price}€`,
       });
     } catch (error) {
       console.log(error);
@@ -329,7 +329,7 @@ const PropertyDetailScreen: React.FC = () => {
               <Sparkles size={20} color="#ffffff" />
             </LinearGradient>
             <View style={styles.aiTextContainer}>
-              <Text style={[styles.aiTitle, { color: theme.colors.textPrimary }]}>Analiză IMOBI AI</Text>
+              <Text style={[styles.aiTitle, { color: theme.colors.textPrimary }]}>Analiză RIVA AI</Text>
               <Text style={[styles.aiSubtitle, { color: theme.colors.textSecondary }]}>Întreabă AI despre acest apartament.</Text>
             </View>
             <ChevronRight size={20} color={theme.colors.primary.main} />
@@ -385,7 +385,7 @@ const PropertyDetailScreen: React.FC = () => {
                     <Text style={[styles.ownerName, { color: theme.colors.textPrimary }]}>
                       {owner?.firstName 
                         ? `${owner.firstName} ${owner.lastName || ''}`
-                        : 'Utilizator Imobi'}
+                        : 'Utilizator Riva'}
                     </Text>
                     {owner?.verificationLevel >= 2 && <ShieldCheck size={16} color={theme.colors.accent.main} />}
                   </View>

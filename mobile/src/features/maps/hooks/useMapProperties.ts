@@ -1,5 +1,5 @@
 /**
- * IMOBI - Map Properties Hook
+ * RIVA - Map Properties Hook
  * React Query hook for fetching properties in map bounds
  */
 

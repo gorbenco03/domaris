@@ -1,5 +1,5 @@
 /**
- * IMOBI - Preview Step
+ * RIVA - Preview Step
  * Step 6 of property creation wizard - Final preview before publishing
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Tutorial Service
+ * RIVA - Shared Tutorial Service
  * Explicit contract for tutorial hooks.
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Search API
+ * RIVA - Search API
  * Advanced search API client functions
  */
 

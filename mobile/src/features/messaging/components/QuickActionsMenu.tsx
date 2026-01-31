@@ -1,5 +1,5 @@
 /**
- * IMOBI - Quick Actions Menu Component
+ * RIVA - Quick Actions Menu Component
  * Bottom sheet with quick action options for chat
  */
 

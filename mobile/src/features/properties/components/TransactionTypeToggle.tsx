@@ -1,5 +1,5 @@
 /**
- * IMOBI - Transaction Type Toggle Component
+ * RIVA - Transaction Type Toggle Component
  * Toggle between Sale and Rent transaction types
  */
 

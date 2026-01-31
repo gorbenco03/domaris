@@ -1,5 +1,5 @@
     /**
- * IMOBI - Viewings & Bookings Types
+ * RIVA - Viewings & Bookings Types
  * Based on docs/mobile/features/08-VIEWINGS-BOOKINGS.md
  */
 

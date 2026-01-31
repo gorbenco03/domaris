@@ -1,5 +1,5 @@
 /**
- * IMOBI - Property Marker Component
+ * RIVA - Property Marker Component
  * Custom marker for displaying properties on map
  */
 

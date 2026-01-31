@@ -1,5 +1,5 @@
 /**
- * IMOBI - Common Types
+ * RIVA - Common Types
  * Shared type definitions used across the app
  */
 

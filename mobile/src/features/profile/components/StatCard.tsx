@@ -1,5 +1,5 @@
 /**
- * IMOBI - Stat Card Component
+ * RIVA - Stat Card Component
  * Displays statistics with icon and value
  */
 

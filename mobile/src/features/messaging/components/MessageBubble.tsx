@@ -1,5 +1,5 @@
 /**
- * IMOBI - Message Bubble Component
+ * RIVA - Message Bubble Component
  * Individual message display in chat
  */
 

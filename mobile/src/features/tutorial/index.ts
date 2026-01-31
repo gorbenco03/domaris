@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Feature
+ * RIVA - Tutorial Feature
  * Interactive onboarding tutorial with spotlight/coach marks
  */
 

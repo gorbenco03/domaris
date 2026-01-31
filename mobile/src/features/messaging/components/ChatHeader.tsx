@@ -1,5 +1,5 @@
 /**
- * IMOBI - Chat Header Component
+ * RIVA - Chat Header Component
  * Header for the chat screen showing participant info and property
  */
 

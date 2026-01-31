@@ -1,5 +1,5 @@
 /**
- * IMOBI - Search Components Index
+ * RIVA - Search Components Index
  */
 
 export { SearchBar } from './SearchBar';

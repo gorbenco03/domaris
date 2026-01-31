@@ -1,5 +1,5 @@
 /**
- * IMOBI - Providers Index
+ * RIVA - Providers Index
  * Export all providers from one place
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Photo Uploader Component
+ * RIVA - Photo Uploader Component
  * Drag & drop photo upload with reordering
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Filters Screen
+ * RIVA - Filters Screen
  * Advanced search filters modal
  */
 

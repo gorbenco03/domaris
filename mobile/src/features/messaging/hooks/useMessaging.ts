@@ -1,5 +1,5 @@
 /**
- * IMOBI - Messaging Hooks
+ * RIVA - Messaging Hooks
  * React Query hooks for messaging
  */
 

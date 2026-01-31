@@ -1,5 +1,5 @@
 /**
- * IMOBI - KYC API
+ * RIVA - KYC API
  * Identity verification API client functions
  */
 

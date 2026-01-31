@@ -1,5 +1,5 @@
 /**
- * IMOBI - Welcome Screen (Redesigned)
+ * RIVA - Welcome Screen (Redesigned)
  * Clean, minimalist first screen with focus on login/register
  * Based on Unified Account Model - simple entry point
  */
@@ -61,7 +61,7 @@ const WelcomeScreen: React.FC = () => {
               <Home size={36} color="#ffffff" strokeWidth={2.5} />
             </LinearGradient>
           </View>
-          <Text style={styles.logoText}>IMOBI</Text>
+          <Text style={styles.logoText}>RIVA</Text>
           <Text style={styles.tagline}>Găsește-ți casa visurilor tale</Text>
         </View>
 

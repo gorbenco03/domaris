@@ -1,5 +1,5 @@
 /**
- * IMOBI - Screen Header
+ * RIVA - Screen Header
  * Consistent back button + title header.
  */
 

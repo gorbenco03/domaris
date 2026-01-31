@@ -18,7 +18,7 @@
 
 ## 📜 Principii GDPR
 
-| Principiu                              | Implementare IMOBI                                  |
+| Principiu                              | Implementare RIVA                                  |
 | -------------------------------------- | --------------------------------------------------- |
 | **Legalitate, echitate, transparență** | Consimțământ explicit, Privacy Policy clar          |
 | **Limitarea scopului**                 | Date folosite doar pentru funcționalitate declarată |
@@ -249,7 +249,7 @@ interface DeletionRequest {
 
 | Contact          | Detalii            |
 | ---------------- | ------------------ |
-| **Email**        | dpo@imobi.ro       |
+| **Email**        | dpo@riva.ro       |
 | **Adresă**       | [Adresa companiei] |
 | **Timp răspuns** | 30 zile maximum    |
 

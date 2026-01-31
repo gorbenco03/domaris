@@ -1,5 +1,5 @@
 /**
- * 🏛️ ENUMS.ts - Standardized Enumerations for DOMARIS/IMOBI
+ * 🏛️ ENUMS.ts - Standardized Enumerations for DOMARIS/RIVA
  *
  * Conform ADR-001: Model de Cont Unificat
  * Toate enum-urile folosite în întreaga platformă.

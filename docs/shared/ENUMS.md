@@ -1,4 +1,4 @@
-# 📋 Enumerări și Constante Comune - Domaris/IMOBI
+# 📋 Enumerări și Constante Comune - Domaris/RIVA
 
 **Versiune:** 1.0.0  
 **Data:** 20 Ianuarie 2026  
@@ -251,7 +251,7 @@ Aceste enums sunt specifice pentru funcționalitatea de scraper din backend.
 export type ListingSourceType =
   | 'FACEBOOK'
   | 'OLX'
-  | 'IMOBILIARE'
+  | 'RIVALIARE'
   | 'MANUAL'
   | 'OTHER';
 ```
@@ -352,7 +352,7 @@ export type Language = 'RO' | 'EN';
 export type ListingSourceType =
   | 'FACEBOOK'
   | 'OLX'
-  | 'IMOBILIARE'
+  | 'RIVALIARE'
   | 'MANUAL'
   | 'OTHER';
 ```

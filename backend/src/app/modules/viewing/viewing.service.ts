@@ -15,6 +15,8 @@ import { User } from '../../db/entities/user.entity';
 import { Op } from 'sequelize';
 import { format, addMinutes } from 'date-fns';
 import { NotificationService } from '../notification/notification.service';
+import { ReviewService } from '../review/review.service';
+import { Inject, forwardRef } from '@nestjs/common';
 
 interface GetViewingsParams {
   status?: string;
@@ -24,7 +26,11 @@ interface GetViewingsParams {
 
 @Injectable()
 export class ViewingService {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    @Inject(forwardRef(() => ReviewService))
+    private readonly reviewService: ReviewService,
+  ) {}
   // ============================================================================
   // LIST VIEWINGS
   // ============================================================================
@@ -429,25 +435,48 @@ export class ViewingService {
       throw new NotFoundException('Vizionare negăsită');
     }
 
-    if (viewing.seekerId !== userId) {
-      throw new ForbiddenException('Doar solicitantul poate lăsa feedback');
+    const isSeeker = viewing.seekerId === userId;
+    const isOwner = viewing.property?.ownerId === userId;
+
+    if (!isSeeker && !isOwner) {
+      throw new ForbiddenException('Nu ai permisiunea să lași feedback pentru această vizionare');
     }
 
-    // Note: Backend doesn't have 'completed' status yet, so we'll allow feedback for accepted viewings
-    // In the future, you might want to add a 'completed' status or check slot date
+    // Allow feedback for completed viewings (or accepted if viewing time has passed)
     if (viewing.status !== 'accepted' && viewing.status !== 'completed') {
       throw new BadRequestException('Feedback poate fi lăsat doar după finalizarea vizionării');
     }
 
-    // TODO: Implement feedback storage (might need ViewingFeedback entity)
-    // For now, store in notes
-    viewing.notes = `${viewing.notes || ''}\nFeedback: ${rating}/5 - ${comment || 'Fără comentariu'}. Interesat: ${interested ? 'Da' : 'Nu'}`;
-    await viewing.save();
+    // Mark viewing as completed if not already
+    if (viewing.status === 'accepted') {
+      viewing.status = 'completed';
+      await viewing.save();
+    }
 
-    return {
-      success: true,
-      message: 'Feedback trimis cu succes',
-    };
+    // Create review using ReviewService
+    try {
+      const review = await this.reviewService.createReview(userId, {
+        viewingId,
+        rating,
+        comment,
+        interested,
+      });
+
+      return {
+        success: true,
+        message: 'Feedback trimis cu succes',
+        review,
+      };
+    } catch (error: any) {
+      // If review already exists, return success anyway
+      if (error.message?.includes('deja')) {
+        return {
+          success: true,
+          message: 'Ai lăsat deja un feedback pentru această vizionare',
+        };
+      }
+      throw error;
+    }
   }
 
   // ============================================================================

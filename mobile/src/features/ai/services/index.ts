@@ -1,5 +1,5 @@
 /**
- * IMOBI - AI Application Services
+ * RIVA - AI Application Services
  */
 
 export { aiApi } from '../api/aiApi';

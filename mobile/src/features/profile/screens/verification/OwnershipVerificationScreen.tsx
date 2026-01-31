@@ -1,5 +1,5 @@
 /**
- * IMOBI - Ownership Verification Screen (Level 3)
+ * RIVA - Ownership Verification Screen (Level 3)
  */
 
 import React, { useMemo, useState } from 'react';

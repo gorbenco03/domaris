@@ -1,9 +1,9 @@
 /**
- * IMOBI - Request Viewing Screen
- * Allows seekers to request a property viewing
+ * RIVA - Request Viewing Screen
+ * Modern, intuitive UI for scheduling property viewings
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,9 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -22,29 +25,94 @@ import { ProfileStackParamList } from '@/app/navigation/types';
 import { CalendarSelector, TimeSlotPicker } from '../components';
 import { Button, ScreenHeader } from '@/shared/components';
 import { TimeSlot } from '../types';
-import { Home, MapPin, MessageSquare, Info } from 'lucide-react-native';
+import {
+  Home,
+  MapPin,
+  MessageSquare,
+  Calendar,
+  Clock,
+  Check,
+  ChevronRight,
+  Send,
+  RefreshCw,
+  Euro,
+} from 'lucide-react-native';
 import { useRequestViewing, useRescheduleViewing, useViewingAvailability } from '../hooks/useViewings';
 import { useViewing } from '../hooks/useViewings';
 import { getPropertyDetail } from '@/features/properties/api/propertiesApi';
 
 type RequestViewingRouteProp = RouteProp<ProfileStackParamList, 'RequestViewing'>;
 
+interface StepIndicatorProps {
+  currentStep: number;
+  theme: any;
+}
+
+const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, theme }) => {
+  const steps = [
+    { icon: Calendar, label: 'Data' },
+    { icon: Clock, label: 'Ora' },
+    { icon: Check, label: 'Confirmare' },
+  ];
+
+  return (
+    <View style={styles.stepContainer}>
+      {steps.map((step, index) => {
+        const isActive = index <= currentStep;
+        const isCurrent = index === currentStep;
+        const Icon = step.icon;
+
+        return (
+          <React.Fragment key={index}>
+            <View style={styles.stepItem}>
+              <View style={[
+                styles.stepCircle,
+                {
+                  backgroundColor: isActive ? theme.colors.primary.main : theme.colors.surface,
+                  borderColor: isActive ? theme.colors.primary.main : theme.colors.border,
+                },
+                isCurrent && styles.stepCircleCurrent,
+              ]}>
+                <Icon
+                  size={16}
+                  color={isActive ? '#fff' : theme.colors.textTertiary}
+                />
+              </View>
+              <Text style={[
+                styles.stepLabel,
+                { color: isActive ? theme.colors.primary.main : theme.colors.textTertiary }
+              ]}>
+                {step.label}
+              </Text>
+            </View>
+            {index < steps.length - 1 && (
+              <View style={[
+                styles.stepLine,
+                { backgroundColor: index < currentStep ? theme.colors.primary.main : theme.colors.border }
+              ]} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+};
+
 const RequestViewingScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RequestViewingRouteProp>();
   const { theme } = useTheme();
-  
+
   const { propertyId, viewingId } = route.params;
   const isReschedule = !!viewingId;
-  
+
   const [property, setProperty] = useState<any>(null);
-  const [existingViewing, setExistingViewing] = useState<any>(null);
-  const [selectedDates, setSelectedDates] = useState<string[]>([]);
-  const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [message, setMessage] = useState('');
-  const [currentDate, setCurrentDate] = useState<string | null>(null);
+  const [showMessage, setShowMessage] = useState(false);
   const [isLoadingProperty, setIsLoadingProperty] = useState(true);
-  
+
   const requestMutation = useRequestViewing();
   const rescheduleMutation = useRescheduleViewing();
   const { data: viewingData } = useViewing(viewingId);
@@ -53,7 +121,14 @@ const RequestViewingScreen: React.FC = () => {
     undefined,
     undefined
   );
-  
+
+  // Calculate current step
+  const currentStep = useMemo(() => {
+    if (selectedSlot) return 2;
+    if (selectedDate) return 1;
+    return 0;
+  }, [selectedDate, selectedSlot]);
+
   // Fetch property
   useEffect(() => {
     const fetchProperty = async () => {
@@ -75,60 +150,104 @@ const RequestViewingScreen: React.FC = () => {
     };
     fetchProperty();
   }, [propertyId]);
-  
+
   // Pre-populate if reschedule
   useEffect(() => {
     if (isReschedule && viewingData) {
-      setExistingViewing(viewingData);
       const slot = viewingData.confirmedSlot || viewingData.requestedSlots[0];
       if (slot) {
-        setSelectedDates([slot.date]);
-        setSelectedSlots([slot]);
-        setCurrentDate(slot.date);
+        setSelectedDate(slot.date);
+        setSelectedSlot(slot);
       }
       if (viewingData.notes) {
         setMessage(viewingData.notes);
+        setShowMessage(true);
       }
     }
   }, [isReschedule, viewingData]);
-  
+
   const handleDateSelect = (date: string) => {
-    if (selectedDates.includes(date)) {
-      setSelectedDates(prev => prev.filter(d => d !== date));
-      setSelectedSlots(prev => prev.filter(s => s.date !== date));
-    } else {
-      setSelectedDates(prev => [...prev, date]);
-      setCurrentDate(date);
-    }
+    setSelectedDate(date);
+    // Reset slot when date changes
+    setSelectedSlot(null);
   };
-  
-  const handleSlotSelect = (slot: TimeSlot) => {
-    const exists = selectedSlots.some(s => s.date === slot.date && s.startTime === slot.startTime);
-    if (exists) {
-      setSelectedSlots(prev => prev.filter(s => !(s.date === slot.date && s.startTime === slot.startTime)));
-    } else {
-      setSelectedSlots(prev => [...prev, slot]);
-    }
+
+  const handleSlotSelect = (slot: TimeSlot | null) => {
+    setSelectedSlot(slot);
   };
-  
+
+  const formatDateDisplay = (dateStr: string): string => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('ro-RO', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    });
+  };
+
   const handleSubmit = async () => {
-    if (selectedSlots.length === 0) {
-      Alert.alert('Atenție', 'Selectează cel puțin un slot.');
+    if (!selectedSlot) {
+      Alert.alert('Atenție', 'Selectează o oră pentru vizionare.');
       return;
     }
-    
+
     // Validate slot is in the future
-    const firstSlot = selectedSlots[0];
-    const slotDateTime = new Date(`${firstSlot.date}T${firstSlot.startTime}`);
+    const slotDateTime = new Date(`${selectedSlot.date}T${selectedSlot.startTime}`);
     if (slotDateTime <= new Date()) {
-      Alert.alert('Atenție', 'Slot-ul trebuie să fie în viitor.');
+      Alert.alert('Atenție', 'Ora selectată trebuie să fie în viitor.');
       return;
     }
-    
-    // Use first selected slot (backend currently supports single slot)
-    const slot = selectedSlots[0];
-    const slotISO = `${slot.date}T${slot.startTime}:00`;
-    
+
+    const slotISO = `${selectedSlot.date}T${selectedSlot.startTime}:00`;
+
+    const handleError = (error: any) => {
+      console.log('Viewing request error:', JSON.stringify(error, null, 2));
+
+      // Extract error details from Axios error
+      const status = error?.response?.status;
+      const errorData = error?.response?.data;
+      const errorCode = errorData?.code;
+      const errorMessage = errorData?.message;
+
+      // Handle verification level errors (403)
+      if (status === 403 || errorCode === 'VERIFICATION_REQUIRED') {
+        Alert.alert(
+          'Verificare necesară',
+          errorMessage || 'Pentru a programa o vizionare, trebuie să îți verifici identitatea.',
+          [
+            { text: 'Mai târziu', style: 'cancel' },
+            {
+              text: 'Verifică acum',
+              onPress: () => {
+                navigation.goBack();
+                // Navigate to verification screen
+                (navigation as any).navigate('ProfileStack', { screen: 'Verification' });
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // Handle other common errors
+      if (status === 401) {
+        Alert.alert('Sesiune expirată', 'Te rugăm să te autentifici din nou.');
+        return;
+      }
+
+      if (status === 400) {
+        Alert.alert('Date invalide', errorMessage || 'Verifică datele introduse și încearcă din nou.');
+        return;
+      }
+
+      // Generic error
+      Alert.alert(
+        'Eroare',
+        errorMessage || error?.message || 'A apărut o eroare. Încearcă din nou.'
+      );
+    };
+
     if (isReschedule && viewingId) {
       rescheduleMutation.mutate(
         {
@@ -138,20 +257,13 @@ const RequestViewingScreen: React.FC = () => {
         },
         {
           onSuccess: () => {
-            Alert.alert('Succes', 'Vizionarea a fost reprogramată.', [
-              { text: 'OK', onPress: () => {
-                // Navigate back to ViewingDetail or Viewings list
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
-                } else {
-                  navigation.navigate('Viewings');
-                }
-              }},
-            ]);
+            Alert.alert(
+              'Reprogramare trimisă! ✓',
+              'Proprietarul va fi notificat despre noua dată propusă.',
+              [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
           },
-          onError: (error: any) => {
-            Alert.alert('Eroare', error?.message || 'Nu s-a putut reprograma vizionarea');
-          },
+          onError: handleError,
         }
       );
     } else {
@@ -163,30 +275,26 @@ const RequestViewingScreen: React.FC = () => {
         },
         {
           onSuccess: () => {
-            Alert.alert('Succes', 'Cererea de vizionare a fost trimisă.', [
-              { text: 'OK', onPress: () => {
-                // Navigate back or to Viewings list
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
-                } else {
-                  navigation.navigate('Viewings');
-                }
-              }},
-            ]);
+            Alert.alert(
+              'Cerere trimisă! ✓',
+              'Proprietarul va fi notificat și te va contacta pentru confirmare.',
+              [{ text: 'Perfect', onPress: () => navigation.goBack() }]
+            );
           },
-          onError: (error: any) => {
-            Alert.alert('Eroare', error?.message || 'Nu s-a putut trimite cererea');
-          },
+          onError: handleError,
         }
       );
     }
   };
-  
+
   if (isLoadingProperty || !property) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+            Se încarcă...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -195,116 +303,197 @@ const RequestViewingScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <ScreenHeader
-        title={isReschedule ? 'Reprogramează vizionare' : 'Programează vizionare'}
-        onBackPress={() => {
-          if (navigation.canGoBack()) {
-            navigation.goBack();
-          } else {
-            navigation.navigate('Viewings');
-          }
-        }}
+        title={isReschedule ? 'Reprogramează' : 'Programează vizionare'}
+        onBackPress={() => navigation.goBack()}
       />
-      
-      <ScrollView 
-        style={styles.scroll} 
-        horizontal={false}
-        contentContainerStyle={[styles.scrollContent, { width: '100%' }]}
+
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={[styles.propCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <View style={[styles.propImg, { backgroundColor: theme.colors.divider }]}>
-            {property.mainImage || property.images?.[0] ? (
-              <Image source={{ uri: property.mainImage || property.images[0] }} style={styles.img} />
-            ) : (
-              <Home size={28} color={theme.colors.textTertiary} />
-            )}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Property Card - Compact & Elegant */}
+          <View style={[styles.propertyCard, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.propertyImage, { backgroundColor: theme.colors.divider }]}>
+              {property.mainImage || property.images?.[0] ? (
+                <Image
+                  source={{ uri: property.mainImage || property.images[0] }}
+                  style={styles.image}
+                />
+              ) : (
+                <Home size={24} color={theme.colors.textTertiary} />
+              )}
+            </View>
+            <View style={styles.propertyInfo}>
+              <Text style={[styles.propertyTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                {property.title || 'Proprietate'}
+              </Text>
+              <View style={styles.propertyMeta}>
+                <MapPin size={12} color={theme.colors.textTertiary} />
+                <Text style={[styles.propertyAddress, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                  {property.address || property.addressText || 'Adresă nedisponibilă'}
+                </Text>
+              </View>
+              {property.price && (
+                <View style={styles.priceRow}>
+                  <Euro size={12} color={theme.colors.primary.main} />
+                  <Text style={[styles.priceText, { color: theme.colors.primary.main }]}>
+                    {property.price.toLocaleString('ro-RO')} €
+                    {property.listingType === 'rent' ? '/lună' : ''}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-          <View style={styles.propInfo}>
-            <Text style={[styles.propTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
-              {property.title || 'Proprietate'}
-            </Text>
-            <View style={styles.addrRow}>
-              <MapPin size={12} color={theme.colors.textTertiary} />
-              <Text style={[styles.addrText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                {property.address || property.addressText || ''}
+
+          {/* Step Indicator */}
+          <StepIndicator currentStep={currentStep} theme={theme} />
+
+          {/* Calendar Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Calendar size={20} color={theme.colors.primary.main} />
+              <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+                Alege data vizionării
               </Text>
             </View>
+            <CalendarSelector
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+              availableDates={availabilityData?.availableDates}
+            />
           </View>
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={[styles.secTitle, { color: theme.colors.textPrimary }]}>1. Selectează data</Text>
-          <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>
-            Selectează o dată în viitor
-          </Text>
-          <CalendarSelector 
-            selectedDates={selectedDates} 
-            onDateSelect={handleDateSelect} 
-            availableDates={availabilityData?.availableDates || []}
-            maxSelections={1} // Backend currently supports single slot
-          />
-        </View>
-        
-        {selectedDates.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.secTitle, { color: theme.colors.textPrimary }]}>2. Alege ora</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateTabs}>
-              {selectedDates.map(date => (
-                <TouchableOpacity 
-                  key={date} 
-                  style={[
-                    styles.dateTab, 
-                    { 
-                      backgroundColor: currentDate === date ? theme.colors.primary.main : theme.colors.surface, 
-                      borderColor: theme.colors.border 
-                    }
-                  ]} 
-                  onPress={() => setCurrentDate(date)}
-                >
-                  <Text style={{ color: currentDate === date ? '#fff' : theme.colors.textSecondary, fontWeight: '600' }}>
-                    {new Date(date).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            {currentDate && (
-              <TimeSlotPicker 
-                date={currentDate} 
+
+          {/* Time Slot Section - Shows when date is selected */}
+          {selectedDate && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Clock size={20} color={theme.colors.primary.main} />
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+                  Alege ora
+                </Text>
+              </View>
+              <Text style={[styles.selectedDateText, { color: theme.colors.textSecondary }]}>
+                {formatDateDisplay(selectedDate)}
+              </Text>
+              <TimeSlotPicker
+                date={selectedDate}
                 availableSlots={
-                  availabilityData?.availability[currentDate] || 
-                  generateTimeSlots(currentDate) // Fallback to default if no API data
-                } 
-                selectedSlots={selectedSlots.filter(s => s.date === currentDate)} 
-                onSlotSelect={handleSlotSelect} 
+                  availabilityData?.availability?.[selectedDate] ||
+                  generateTimeSlots(selectedDate)
+                }
+                selectedSlot={selectedSlot}
+                onSlotSelect={handleSlotSelect}
               />
-            )}
-          </View>
-        )}
-        
-        {selectedSlots.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.secTitle, { color: theme.colors.textPrimary }]}>3. Mesaj (opțional)</Text>
-            <View style={[styles.msgBox, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-              <MessageSquare size={18} color={theme.colors.textTertiary} />
-              <TextInput style={[styles.msgInput, { color: theme.colors.textPrimary }]} placeholder="Mesaj pentru proprietar..." placeholderTextColor={theme.colors.textTertiary} value={message} onChangeText={setMessage} multiline />
             </View>
-          </View>
-        )}
-        
-        {selectedSlots.length > 0 && (
-          <View style={[styles.info, { backgroundColor: theme.colors.accent.main + '15' }]}>
-            <Info size={18} color={theme.colors.accent.main} />
-            <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>Ai selectat {selectedSlots.length} slot(uri).</Text>
-          </View>
-        )}
-      </ScrollView>
-      
-      <View style={[styles.footer, { backgroundColor: theme.colors.background, borderTopColor: theme.colors.border }]}>
-        <Button 
-          title={selectedSlots.length > 0 ? (isReschedule ? 'Reprogramează' : 'Trimite cerere') : 'Selectează slot'} 
-          onPress={handleSubmit} 
-          loading={requestMutation.isPending || rescheduleMutation.isPending} 
-          disabled={selectedSlots.length === 0} 
-          fullWidth 
+          )}
+
+          {/* Message Section - Shows when slot is selected */}
+          {selectedSlot && (
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={[styles.messageToggle, { backgroundColor: theme.colors.surface }]}
+                onPress={() => setShowMessage(!showMessage)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.messageToggleLeft}>
+                  <MessageSquare size={20} color={theme.colors.primary.main} />
+                  <Text style={[styles.messageToggleText, { color: theme.colors.textPrimary }]}>
+                    Adaugă un mesaj
+                  </Text>
+                </View>
+                <View style={[
+                  styles.messageToggleIndicator,
+                  { backgroundColor: showMessage ? theme.colors.primary.main : theme.colors.border }
+                ]}>
+                  <Text style={[
+                    styles.messageToggleIndicatorText,
+                    { color: showMessage ? '#fff' : theme.colors.textTertiary }
+                  ]}>
+                    {showMessage ? '−' : '+'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {showMessage && (
+                <View style={[styles.messageBox, {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border
+                }]}>
+                  <TextInput
+                    style={[styles.messageInput, { color: theme.colors.textPrimary }]}
+                    placeholder="Ex: Sunt disponibil și la alte ore dacă e nevoie..."
+                    placeholderTextColor={theme.colors.textTertiary}
+                    value={message}
+                    onChangeText={setMessage}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Summary Card - Shows when slot is selected */}
+          {selectedSlot && (
+            <View style={[styles.summaryCard, { backgroundColor: theme.colors.primary.main + '10' }]}>
+              <Text style={[styles.summaryTitle, { color: theme.colors.primary.main }]}>
+                Rezumat programare
+              </Text>
+              <View style={styles.summaryRow}>
+                <Calendar size={16} color={theme.colors.textSecondary} />
+                <Text style={[styles.summaryText, { color: theme.colors.textPrimary }]}>
+                  {formatDateDisplay(selectedSlot.date)}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Clock size={16} color={theme.colors.textSecondary} />
+                <Text style={[styles.summaryText, { color: theme.colors.textPrimary }]}>
+                  {selectedSlot.startTime} - {selectedSlot.endTime}
+                </Text>
+              </View>
+              {message && (
+                <View style={styles.summaryRow}>
+                  <MessageSquare size={16} color={theme.colors.textSecondary} />
+                  <Text style={[styles.summaryText, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                    "{message}"
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Bottom Spacer */}
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Fixed Bottom Button */}
+      <View style={[styles.footer, {
+        backgroundColor: theme.colors.background,
+        borderTopColor: theme.colors.border
+      }]}>
+        <Button
+          title={
+            !selectedDate
+              ? 'Selectează o dată'
+              : !selectedSlot
+                ? 'Selectează o oră'
+                : isReschedule
+                  ? 'Trimite cerere de reprogramare'
+                  : 'Trimite cererea de vizionare'
+          }
+          onPress={handleSubmit}
+          loading={requestMutation.isPending || rescheduleMutation.isPending}
+          disabled={!selectedSlot}
+          fullWidth
+          icon={selectedSlot ? (isReschedule ? <RefreshCw size={18} color="#fff" /> : <Send size={18} color="#fff" />) : undefined}
         />
       </View>
     </SafeAreaView>
@@ -312,33 +501,213 @@ const RequestViewingScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 32, width: '100%' },
-  propCard: { flexDirection: 'row', padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 24 },
-  propImg: { width: 64, height: 64, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  img: { width: '100%', height: '100%' },
-  propInfo: { flex: 1, marginLeft: 12, justifyContent: 'center' },
-  propTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
-  addrRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addrText: { fontSize: 13, flex: 1 },
-  section: { marginBottom: 24 },
-  secTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12 },
-  dateTabs: { marginBottom: 12 },
-  dateTab: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, marginRight: 8 },
-  msgBox: { flexDirection: 'row', alignItems: 'flex-start', borderRadius: 16, borderWidth: 1, padding: 14, minHeight: 80, gap: 10 },
-  msgInput: { flex: 1, fontSize: 15 },
-  info: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, gap: 10 },
-  infoText: { fontSize: 14 },
-  footer: { padding: 16, borderTopWidth: 1 },
+  container: {
+    flex: 1
+  },
+  flex1: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1
+  },
+  scrollContent: {
+    padding: 20,
+  },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
   },
-  hint: {
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+  },
+
+  // Property Card
+  propertyCard: {
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  propertyImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  propertyInfo: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  propertyTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 4,
+  },
+  propertyMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  propertyAddress: {
     fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    flex: 1,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  priceText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  // Step Indicator
+  stepContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  stepItem: {
+    alignItems: 'center',
+  },
+  stepCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  stepCircleCurrent: {
+    transform: [{ scale: 1.1 }],
+  },
+  stepLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+  },
+  stepLine: {
+    width: 40,
+    height: 2,
+    marginHorizontal: 8,
+    borderRadius: 1,
+    marginBottom: 20,
+  },
+
+  // Sections
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontFamily: 'Inter-SemiBold',
+  },
+  selectedDateText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    marginBottom: 12,
+    marginLeft: 30,
+    textTransform: 'capitalize',
+  },
+
+  // Message Section
+  messageToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 14,
+  },
+  messageToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  messageToggleText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
+  },
+  messageToggleIndicator: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  messageToggleIndicatorText: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+  },
+  messageBox: {
+    marginTop: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+  },
+  messageInput: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    minHeight: 80,
+  },
+
+  // Summary Card
+  summaryCard: {
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  summaryText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    flex: 1,
+  },
+
+  // Footer
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
   },
 });
 
@@ -347,14 +716,14 @@ function generateTimeSlots(date: string): TimeSlot[] {
   const slots: TimeSlot[] = [];
   const startHour = 9;
   const endHour = 18;
-  
+
   for (let hour = startHour; hour < endHour; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
       const startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       const endHourCalc = minute === 30 ? hour + 1 : hour;
       const endMinute = minute === 30 ? 0 : 30;
       const endTime = `${endHourCalc.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
-      
+
       slots.push({
         date,
         startTime,
@@ -362,7 +731,7 @@ function generateTimeSlots(date: string): TimeSlot[] {
       });
     }
   }
-  
+
   return slots;
 }
 

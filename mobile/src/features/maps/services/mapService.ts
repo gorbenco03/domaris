@@ -1,5 +1,5 @@
 /**
- * IMOBI - Map Service
+ * RIVA - Map Service
  * Utility functions for map operations
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - UI Store
+ * RIVA - UI Store
  * Zustand store for UI state (theme, language, etc.)
  */
 

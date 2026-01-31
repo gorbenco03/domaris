@@ -1,5 +1,5 @@
 /**
- * IMOBI - Profile Section Component
+ * RIVA - Profile Section Component
  * Groups related menu items with a title
  */
 

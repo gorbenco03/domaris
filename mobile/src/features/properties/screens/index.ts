@@ -1,5 +1,5 @@
 /**
- * IMOBI - Properties Screens Index
+ * RIVA - Properties Screens Index
  */
 
 export { default as CreatePropertyWizard } from './CreatePropertyWizard';

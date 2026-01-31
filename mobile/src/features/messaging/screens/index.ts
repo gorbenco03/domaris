@@ -1,5 +1,5 @@
 /**
- * IMOBI - Messaging Screens Index
+ * RIVA - Messaging Screens Index
  */
 
 export { default as ConversationsListScreen } from './ConversationsListScreen';

@@ -2,7 +2,7 @@
 
 **Versiune:** 1.0.0  
 **Data:** Ianuarie 2026  
-**Base URL:** `https://api.imobi.ro/v1`
+**Base URL:** `https://api.riva.ro/v1`
 
 ---
 
@@ -270,7 +270,7 @@ Upload avatar.
 
 ```json
 {
-  "avatarUrl": "https://cdn.imobi.ro/avatars/uuid.jpg"
+  "avatarUrl": "https://cdn.riva.ro/avatars/uuid.jpg"
 }
 ```
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notification Item Component
+ * RIVA - Notification Item Component
  */
 
 import React from 'react';

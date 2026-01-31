@@ -1,5 +1,5 @@
 /**
- * IMOBI - Notifications Types
+ * RIVA - Notifications Types
  * Based on docs/mobile/features/09-NOTIFICATIONS.md
  */
 
@@ -14,7 +14,10 @@ export type NotificationType =
   | 'property_unavailable'
   | 'verification_complete'
   | 'new_device_login'
-  | 'promotion';
+  | 'promotion'
+  | 'feedback_request'
+  | 'new_review'
+  | 'review_response';
 
 export type NotificationChannel = 'push' | 'in_app' | 'email' | 'sms';
 
@@ -77,4 +80,7 @@ export const NOTIFICATION_TYPE_INFO: Record<NotificationType, { icon: string; co
   verification_complete: { icon: 'shield-check', color: '#10b981', label: 'Verificare completă' },
   new_device_login: { icon: 'smartphone', color: '#f59e0b', label: 'Login nou' },
   promotion: { icon: 'gift', color: '#8b5cf6', label: 'Promoție' },
+  feedback_request: { icon: 'star', color: '#f59e0b', label: 'Feedback vizionare' },
+  new_review: { icon: 'star', color: '#10b981', label: 'Recenzie nouă' },
+  review_response: { icon: 'message-circle', color: '#6366f1', label: 'Răspuns recenzie' },
 };

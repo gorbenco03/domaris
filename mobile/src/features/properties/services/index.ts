@@ -1,5 +1,5 @@
 /**
- * IMOBI - Properties Application Services
+ * RIVA - Properties Application Services
  */
 
 export {

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Empty State Component
+ * RIVA - Empty State Component
  * Displays a centered empty state with icon, title, message, and optional action
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Profile Menu Item Component
+ * RIVA - Profile Menu Item Component
  * Reusable menu item for profile settings
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Reset Password Screen
+ * RIVA - Reset Password Screen
  * Set a new password after reset link
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Tutorial Overlay Component
+ * RIVA - Tutorial Overlay Component
  * Main component that combines spotlight, tooltip, and progress
  */
 

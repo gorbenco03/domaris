@@ -1,5 +1,5 @@
 /**
- * IMOBI - Listing Analysis Screen
+ * RIVA - Listing Analysis Screen
  * AI-powered analysis and optimization for property listings
  */
 

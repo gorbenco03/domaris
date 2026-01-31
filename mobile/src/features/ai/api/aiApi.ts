@@ -1,5 +1,5 @@
 /**
- * IMOBI - AI API
+ * RIVA - AI API
  * AI Assistant API client functions
  */
 

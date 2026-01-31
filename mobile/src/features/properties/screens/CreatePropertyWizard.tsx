@@ -1,5 +1,5 @@
 /**
- * IMOBI - Create Property Wizard Screen
+ * RIVA - Create Property Wizard Screen
  * Multi-step property creation wizard
  */
 
@@ -208,16 +208,20 @@ const CreatePropertyWizard: React.FC = () => {
         transactionType: formData.transactionType || 'SALE',
         propertyType: formData.propertyType || 'APARTMENT',
         // Optional fields mapping
-        floor: formData.characteristics?.floor, // Fix: read from characteristics
+        floor: formData.characteristics?.floor,
         totalFloors: formData.characteristics?.totalFloors,
-        bathrooms: formData.characteristics?.bathrooms, // Added missing mapping
+        bathrooms: formData.characteristics?.bathrooms,
         yearBuilt: formData.characteristics?.yearBuilt,
-        partitioning: formData.characteristics?.comfort, // mapping comfort to partitioning/structure if needed
+        partitioning: formData.characteristics?.comfort,
         amenities: formData.characteristics?.amenities,
         utilities: formData.characteristics?.utilities,
         street: formData.location?.street,
         streetNumber: formData.location?.streetNumber,
         building: formData.location?.building,
+        // Coordinates - IMPORTANT: lat is latitude, lng is longitude
+        lat: formData.location?.coordinates?.latitude,
+        lng: formData.location?.coordinates?.longitude,
+        locationSetManually: !!(formData.location?.coordinates?.latitude && formData.location?.coordinates?.longitude),
       };
 
       // 2. Create Property

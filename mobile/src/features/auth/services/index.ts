@@ -1,5 +1,5 @@
 /**
- * IMOBI - Auth Application Services
+ * RIVA - Auth Application Services
  */
 
 export { authApi } from '../api';

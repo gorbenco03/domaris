@@ -1,5 +1,5 @@
 /**
- * IMOBI - Stores Index
+ * RIVA - Stores Index
  * Export all stores from one place
  */
 

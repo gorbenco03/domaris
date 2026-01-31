@@ -1,5 +1,5 @@
 /**
- * IMOBI - Messaging Application Services
+ * RIVA - Messaging Application Services
  */
 
 export {

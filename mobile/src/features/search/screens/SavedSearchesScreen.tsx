@@ -1,5 +1,5 @@
 /**
- * IMOBI - Saved Searches Screen
+ * RIVA - Saved Searches Screen
  * List of saved searches with notification alerts management
  */
 

@@ -1,5 +1,5 @@
 /**
- * IMOBI - ScrollView Style Helpers
+ * RIVA - ScrollView Style Helpers
  * Standard styles for preventing horizontal scroll on mobile screens
  */
 

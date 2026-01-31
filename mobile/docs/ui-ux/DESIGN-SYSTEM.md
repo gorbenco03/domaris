@@ -1,4 +1,4 @@
-# 🎨 IMOBI Design System
+# 🎨 RIVA Design System
 
 **Versiune:** 1.0.0  
 **Data:** Ianuarie 2026  
@@ -456,5 +456,5 @@ Toate valorile de mai sus vor fi exportate ca:
 
 ---
 
-**Creat cu ❤️ pentru IMOBI**  
+**Creat cu ❤️ pentru RIVA**  
 _Design System v1.0 - Ianuarie 2026_

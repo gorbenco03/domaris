@@ -1,5 +1,5 @@
 /**
- * IMOBI - Property Insights Screen
+ * RIVA - Property Insights Screen
  * AI summary for property viewers
  */
 

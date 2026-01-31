@@ -1,5 +1,5 @@
 /**
- * IMOBI - Typing Indicator Component
+ * RIVA - Typing Indicator Component
  */
 
 import React, { useEffect, useRef } from 'react';

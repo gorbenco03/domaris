@@ -1,5 +1,5 @@
 /**
- * IMOBI - Shared Types Index
+ * RIVA - Shared Types Index
  */
 
 export * from './common';

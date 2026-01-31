@@ -1,5 +1,5 @@
 /**
- * IMOBI - Skeleton Loading Component
+ * RIVA - Skeleton Loading Component
  * Animated placeholder for loading states
  */
 

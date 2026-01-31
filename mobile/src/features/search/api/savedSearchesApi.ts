@@ -1,5 +1,5 @@
 /**
- * IMOBI - Saved Searches API
+ * RIVA - Saved Searches API
  * Saved searches with alerts API client functions
  */
 

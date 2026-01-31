@@ -1,5 +1,5 @@
 /**
- * IMOBI - Profile Components Index
+ * RIVA - Profile Components Index
  */
 
 export { default as Avatar } from './Avatar';

@@ -1,5 +1,5 @@
 /**
- * IMOBI - Conversations List Screen
+ * RIVA - Conversations List Screen
  * Main messaging screen showing all conversations
  */
 

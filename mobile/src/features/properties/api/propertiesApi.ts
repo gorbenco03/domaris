@@ -1,5 +1,5 @@
 /**
- * IMOBI - Properties API
+ * RIVA - Properties API
  * Properties/Listings API client functions
  */
 

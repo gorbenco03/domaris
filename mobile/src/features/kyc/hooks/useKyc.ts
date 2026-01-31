@@ -1,5 +1,5 @@
 /**
- * IMOBI - KYC Hooks
+ * RIVA - KYC Hooks
  * React Query hooks for identity verification
  */
 

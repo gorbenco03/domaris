@@ -1,5 +1,5 @@
 /**
- * IMOBI - Filter Chips Component
+ * RIVA - Filter Chips Component
  * Horizontal scrollable filter chips
  */
 

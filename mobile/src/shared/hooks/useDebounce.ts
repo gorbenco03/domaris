@@ -1,5 +1,5 @@
 /**
- * IMOBI - useDebounce Hook
+ * RIVA - useDebounce Hook
  * Debounce a value with specified delay
  */
 
