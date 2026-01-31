@@ -36,6 +36,7 @@ import { SavedSearchModule } from './modules/saved-search/saved-search.module.js
 import { AIModule } from './modules/ai/ai.module.js';
 import { CronModule } from './modules/cron/cron.module.js';
 import { MonetizationModule } from './modules/monetization/monetization.module.js';
+import { ReviewModule } from './modules/review/review.module.js';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { MonetizationModule } from './modules/monetization/monetization.module.j
     AIModule,
     CronModule,
     MonetizationModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [

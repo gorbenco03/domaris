@@ -138,6 +138,17 @@ export const API_ENDPOINTS = {
     AMENITIES: '/amenities',
     REPORT: '/reports',
   },
+
+  // Reviews
+  REVIEWS: {
+    USER_REVIEWS: (userId: string) => `/reviews/user/${userId}`,
+    USER_STATS: (userId: string) => `/reviews/user/${userId}/stats`,
+    CREATE: '/reviews',
+    DETAIL: (id: string) => `/reviews/${id}`,
+    RESPOND: (id: string) => `/reviews/${id}/respond`,
+    HELPFUL: (id: string) => `/reviews/${id}/helpful`,
+    REPORT: (id: string) => `/reviews/${id}/report`,
+  },
 } as const;
 
 export default API_ENDPOINTS;

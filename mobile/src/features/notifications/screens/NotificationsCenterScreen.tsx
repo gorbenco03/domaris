@@ -3,7 +3,7 @@
  * Shows all notifications with grouping by date
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { ProfileStackParamList } from '@/app/navigation/types';
 import { NotificationItem } from '../components';
 import { Notification } from '../types';
 import { CheckCheck, Bell, Settings } from 'lucide-react-native';
@@ -26,8 +28,10 @@ import {
   useMarkAllNotificationsAsRead,
 } from '../hooks/useNotifications';
 
+type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
+
 const NotificationsCenterScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
 
   // Fetch notifications from API
@@ -87,8 +91,36 @@ const NotificationsCenterScreen: React.FC = () => {
       }
     }
 
-    // Navigate based on actionType
-    // TODO: Add navigation logic based on notification.actionType
+    // Navigate based on notification type
+    const { actionData } = notification;
+    const notificationType = notification.type;
+
+    if (notificationType === 'feedback_request' && actionData?.viewingId) {
+      // Navigate to viewing detail to leave feedback
+      navigation.navigate('ViewingDetail', { viewingId: String(actionData.viewingId) });
+    } else if (notificationType === 'new_review' && actionData?.viewingId) {
+      // Navigate to reviews screen
+      navigation.navigate('Reviews', { isOwnProfile: true });
+    } else if (notificationType === 'review_response') {
+      // Navigate to reviews screen
+      navigation.navigate('Reviews', { isOwnProfile: true });
+    } else if (notificationType === 'viewing_reminder' && actionData?.viewingId) {
+      navigation.navigate('ViewingDetail', { viewingId: String(actionData.viewingId) });
+    } else if (actionData?.propertyId) {
+      // Generic property-related notification
+      navigation.dispatch(
+        CommonActions.navigate({
+          name: 'Main',
+          params: {
+            screen: 'SearchTab',
+            params: {
+              screen: 'PropertyDetail',
+              params: { propertyId: String(actionData.propertyId) },
+            },
+          },
+        })
+      );
+    }
   };
 
   const groupByDate = (items: Notification[]) => {

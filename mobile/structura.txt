@@ -1,0 +1,419 @@
+.
+├── .DS_Store
+├── .env.local
+├── App.tsx
+├── FIX_BUILD.md
+├── README.md
+├── app.config.js
+├── app.json
+├── assets
+│   ├── adaptive-icon.png
+│   ├── favicon.png
+│   ├── fonts
+│   │   └── Inter
+│   ├── icon.png
+│   ├── icons
+│   ├── images
+│   ├── notification-icon.png
+│   └── splash-icon.png
+├── babel.config.js
+├── docs
+│   ├── 00-PROJECT-OVERVIEW.md
+│   ├── BACKEND-API-CRUD-GUIDE.md
+│   ├── DEVICE_TESTING.md
+│   ├── IMPLEMENTATION-SUMMARY.md
+│   ├── INTEGRATION-STATUS-FINAL.md
+│   ├── LOGO_AND_ICONS.md
+│   ├── MAPBOX_TOKEN.md
+│   ├── MOBILE-BACKEND-INTEGRATION-STATUS.md
+│   ├── SCREEN-INTEGRATION-GUIDE.md
+│   ├── SPRINT-PLAN.md
+│   ├── architecture
+│   │   ├── API-CONTRACTS.md
+│   │   ├── DATA-MODELS.md
+│   │   └── MOBILE-ARCHITECTURE.md
+│   ├── features
+│   │   ├── 01-AUTH-REGISTRATION.md
+│   │   ├── 02-IDENTITY-VERIFICATION.md
+│   │   ├── 03-USER-PROFILE.md
+│   │   ├── 04-PROPERTY-LISTING.md
+│   │   ├── 05-SEARCH-DISCOVERY.md
+│   │   ├── 06-FAVORITES-COMPARE.md
+│   │   ├── 07-MESSAGING.md
+│   │   ├── 08-VIEWINGS-BOOKINGS.md
+│   │   ├── 09-NOTIFICATIONS.md
+│   │   ├── 10-ANALYTICS-OWNER.md
+│   │   ├── 11-MONETIZATION.md
+│   │   └── 12-AI-ASSISTANT.md
+│   ├── security
+│   │   ├── GDPR-COMPLIANCE.md
+│   │   └── SECURITY-ARCHITECTURE.md
+│   └── ui-ux
+│       └── DESIGN-SYSTEM.md
+├── eslint.config.js
+├── index.ts
+├── package-lock.json
+├── package.json
+├── src
+│   ├── app
+│   │   ├── navigation
+│   │   │   ├── AuthNavigator.tsx
+│   │   │   ├── DiscoveryNavigator.tsx
+│   │   │   ├── MainNavigator.tsx
+│   │   │   ├── ProfileNavigator.tsx
+│   │   │   ├── RootNavigator.tsx
+│   │   │   ├── SearchNavigator.tsx
+│   │   │   ├── index.ts
+│   │   │   ├── screens.ts
+│   │   │   └── types.ts
+│   │   └── providers
+│   │       ├── AuthProvider.tsx
+│   │       ├── QueryProvider.tsx
+│   │       ├── ThemeProvider.tsx
+│   │       └── index.ts
+│   ├── assets
+│   │   ├── fonts
+│   │   │   ├── Inter-Bold.ttf
+│   │   │   ├── Inter-Medium.ttf
+│   │   │   ├── Inter-Regular.ttf
+│   │   │   └── Inter-SemiBold.ttf
+│   │   ├── icons
+│   │   └── images
+│   ├── config
+│   │   ├── constants.ts
+│   │   ├── env.ts
+│   │   └── theme.ts
+│   ├── core
+│   │   ├── analytics
+│   │   │   └── anonymousId.ts
+│   │   ├── api
+│   │   │   ├── client.ts
+│   │   │   ├── endpoints.ts
+│   │   │   └── types
+│   │   │       └── index.ts
+│   │   ├── auth
+│   │   │   └── tokenManager.ts
+│   │   ├── storage
+│   │   │   └── mmkvStorage.ts
+│   │   ├── stores
+│   │   │   ├── authStore.ts
+│   │   │   ├── index.ts
+│   │   │   └── uiStore.ts
+│   │   └── websocket
+│   ├── features
+│   │   ├── ai
+│   │   │   ├── api
+│   │   │   │   ├── aiApi.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── components
+│   │   │   ├── hooks
+│   │   │   ├── index.ts
+│   │   │   ├── screens
+│   │   │   │   ├── AIChatScreen.tsx
+│   │   │   │   ├── ListingAnalysisScreen.tsx
+│   │   │   │   └── PropertyInsightsScreen.tsx
+│   │   │   └── services
+│   │   │       └── index.ts
+│   │   ├── analytics
+│   │   │   ├── components
+│   │   │   │   ├── AnalyticsChart.tsx
+│   │   │   │   ├── MetricCard.tsx
+│   │   │   │   └── SuggestionCard.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useAnalytics.ts
+│   │   │   ├── index.ts
+│   │   │   ├── screens
+│   │   │   │   ├── OwnerDashboardWidget.tsx
+│   │   │   │   └── PropertyAnalyticsScreen.tsx
+│   │   │   ├── services
+│   │   │   │   └── index.ts
+│   │   │   └── types
+│   │   │       └── index.ts
+│   │   ├── auth
+│   │   │   ├── api
+│   │   │   │   ├── authApi.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── components
+│   │   │   ├── hooks
+│   │   │   ├── screens
+│   │   │   │   ├── ForgotPasswordScreen.tsx
+│   │   │   │   ├── LoginScreen.tsx
+│   │   │   │   ├── OTPVerificationScreen.tsx
+│   │   │   │   ├── OnboardingScreen.tsx
+│   │   │   │   ├── RegisterScreen.tsx
+│   │   │   │   ├── ResetPasswordScreen.tsx
+│   │   │   │   ├── WelcomeScreen.tsx
+│   │   │   │   └── index.ts
+│   │   │   └── services
+│   │   │       └── index.ts
+│   │   ├── favorites
+│   │   │   ├── FavoritesNavigator.tsx
+│   │   │   ├── api
+│   │   │   │   ├── favoritesApi.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── components
+│   │   │   ├── hooks
+│   │   │   │   └── useFavorites.ts
+│   │   │   ├── index.ts
+│   │   │   ├── screens
+│   │   │   │   ├── FavoritesListScreen.tsx
+│   │   │   │   ├── PropertyCompareScreen.tsx
+│   │   │   │   └── index.ts
+│   │   │   └── services
+│   │   │       └── index.ts
+│   │   ├── kyc
+│   │   │   ├── api
+│   │   │   │   └── kycApi.ts
+│   │   │   └── hooks
+│   │   │       └── useKyc.ts
+│   │   ├── maps
+│   │   │   ├── components
+│   │   │   │   ├── LocationPickerModal.tsx
+│   │   │   │   ├── MapView.tsx
+│   │   │   │   ├── PropertyMarker.tsx
+│   │   │   │   ├── PropertyPreviewCard.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── hooks
+│   │   │   │   └── useMapProperties.ts
+│   │   │   └── services
+│   │   │       └── mapService.ts
+│   │   ├── messaging
+│   │   │   ├── MessagingNavigator.tsx
+│   │   │   ├── api
+│   │   │   │   ├── index.ts
+│   │   │   │   └── messagingApi.ts
+│   │   │   ├── components
+│   │   │   │   ├── AIChatAnalysis.tsx
+│   │   │   │   ├── ChatHeader.tsx
+│   │   │   │   ├── ChatInput.tsx
+│   │   │   │   ├── ConversationItem.tsx
+│   │   │   │   ├── EmptyConversations.tsx
+│   │   │   │   ├── FilterTabs.tsx
+│   │   │   │   ├── MessageBubble.tsx
+│   │   │   │   ├── QuickActionsMenu.tsx
+│   │   │   │   ├── TypingIndicator.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── hooks
+│   │   │   │   ├── index.ts
+│   │   │   │   └── useMessaging.ts
+│   │   │   ├── index.ts
+│   │   │   ├── providers
+│   │   │   │   └── SocketProvider.tsx
+│   │   │   ├── screens
+│   │   │   │   ├── ChatScreen.tsx
+│   │   │   │   ├── ConversationsListScreen.tsx
+│   │   │   │   ├── ReportScreen.tsx
+│   │   │   │   ├── TemplatesScreen.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── services
+│   │   │   │   ├── index.ts
+│   │   │   │   └── socketService.ts
+│   │   │   └── types.ts
+│   │   ├── monetization
+│   │   │   ├── api
+│   │   │   │   ├── index.ts
+│   │   │   │   └── monetizationApi.ts
+│   │   │   ├── hooks
+│   │   │   │   ├── index.ts
+│   │   │   │   └── usePayments.ts
+│   │   │   ├── index.ts
+│   │   │   ├── screens
+│   │   │   │   ├── BoostPurchaseScreen.tsx
+│   │   │   │   └── PricingScreen.tsx
+│   │   │   ├── services
+│   │   │   │   ├── index.ts
+│   │   │   │   └── paymentService.ts
+│   │   │   └── types.ts
+│   │   ├── notifications
+│   │   │   ├── api
+│   │   │   │   ├── index.ts
+│   │   │   │   └── notificationsApi.ts
+│   │   │   ├── components
+│   │   │   │   ├── NotificationItem.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── hooks
+│   │   │   │   └── useNotifications.ts
+│   │   │   ├── index.ts
+│   │   │   ├── providers
+│   │   │   │   └── PushNotificationsProvider.tsx
+│   │   │   ├── screens
+│   │   │   │   ├── NotificationPreferencesScreen.tsx
+│   │   │   │   ├── NotificationsCenterScreen.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── services
+│   │   │   │   └── index.ts
+│   │   │   └── types.ts
+│   │   ├── profile
+│   │   │   ├── api
+│   │   │   │   ├── index.ts
+│   │   │   │   └── userApi.ts
+│   │   │   ├── components
+│   │   │   │   ├── Avatar.tsx
+│   │   │   │   ├── ProfileMenuItem.tsx
+│   │   │   │   ├── ProfileSection.tsx
+│   │   │   │   ├── RatingBadge.tsx
+│   │   │   │   ├── SettingsToggle.tsx
+│   │   │   │   ├── StatCard.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── hooks
+│   │   │   │   └── useUser.ts
+│   │   │   ├── index.ts
+│   │   │   ├── screens
+│   │   │   │   ├── ChangePasswordScreen.tsx
+│   │   │   │   ├── EditProfileScreen.tsx
+│   │   │   │   ├── NotificationSettingsScreen.tsx
+│   │   │   │   ├── ProfileScreen.tsx
+│   │   │   │   ├── PublicProfileScreen.tsx
+│   │   │   │   ├── ReviewsScreen.tsx
+│   │   │   │   ├── SettingsScreen.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   └── verification
+│   │   │   │       ├── IdentityVerificationScreen.tsx
+│   │   │   │       ├── OwnershipVerificationScreen.tsx
+│   │   │   │       ├── VerificationHubScreen.tsx
+│   │   │   │       └── index.ts
+│   │   │   └── services
+│   │   │       └── index.ts
+│   │   ├── properties
+│   │   │   ├── api
+│   │   │   │   ├── index.ts
+│   │   │   │   └── propertiesApi.ts
+│   │   │   ├── components
+│   │   │   │   ├── AIAnalysisWidget.tsx
+│   │   │   │   ├── AmenitySelector.tsx
+│   │   │   │   ├── PhotoUploader.tsx
+│   │   │   │   ├── PropertyCard.tsx
+│   │   │   │   ├── PropertyTypeSelector.tsx
+│   │   │   │   ├── TransactionTypeToggle.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── hooks
+│   │   │   │   └── useProperties.ts
+│   │   │   ├── screens
+│   │   │   │   ├── CreatePropertyWizard.tsx
+│   │   │   │   ├── EditPropertyScreen.tsx
+│   │   │   │   ├── MyPropertiesScreen.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   └── steps
+│   │   │   │       ├── CharacteristicsStep.tsx
+│   │   │   │       ├── LocationStep.tsx
+│   │   │   │       ├── PhotosStep.tsx
+│   │   │   │       ├── PreviewStep.tsx
+│   │   │   │       ├── PricingStep.tsx
+│   │   │   │       └── PropertyTypeStep.tsx
+│   │   │   └── services
+│   │   │       └── index.ts
+│   │   ├── search
+│   │   │   ├── api
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── savedSearchesApi.ts
+│   │   │   │   └── searchApi.ts
+│   │   │   ├── components
+│   │   │   │   ├── FilterChips.tsx
+│   │   │   │   ├── QuickFilters.tsx
+│   │   │   │   ├── SearchBar.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── hooks
+│   │   │   │   ├── useSavedSearches.ts
+│   │   │   │   └── useSearch.ts
+│   │   │   ├── screens
+│   │   │   │   ├── FiltersScreen.tsx
+│   │   │   │   ├── HomeScreen.tsx
+│   │   │   │   ├── MapSearchScreen.tsx
+│   │   │   │   ├── PropertyDetailScreen.tsx
+│   │   │   │   ├── SavedSearchesScreen.tsx
+│   │   │   │   ├── SearchResultsScreen.tsx
+│   │   │   │   └── index.ts
+│   │   │   └── services
+│   │   │       └── index.ts
+│   │   ├── tutorial
+│   │   │   ├── components
+│   │   │   │   ├── SpotlightMask.tsx
+│   │   │   │   ├── TutorialGate.tsx
+│   │   │   │   ├── TutorialOverlay.tsx
+│   │   │   │   ├── TutorialProgress.tsx
+│   │   │   │   ├── TutorialPromptModal.tsx
+│   │   │   │   ├── TutorialTooltip.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── constants.ts
+│   │   │   ├── contexts
+│   │   │   │   └── TutorialContext.tsx
+│   │   │   ├── hooks
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── useTutorial.ts
+│   │   │   │   └── useTutorialTarget.ts
+│   │   │   ├── index.ts
+│   │   │   ├── services
+│   │   │   │   └── index.ts
+│   │   │   └── types.ts
+│   │   └── viewings
+│   │       ├── api
+│   │       │   ├── index.ts
+│   │       │   └── viewingsApi.ts
+│   │       ├── components
+│   │       │   ├── CalendarSelector.tsx
+│   │       │   ├── TimeSlotPicker.tsx
+│   │       │   ├── ViewingCard.tsx
+│   │       │   └── index.ts
+│   │       ├── hooks
+│   │       │   └── useViewings.ts
+│   │       ├── index.ts
+│   │       ├── screens
+│   │       │   ├── AvailabilitySettingsScreen.tsx
+│   │       │   ├── RequestViewingScreen.tsx
+│   │       │   ├── ViewingDetailScreen.tsx
+│   │       │   ├── ViewingsListScreen.tsx
+│   │       │   └── index.ts
+│   │       ├── services
+│   │       │   ├── index.ts
+│   │       │   └── viewingMapper.ts
+│   │       └── types.ts
+│   └── shared
+│       ├── components
+│       │   ├── AmenitySelector.tsx
+│       │   ├── AuthRequiredScreen.tsx
+│       │   ├── Badge.tsx
+│       │   ├── Button.tsx
+│       │   ├── Card.tsx
+│       │   ├── Checkbox.tsx
+│       │   ├── Chip.tsx
+│       │   ├── Divider.tsx
+│       │   ├── EmptyState.tsx
+│       │   ├── IconButton.tsx
+│       │   ├── Input.tsx
+│       │   ├── OTPInput.tsx
+│       │   ├── OwnerDashboardWidget.tsx
+│       │   ├── PasswordStrength.tsx
+│       │   ├── ProgressBar.tsx
+│       │   ├── PropertyCard.tsx
+│       │   ├── ScreenHeader.tsx
+│       │   ├── Skeleton.tsx
+│       │   ├── SocialButton.tsx
+│       │   ├── VerificationRequiredScreen.tsx
+│       │   └── index.ts
+│       ├── hooks
+│       │   ├── index.ts
+│       │   ├── useDebounce.ts
+│       │   ├── useGeolocation.ts
+│       │   ├── useRequireAuth.ts
+│       │   └── useRequireVerification.ts
+│       ├── services
+│       │   ├── aiService.ts
+│       │   ├── favoritesService.ts
+│       │   ├── index.ts
+│       │   ├── messagingService.ts
+│       │   ├── propertiesService.ts
+│       │   └── tutorialService.ts
+│       ├── styles
+│       │   └── scrollViewStyles.ts
+│       ├── types
+│       │   ├── common.ts
+│       │   └── index.ts
+│       └── utils
+│           ├── dateUtils.ts
+│           ├── formatters.ts
+│           ├── index.ts
+│           └── validators.ts
+├── structura.txt
+└── tsconfig.json
+
+117 directories, 300 files

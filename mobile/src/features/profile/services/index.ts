@@ -7,3 +7,14 @@ export {
   useUpdateProfile,
   useUploadAvatar,
 } from '../hooks/useUser';
+
+export {
+  useUserReviews,
+  useUserReviewStats,
+  useReview,
+  useCreateReview,
+  useRespondToReview,
+  useToggleReviewHelpful,
+  useReportReview,
+  reviewsKeys,
+} from '../hooks/useReviews';

@@ -273,6 +273,97 @@ export class CronService {
   }
 
   // ========================================================================
+  // ⭐ VIEWING COMPLETION & FEEDBACK REQUESTS
+  // ========================================================================
+
+  /**
+   * Marchează vizionările ca finalizate după ce a trecut ora programată
+   * și trimite notificări pentru a cere feedback
+   * Rulează la fiecare 30 de minute
+   */
+  @Cron('*/30 * * * *') // Every 30 minutes
+  async completeViewingsAndRequestFeedback() {
+    this.logger.log('⭐ [CRON] Checking for completed viewings...');
+
+    try {
+      const now = new Date();
+      // Vizionările care au trecut cu cel puțin 1 oră
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+      // Găsește vizionările acceptate care au trecut
+      const pastViewings = await Viewing.findAll({
+        where: {
+          status: 'accepted',
+          slot: {
+            [Op.lt]: oneHourAgo,
+          },
+        },
+        include: [
+          { model: User, as: 'seeker', attributes: ['id', 'firstName'] },
+        ],
+      });
+
+      let completedCount = 0;
+      let notificationsSent = 0;
+
+      for (const viewing of pastViewings) {
+        // Marchează ca finalizată
+        viewing.status = 'completed';
+        await viewing.save();
+        completedCount++;
+
+        // Trimite notificare pentru feedback dacă nu a fost trimisă
+        if (!viewing.feedbackRequestSent) {
+          const seekerName = (viewing as any).seeker?.firstName || 'utilizator';
+
+          // Lazy import pentru a obține ownerId din listing
+          const { Listing } = await import('../../db/entities/listing.entity.js');
+          const listing = await Listing.findByPk(viewing.propertyId, {
+            attributes: ['id', 'ownerId', 'title'],
+          });
+
+          if (listing) {
+            // Notificare pentru seeker (cel care a vizionat)
+            await this.notificationService.create(viewing.seekerId, {
+              type: 'feedback_request',
+              title: '⭐ Cum a fost vizionarea?',
+              body: `Lasă un feedback despre vizionarea pentru "${listing.title}"`,
+              metadata: {
+                viewingId: viewing.id,
+                propertyId: viewing.propertyId,
+              },
+            });
+
+            // Notificare pentru owner (proprietar)
+            await this.notificationService.create(listing.ownerId, {
+              type: 'feedback_request',
+              title: '⭐ Evaluează vizitatul',
+              body: `Lasă un feedback despre ${seekerName} care a vizionat proprietatea ta`,
+              metadata: {
+                viewingId: viewing.id,
+                propertyId: viewing.propertyId,
+              },
+            });
+
+            notificationsSent += 2;
+          }
+
+          viewing.feedbackRequestSent = true;
+          await viewing.save();
+        }
+      }
+
+      if (completedCount > 0) {
+        this.logger.log(
+          `✅ [CRON] Marked ${completedCount} viewings as completed, sent ${notificationsSent} feedback requests`,
+        );
+      }
+    } catch (error: any) {
+      this.logger.error(`❌ [CRON] Viewing completion check failed: ${error.message}`);
+    }
+  }
+
+  // ========================================================================
   // 🧹 CLEANUP JOBS
   // ========================================================================
 

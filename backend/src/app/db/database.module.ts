@@ -22,6 +22,7 @@ import { UserSubscription } from './entities/user-subscription.entity.js';
 import { PromotionPlan } from './entities/promotion-plan.entity.js';
 import { ListingPromotion } from './entities/listing-promotion.entity.js';
 import { Transaction } from './entities/transaction.entity.js';
+import { Review } from './entities/review.entity.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
@@ -64,6 +65,8 @@ pg.defaults.parseInt8 = true;
             PromotionPlan,
             ListingPromotion,
             Transaction,
+            // Reviews
+            Review,
           ],
           synchronize: true,
           sync: { alter: true }, // Force alter to add missing columns

@@ -1,6 +1,6 @@
 /**
  * RIVA - Reviews Screen
- * Display and add user reviews
+ * Display and add user reviews with real API data
  */
 
 import React, { useState, useCallback } from 'react';
@@ -16,167 +16,38 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Star,
   ThumbsUp,
-  MessageCircle,
   Flag,
-  Send,
   X,
-  Filter,
-  TrendingUp,
   Award,
   CheckCircle,
 } from 'lucide-react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
+import { ProfileStackParamList } from '@/app/navigation/types';
 import Button from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ScreenHeader } from '@/shared/components';
+import {
+  useUserReviews,
+  useUserReviewStats,
+  useToggleReviewHelpful,
+  useReportReview,
+  useRespondToReview,
+} from '../hooks/useReviews';
+import { IReview, IReviewStats } from '../api/reviewsApi';
 
 // ============================================
 // TYPES
 // ============================================
 
-interface Review {
-  id: string;
-  author: {
-    id: string;
-    name: string;
-    avatar?: string;
-    isVerified: boolean;
-  };
-  rating: number;
-  title: string;
-  content: string;
-  date: string;
-  helpful: number;
-  isHelpful?: boolean;
-  response?: {
-    content: string;
-    date: string;
-  };
-  transactionType?: 'buyer' | 'seller' | 'renter' | 'landlord';
-  propertyTitle?: string;
-}
-
-interface ReviewStats {
-  average: number;
-  total: number;
-  distribution: {
-    5: number;
-    4: number;
-    3: number;
-    2: number;
-    1: number;
-  };
-  responseRate: number;
-}
-
-type ReviewsScreenParams = {
-  userId?: string;
-  isOwnProfile?: boolean;
-};
-
-// ============================================
-// MOCK DATA
-// ============================================
-
-const MOCK_STATS: ReviewStats = {
-  average: 4.7,
-  total: 23,
-  distribution: {
-    5: 15,
-    4: 5,
-    3: 2,
-    2: 1,
-    1: 0,
-  },
-  responseRate: 87,
-};
-
-const MOCK_REVIEWS: Review[] = [
-  {
-    id: 'rev-1',
-    author: {
-      id: 'user-1',
-      name: 'Maria Popescu',
-      isVerified: true,
-    },
-    rating: 5,
-    title: 'Experiență excelentă!',
-    content: 'Am închiriat un apartament de la acest proprietar și totul a fost perfect. Comunicare rapidă, apartamentul exact ca în poze, foarte curat și bine întreținut. Recomand cu încredere!',
-    date: '2026-01-15',
-    helpful: 12,
-    isHelpful: false,
-    transactionType: 'renter',
-    propertyTitle: 'Apartament 2 camere, Drumul Taberei',
-    response: {
-      content: 'Mulțumim pentru recenzie! Ne bucurăm că experiența a fost una plăcută. Succes în continuare!',
-      date: '2026-01-16',
-    },
-  },
-  {
-    id: 'rev-2',
-    author: {
-      id: 'user-2',
-      name: 'Andrei Ionescu',
-      isVerified: true,
-    },
-    rating: 5,
-    title: 'Proprietar de încredere',
-    content: 'Am cumpărat o casă și întregul proces a fost transparent. Toate documentele în regulă, fără surprize neplăcute. Foarte profesionist!',
-    date: '2026-01-10',
-    helpful: 8,
-    transactionType: 'buyer',
-    propertyTitle: 'Casă 4 camere, Pipera',
-  },
-  {
-    id: 'rev-3',
-    author: {
-      id: 'user-3',
-      name: 'Elena Dumitrescu',
-      isVerified: false,
-    },
-    rating: 4,
-    title: 'Bun, dar puțin lent la răspuns',
-    content: 'Apartamentul e foarte frumos și proprietarul a fost de treabă. Singura observație e că a durat câteva zile până am primit răspuns la întrebări. În rest, totul ok.',
-    date: '2026-01-05',
-    helpful: 4,
-    transactionType: 'renter',
-    propertyTitle: 'Garsonieră, Unirii',
-  },
-  {
-    id: 'rev-4',
-    author: {
-      id: 'user-4',
-      name: 'Bogdan Marinescu',
-      isVerified: true,
-    },
-    rating: 5,
-    title: 'Super experiență',
-    content: 'Tranzacție rapidă și fără probleme. Proprietarul a fost foarte flexibil cu programul vizionărilor.',
-    date: '2025-12-28',
-    helpful: 6,
-    transactionType: 'buyer',
-  },
-  {
-    id: 'rev-5',
-    author: {
-      id: 'user-5',
-      name: 'Cristina Popa',
-      isVerified: true,
-    },
-    rating: 3,
-    title: 'Experiență medie',
-    content: 'Apartamentul era ok, dar au fost unele discrepanțe între poze și realitate. Comunicarea a fost bună totuși.',
-    date: '2025-12-20',
-    helpful: 2,
-    transactionType: 'renter',
-  },
-];
+type ReviewsScreenRouteProp = RouteProp<ProfileStackParamList, 'Reviews'>;
 
 // ============================================
 // STAR RATING COMPONENT
@@ -222,12 +93,18 @@ const StarRating: React.FC<StarRatingProps> = ({
 // ============================================
 
 interface ReviewCardProps {
-  review: Review;
+  review: IReview;
   onHelpful: () => void;
   onReport: () => void;
+  isHelpfulLoading?: boolean;
 }
 
-const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpful, onReport }) => {
+const ReviewCard: React.FC<ReviewCardProps> = ({
+  review,
+  onHelpful,
+  onReport,
+  isHelpfulLoading,
+}) => {
   const { theme } = useTheme();
 
   const getTransactionLabel = () => {
@@ -269,15 +146,15 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpful, onReport }) 
             ]}
           >
             <Text style={[styles.avatarText, { color: theme.colors.primary.main }]}>
-              {review.author.name.charAt(0)}
+              {review.author?.name?.charAt(0) || '?'}
             </Text>
           </View>
           <View style={styles.authorDetails}>
             <View style={styles.authorNameRow}>
               <Text style={[styles.authorName, { color: theme.colors.textPrimary }]}>
-                {review.author.name}
+                {review.author?.name || 'Utilizator'}
               </Text>
-              {review.author.isVerified && (
+              {review.author?.isVerified && (
                 <CheckCircle size={14} color={theme.colors.accent.main} />
               )}
             </View>
@@ -291,12 +168,16 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpful, onReport }) 
       </View>
 
       {/* Content */}
-      <Text style={[styles.reviewTitle, { color: theme.colors.textPrimary }]}>
-        {review.title}
-      </Text>
-      <Text style={[styles.reviewContent, { color: theme.colors.textSecondary }]}>
-        {review.content}
-      </Text>
+      {review.title && (
+        <Text style={[styles.reviewTitle, { color: theme.colors.textPrimary }]}>
+          {review.title}
+        </Text>
+      )}
+      {review.content && (
+        <Text style={[styles.reviewContent, { color: theme.colors.textSecondary }]}>
+          {review.content}
+        </Text>
+      )}
 
       {/* Property reference */}
       {review.propertyTitle && (
@@ -321,12 +202,20 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpful, onReport }) 
 
       {/* Actions */}
       <View style={[styles.reviewActions, { borderTopColor: theme.colors.border }]}>
-        <TouchableOpacity style={styles.helpfulButton} onPress={onHelpful}>
-          <ThumbsUp
-            size={16}
-            color={review.isHelpful ? theme.colors.primary.main : theme.colors.textTertiary}
-            fill={review.isHelpful ? theme.colors.primary.main : 'transparent'}
-          />
+        <TouchableOpacity
+          style={styles.helpfulButton}
+          onPress={onHelpful}
+          disabled={isHelpfulLoading}
+        >
+          {isHelpfulLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.primary.main} />
+          ) : (
+            <ThumbsUp
+              size={16}
+              color={review.isHelpful ? theme.colors.primary.main : theme.colors.textTertiary}
+              fill={review.isHelpful ? theme.colors.primary.main : 'transparent'}
+            />
+          )}
           <Text
             style={[
               styles.helpfulText,
@@ -349,39 +238,33 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpful, onReport }) 
 };
 
 // ============================================
-// ADD REVIEW MODAL
+// RESPOND MODAL
 // ============================================
 
-interface AddReviewModalProps {
+interface RespondModalProps {
   visible: boolean;
+  reviewId: string;
   onClose: () => void;
-  onSubmit: (review: { rating: number; title: string; content: string }) => void;
+  onSubmit: (response: string) => void;
+  isLoading?: boolean;
 }
 
-const AddReviewModal: React.FC<AddReviewModalProps> = ({ visible, onClose, onSubmit }) => {
+const RespondModal: React.FC<RespondModalProps> = ({
+  visible,
+  onClose,
+  onSubmit,
+  isLoading,
+}) => {
   const { theme } = useTheme();
-  const [rating, setRating] = useState(0);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [response, setResponse] = useState('');
 
   const handleSubmit = () => {
-    if (rating === 0) {
-      Alert.alert('Eroare', 'Te rugăm să selectezi un rating.');
+    if (response.length < 10) {
+      Alert.alert('Eroare', 'Răspunsul trebuie să aibă cel puțin 10 caractere.');
       return;
     }
-    if (title.length < 5) {
-      Alert.alert('Eroare', 'Titlul trebuie să aibă cel puțin 5 caractere.');
-      return;
-    }
-    if (content.length < 20) {
-      Alert.alert('Eroare', 'Recenzia trebuie să aibă cel puțin 20 de caractere.');
-      return;
-    }
-
-    onSubmit({ rating, title, content });
-    setRating(0);
-    setTitle('');
-    setContent('');
+    onSubmit(response);
+    setResponse('');
   };
 
   return (
@@ -391,91 +274,46 @@ const AddReviewModal: React.FC<AddReviewModalProps> = ({ visible, onClose, onSub
         style={styles.modalContainer}
       >
         <View style={[styles.modalContent, { backgroundColor: theme.colors.background }]}>
-          {/* Modal Header */}
           <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border }]}>
             <TouchableOpacity onPress={onClose}>
               <X size={24} color={theme.colors.textSecondary} />
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>
-              Scrie o recenzie
+              Răspunde la recenzie
             </Text>
             <View style={{ width: 24 }} />
           </View>
 
-          <ScrollView style={styles.modalBody}>
-            {/* Rating */}
-            <View style={styles.ratingSection}>
-              <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>
-                Rating general *
-              </Text>
-              <StarRating rating={rating} size={32} interactive onRatingChange={setRating} />
-              <Text style={[styles.ratingHint, { color: theme.colors.textSecondary }]}>
-                {rating === 0 && 'Selectează un rating'}
-                {rating === 1 && 'Foarte slab'}
-                {rating === 2 && 'Slab'}
-                {rating === 3 && 'Satisfăcător'}
-                {rating === 4 && 'Bun'}
-                {rating === 5 && 'Excelent'}
-              </Text>
-            </View>
+          <View style={styles.modalBody}>
+            <TextInput
+              style={[
+                styles.textArea,
+                {
+                  backgroundColor: theme.colors.surface,
+                  color: theme.colors.textPrimary,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              value={response}
+              onChangeText={setResponse}
+              placeholder="Scrie răspunsul tău..."
+              placeholderTextColor={theme.colors.textTertiary}
+              multiline
+              numberOfLines={5}
+              maxLength={500}
+              textAlignVertical="top"
+            />
+            <Text style={[styles.charCount, { color: theme.colors.textTertiary }]}>
+              {response.length}/500
+            </Text>
+          </View>
 
-            {/* Title */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>
-                Titlu recenzie *
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    color: theme.colors.textPrimary,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Ex: Experiență excelentă!"
-                placeholderTextColor={theme.colors.textTertiary}
-                maxLength={100}
-              />
-            </View>
-
-            {/* Content */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>
-                Recenzia ta *
-              </Text>
-              <TextInput
-                style={[
-                  styles.textArea,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    color: theme.colors.textPrimary,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-                value={content}
-                onChangeText={setContent}
-                placeholder="Descrie experiența ta în detaliu..."
-                placeholderTextColor={theme.colors.textTertiary}
-                multiline
-                numberOfLines={5}
-                maxLength={500}
-                textAlignVertical="top"
-              />
-              <Text style={[styles.charCount, { color: theme.colors.textTertiary }]}>
-                {content.length}/500
-              </Text>
-            </View>
-          </ScrollView>
-
-          {/* Submit Button */}
           <View style={[styles.modalFooter, { borderTopColor: theme.colors.border }]}>
             <Button
-              title="Publică recenzia"
+              title="Trimite răspunsul"
               onPress={handleSubmit}
-              disabled={rating === 0 || title.length < 5 || content.length < 20}
+              disabled={response.length < 10}
+              loading={isLoading}
             />
           </View>
         </View>
@@ -490,38 +328,57 @@ const AddReviewModal: React.FC<AddReviewModalProps> = ({ visible, onClose, onSub
 
 const ReviewsScreen: React.FC = () => {
   const { theme } = useTheme();
+  const route = useRoute<ReviewsScreenRouteProp>();
+  const { user } = useAuth();
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS);
-  const [stats, setStats] = useState<ReviewStats>(MOCK_STATS);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const { userId: routeUserId, isOwnProfile: routeIsOwnProfile } = route.params || {};
+
+  // Determine which user's reviews to show
+  const targetUserId = routeUserId || (user?.id ? String(user.id) : undefined);
+  const isOwnProfile = routeIsOwnProfile ?? (targetUserId === String(user?.id));
+
   const [filter, setFilter] = useState<'all' | 'positive' | 'negative'>('all');
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const [helpfulLoadingId, setHelpfulLoadingId] = useState<string | null>(null);
 
-  const isOwnProfile = true; // This would come from route params
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
-
-  const filteredReviews = reviews.filter((review) => {
-    if (filter === 'positive') return review.rating >= 4;
-    if (filter === 'negative') return review.rating <= 2;
-    return true;
+  // API Queries
+  const {
+    data: reviewsData,
+    isLoading: reviewsLoading,
+    refetch: refetchReviews,
+    isRefetching,
+  } = useUserReviews(targetUserId, {
+    minRating: filter === 'positive' ? 4 : filter === 'negative' ? 1 : undefined,
+    maxRating: filter === 'positive' ? 5 : filter === 'negative' ? 2 : undefined,
   });
 
-  const handleHelpful = (reviewId: string) => {
-    setReviews((prev) =>
-      prev.map((r) =>
-        r.id === reviewId
-          ? {
-              ...r,
-              isHelpful: !r.isHelpful,
-              helpful: r.isHelpful ? r.helpful - 1 : r.helpful + 1,
-            }
-          : r
-      )
-    );
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useUserReviewStats(targetUserId);
+
+  // Mutations
+  const toggleHelpfulMutation = useToggleReviewHelpful();
+  const reportMutation = useReportReview();
+  const respondMutation = useRespondToReview();
+
+  const reviews = reviewsData?.data || [];
+  const isLoading = reviewsLoading || statsLoading;
+  const refreshing = isRefetching;
+
+  const onRefresh = useCallback(() => {
+    refetchReviews();
+    refetchStats();
+  }, [refetchReviews, refetchStats]);
+
+  const handleHelpful = async (reviewId: string) => {
+    setHelpfulLoadingId(reviewId);
+    try {
+      await toggleHelpfulMutation.mutateAsync(reviewId);
+    } finally {
+      setHelpfulLoadingId(null);
+    }
   };
 
   const handleReport = (reviewId: string) => {
@@ -533,30 +390,29 @@ const ReviewsScreen: React.FC = () => {
         {
           text: 'Raportează',
           style: 'destructive',
-          onPress: () => Alert.alert('Mulțumim', 'Recenzia a fost raportată și va fi verificată.'),
+          onPress: async () => {
+            try {
+              await reportMutation.mutateAsync({ reviewId, reason: 'Conținut inadecvat' });
+              Alert.alert('Mulțumim', 'Recenzia a fost raportată și va fi verificată.');
+            } catch (error) {
+              Alert.alert('Eroare', 'Nu s-a putut raporta recenzia.');
+            }
+          },
         },
       ]
     );
   };
 
-  const handleAddReview = (review: { rating: number; title: string; content: string }) => {
-    const newReview: Review = {
-      id: `rev-${Date.now()}`,
-      author: {
-        id: 'current-user',
-        name: 'Eu',
-        isVerified: true,
-      },
-      rating: review.rating,
-      title: review.title,
-      content: review.content,
-      date: new Date().toISOString().split('T')[0],
-      helpful: 0,
-    };
-
-    setReviews((prev) => [newReview, ...prev]);
-    setShowAddModal(false);
-    Alert.alert('Succes!', 'Recenzia ta a fost publicată.');
+  const handleRespond = async (response: string) => {
+    if (!selectedReviewId) return;
+    try {
+      await respondMutation.mutateAsync({ reviewId: selectedReviewId, response });
+      setSelectedReviewId(null);
+      Alert.alert('Succes', 'Răspunsul a fost publicat.');
+      refetchReviews();
+    } catch (error) {
+      Alert.alert('Eroare', 'Nu s-a putut trimite răspunsul.');
+    }
   };
 
   const getRatingColor = (average: number) => {
@@ -566,21 +422,34 @@ const ReviewsScreen: React.FC = () => {
     return theme.colors.secondary.error;
   };
 
+  // Default stats if loading
+  const displayStats: IReviewStats = stats || {
+    average: 0,
+    total: 0,
+    distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+    responseRate: 0,
+  };
+
+  if (isLoading && !reviews.length) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScreenHeader title="Recenzii" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
-      <ScreenHeader
-        title="Recenzii"
-        rightSlot={
-          !isOwnProfile ? (
-            <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
-              <MessageCircle size={22} color={theme.colors.primary.main} />
-            </TouchableOpacity>
-          ) : undefined
-        }
-      />
+      <ScreenHeader title="Recenzii" />
 
       <ScrollView
         style={styles.scrollView}
@@ -606,12 +475,12 @@ const ReviewsScreen: React.FC = () => {
           ]}
         >
           <View style={styles.statsMain}>
-            <Text style={[styles.averageRating, { color: getRatingColor(stats.average) }]}>
-              {stats.average.toFixed(1)}
+            <Text style={[styles.averageRating, { color: getRatingColor(displayStats.average) }]}>
+              {displayStats.average.toFixed(1)}
             </Text>
-            <StarRating rating={Math.round(stats.average)} size={20} />
+            <StarRating rating={Math.round(displayStats.average)} size={20} />
             <Text style={[styles.totalReviews, { color: theme.colors.textSecondary }]}>
-              {stats.total} recenzii
+              {displayStats.total} recenzii
             </Text>
           </View>
 
@@ -627,14 +496,16 @@ const ReviewsScreen: React.FC = () => {
                     style={[
                       styles.distributionFill,
                       {
-                        width: `${(stats.distribution[star as keyof typeof stats.distribution] / stats.total) * 100}%`,
+                        width: displayStats.total > 0
+                          ? `${(displayStats.distribution[star as keyof typeof displayStats.distribution] / displayStats.total) * 100}%`
+                          : '0%',
                         backgroundColor: theme.colors.secondary.warning,
                       },
                     ]}
                   />
                 </View>
                 <Text style={[styles.distributionCount, { color: theme.colors.textSecondary }]}>
-                  {stats.distribution[star as keyof typeof stats.distribution]}
+                  {displayStats.distribution[star as keyof typeof displayStats.distribution]}
                 </Text>
               </View>
             ))}
@@ -644,7 +515,7 @@ const ReviewsScreen: React.FC = () => {
           <View style={[styles.responseRateSection, { borderTopColor: theme.colors.border }]}>
             <Award size={18} color={theme.colors.accent.main} />
             <Text style={[styles.responseRateText, { color: theme.colors.textSecondary }]}>
-              Rata de răspuns: <Text style={{ color: theme.colors.accent.main, fontWeight: '600' }}>{stats.responseRate}%</Text>
+              Rata de răspuns: <Text style={{ color: theme.colors.accent.main, fontWeight: '600' }}>{displayStats.responseRate}%</Text>
             </Text>
           </View>
         </View>
@@ -653,8 +524,8 @@ const ReviewsScreen: React.FC = () => {
         <View style={styles.filterTabs}>
           {[
             { id: 'all', label: 'Toate' },
-            { id: 'positive', label: '⭐ 4-5' },
-            { id: 'negative', label: '⭐ 1-2' },
+            { id: 'positive', label: '4-5' },
+            { id: 'negative', label: '1-2' },
           ].map((tab) => (
             <TouchableOpacity
               key={tab.id}
@@ -668,6 +539,12 @@ const ReviewsScreen: React.FC = () => {
               ]}
               onPress={() => setFilter(tab.id as typeof filter)}
             >
+              <Star
+                size={14}
+                color={filter === tab.id ? '#fff' : theme.colors.secondary.warning}
+                fill={filter === tab.id ? '#fff' : theme.colors.secondary.warning}
+                style={{ marginRight: 4 }}
+              />
               <Text
                 style={[
                   styles.filterTabText,
@@ -681,14 +558,15 @@ const ReviewsScreen: React.FC = () => {
         </View>
 
         {/* Reviews List */}
-        {filteredReviews.length > 0 ? (
+        {reviews.length > 0 ? (
           <View style={styles.reviewsList}>
-            {filteredReviews.map((review) => (
+            {reviews.map((review) => (
               <ReviewCard
                 key={review.id}
                 review={review}
                 onHelpful={() => handleHelpful(review.id)}
                 onReport={() => handleReport(review.id)}
+                isHelpfulLoading={helpfulLoadingId === review.id}
               />
             ))}
           </View>
@@ -705,21 +583,13 @@ const ReviewsScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* Add Review Button (for other profiles) */}
-      {!isOwnProfile && (
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: theme.colors.primary.main, ...theme.shadows.lg }]}
-          onPress={() => setShowAddModal(true)}
-        >
-          <Send size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
-
-      {/* Add Review Modal */}
-      <AddReviewModal
-        visible={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSubmit={handleAddReview}
+      {/* Respond Modal */}
+      <RespondModal
+        visible={!!selectedReviewId}
+        reviewId={selectedReviewId || ''}
+        onClose={() => setSelectedReviewId(null)}
+        onSubmit={handleRespond}
+        isLoading={respondMutation.isPending}
       />
     </SafeAreaView>
   );
@@ -733,9 +603,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  addButton: {
-    width: 44,
-    height: 44,
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -813,6 +682,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   filterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -936,16 +807,6 @@ const styles = StyleSheet.create({
   starButton: {
     padding: 2,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   // Modal styles
   modalContainer: {
     flex: 1,
@@ -969,31 +830,6 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     padding: 20,
-  },
-  ratingSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  ratingHint: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    marginTop: 12,
-  },
-  inputSection: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 8,
-  },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    fontFamily: 'Inter-Regular',
   },
   textArea: {
     height: 120,

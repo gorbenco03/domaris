@@ -34,10 +34,16 @@ export class Viewing extends ExtModel {
     slot!: Date;
 
     @Column({
-        type: DataType.ENUM('pending', 'accepted', 'rejected', 'cancelled'),
+        type: DataType.ENUM('pending', 'accepted', 'rejected', 'cancelled', 'completed', 'no_show'),
         defaultValue: 'pending',
     })
-    status!: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+    status!: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed' | 'no_show';
+
+    @Column({
+        type: DataType.BOOLEAN,
+        defaultValue: false,
+    })
+    feedbackRequestSent!: boolean;
 
     @Column(DataType.TEXT)
     notes?: string;
