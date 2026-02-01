@@ -16,6 +16,7 @@ import {
   Matches,
   IsPhoneNumber,
   IsNotEmpty,
+  IsBoolean,
 } from 'class-validator';
 
 // ============================================================================
@@ -25,6 +26,7 @@ import {
 /**
  * Înregistrare cu email - Pas 1 (trimite OTP)
  * NOTE: Nu mai există userType/role conform ADR-001
+ * GDPR: Requires mandatory consents for Terms, Privacy, GDPR
  */
 export class RegisterEmailDto {
   @ApiProperty({ example: 'user@example.com' })
@@ -48,6 +50,51 @@ export class RegisterEmailDto {
   @IsString()
   @IsOptional()
   lastName?: string;
+
+  // ============================================================================
+  // GDPR CONSENTS (MANDATORY)
+  // ============================================================================
+
+  @ApiProperty({
+    description: 'Acceptance of Terms & Conditions (mandatory)',
+    example: true
+  })
+  @IsBoolean({ message: 'Acceptarea Termenilor și Condițiilor este obligatorie' })
+  acceptTerms!: boolean;
+
+  @ApiProperty({
+    description: 'Acceptance of Privacy Policy (mandatory)',
+    example: true
+  })
+  @IsBoolean({ message: 'Acceptarea Politicii de Confidențialitate este obligatorie' })
+  acceptPrivacy!: boolean;
+
+  @ApiProperty({
+    description: 'Acceptance of GDPR data processing (mandatory)',
+    example: true
+  })
+  @IsBoolean({ message: 'Acceptarea prelucrării datelor conform GDPR este obligatorie' })
+  acceptGdpr!: boolean;
+
+  // ============================================================================
+  // OPTIONAL CONSENTS
+  // ============================================================================
+
+  @ApiPropertyOptional({
+    description: 'Consent for marketing communications (optional)',
+    example: false
+  })
+  @IsBoolean()
+  @IsOptional()
+  acceptMarketing?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Consent for analytics tracking (optional)',
+    example: false
+  })
+  @IsBoolean()
+  @IsOptional()
+  acceptAnalytics?: boolean;
 }
 
 /**
@@ -68,6 +115,7 @@ export class VerifyEmailOtpDto {
 
 /**
  * Înregistrare cu telefon (trimite OTP)
+ * GDPR: Requires mandatory consents for Terms, Privacy, GDPR
  */
 export class RegisterPhoneDto {
   @ApiProperty({ example: '+40712345678' })
@@ -93,6 +141,51 @@ export class RegisterPhoneDto {
   @IsString()
   @IsOptional()
   lastName?: string;
+
+  // ============================================================================
+  // GDPR CONSENTS (MANDATORY)
+  // ============================================================================
+
+  @ApiProperty({
+    description: 'Acceptance of Terms & Conditions (mandatory)',
+    example: true
+  })
+  @IsBoolean({ message: 'Acceptarea Termenilor și Condițiilor este obligatorie' })
+  acceptTerms!: boolean;
+
+  @ApiProperty({
+    description: 'Acceptance of Privacy Policy (mandatory)',
+    example: true
+  })
+  @IsBoolean({ message: 'Acceptarea Politicii de Confidențialitate este obligatorie' })
+  acceptPrivacy!: boolean;
+
+  @ApiProperty({
+    description: 'Acceptance of GDPR data processing (mandatory)',
+    example: true
+  })
+  @IsBoolean({ message: 'Acceptarea prelucrării datelor conform GDPR este obligatorie' })
+  acceptGdpr!: boolean;
+
+  // ============================================================================
+  // OPTIONAL CONSENTS
+  // ============================================================================
+
+  @ApiPropertyOptional({
+    description: 'Consent for marketing communications (optional)',
+    example: false
+  })
+  @IsBoolean()
+  @IsOptional()
+  acceptMarketing?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Consent for analytics tracking (optional)',
+    example: false
+  })
+  @IsBoolean()
+  @IsOptional()
+  acceptAnalytics?: boolean;
 }
 
 // ============================================================================

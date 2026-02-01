@@ -27,6 +27,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -74,8 +75,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'OTP sent', type: OtpSentResponseDto })
   @ApiResponse({ status: 400, description: 'Email already exists' })
   @HttpCode(HttpStatus.OK)
-  async register(@Body() body: RegisterEmailDto) {
-    return this.authService.registerEmail(body);
+  async register(@Body() body: RegisterEmailDto, @Req() req: any) {
+    return this.authService.registerEmail(body, req.ip, req.headers['user-agent']);
   }
 
   @Public()
@@ -95,8 +96,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'OTP sent', type: OtpSentResponseDto })
   @ApiResponse({ status: 400, description: 'Phone already exists' })
   @HttpCode(HttpStatus.OK)
-  async registerPhone(@Body() body: RegisterPhoneDto) {
-    return this.authService.registerPhone(body);
+  async registerPhone(@Body() body: RegisterPhoneDto, @Req() req: any) {
+    return this.authService.registerPhone(body, req.ip, req.headers['user-agent']);
   }
 
   // ============================================================================
@@ -109,12 +110,12 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @HttpCode(HttpStatus.OK)
-  async login(@Body() body: LoginDto) {
+  async login(@Body() body: LoginDto, @Req() req: any) {
     const user = await this.authService.validateUser(body.email, body.password);
     if (!user) {
       throw new Error('Invalid credentials');
     }
-    return this.authService.login(user);
+    return this.authService.login(user, req.ip, req.headers['user-agent']);
   }
 
   @Public()
@@ -146,8 +147,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with Google' })
   @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
   @HttpCode(HttpStatus.OK)
-  async googleAuth(@Body() body: GoogleAuthDto) {
-    return this.authService.googleLogin(body.idToken);
+  async googleAuth(@Body() body: GoogleAuthDto, @Req() req: any) {
+    return this.authService.googleLogin(body.idToken, req.ip, req.headers['user-agent']);
   }
 
   @Public()
@@ -155,8 +156,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Login with Apple' })
   @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
   @HttpCode(HttpStatus.OK)
-  async appleAuth(@Body() body: AppleAuthDto) {
-    return this.authService.appleLogin(body);
+  async appleAuth(@Body() body: AppleAuthDto, @Req() req: any) {
+    return this.authService.appleLogin(body, req.ip, req.headers['user-agent']);
   }
 
   // ============================================================================
@@ -263,7 +264,14 @@ export class AuthController {
   async logout(
     @CurrentUserId() userId: string,
     @Body() body: LogoutDto,
+    @Req() req: any,
   ) {
-    return this.authService.logout(body.refreshToken, userId, body.allDevices);
+    return this.authService.logout(
+      body.refreshToken,
+      userId,
+      body.allDevices,
+      req.ip,
+      req.headers['user-agent']
+    );
   }
 }

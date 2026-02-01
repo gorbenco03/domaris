@@ -40,6 +40,8 @@ import { OAuth2Client } from 'google-auth-library';
 import appleSignin from 'apple-signin-auth';
 import { EmailService } from '../core/email/email.service';
 import { SmsService } from '../core/sms/sms.service';
+import { AuditService } from '../core/audit/audit.service.js';
+import { ConsentService } from '../core/consent/consent.service.js';
 
 // OTP Configuration
 const OTP_LENGTH = 6;
@@ -55,6 +57,8 @@ export class AuthService {
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
+    private readonly auditService: AuditService,
+    private readonly consentService: ConsentService,
   ) {}
 
   // ============================================================================
@@ -64,13 +68,22 @@ export class AuthService {
   /**
    * Înregistrare cu email - Pas 1 (trimite OTP)
    * Salvează datele în Redis și trimite codul pe email
+   * GDPR: Validates and stores consent preferences
    */
-  async registerEmail(data: RegisterEmailDto) {
+  async registerEmail(data: RegisterEmailDto, ipAddress?: string, userAgent?: string) {
     const existingUser = await User.findOne({ where: { email: data.email } });
     if (existingUser) {
       throw new BadRequestException({
         code: 'EMAIL_ALREADY_EXISTS',
         message: 'Un cont cu acest email există deja',
+      });
+    }
+
+    // GDPR VALIDATION: All mandatory consents must be accepted
+    if (!data.acceptTerms || !data.acceptPrivacy || !data.acceptGdpr) {
+      throw new BadRequestException({
+        code: 'CONSENTS_REQUIRED',
+        message: 'Trebuie să accepți Termenii și Condițiile, Politica de Confidențialitate și prelucrarea datelor conform GDPR',
       });
     }
 
@@ -87,6 +100,16 @@ export class AuthService {
         password: hashedPassword,
         firstName: data.firstName,
         lastName: data.lastName,
+        // Store consent preferences
+        consents: {
+          acceptTerms: data.acceptTerms,
+          acceptPrivacy: data.acceptPrivacy,
+          acceptGdpr: data.acceptGdpr,
+          acceptMarketing: data.acceptMarketing,
+          acceptAnalytics: data.acceptAnalytics,
+        },
+        ipAddress,
+        userAgent,
       }),
     );
 
@@ -95,6 +118,7 @@ export class AuthService {
 
   /**
    * Verificare OTP Email - Pas 2 (finalizare înregistrare)
+   * GDPR: Creates consent records after successful registration
    */
   async verifyEmailOtp(data: VerifyEmailOtpDto) {
     const isValid = await this.verifyOtp(`register:email:${data.email}`, data.code);
@@ -115,7 +139,7 @@ export class AuthService {
       });
     }
 
-    const { email, password, firstName, lastName } = JSON.parse(pendingData);
+    const { email, password, firstName, lastName, consents, ipAddress, userAgent } = JSON.parse(pendingData);
 
     // Verificăm din nou dacă între timp s-a creat contul
     const existingUser = await User.findOne({ where: { email } });
@@ -134,6 +158,20 @@ export class AuthService {
       phoneVerified: false,
       isAdmin: false,
     });
+
+    // GDPR: Record consents
+    try {
+      await this.consentService.recordConsents(
+        user.id,
+        consents,
+        ipAddress,
+        userAgent
+      );
+    } catch (error) {
+      console.error('[CONSENT] Failed to record consents:', error);
+      // Don't block registration if consent recording fails
+      // But log it for investigation
+    }
 
     // Cleanup
     await this.redisClient.del(pendingKey);
@@ -174,10 +212,26 @@ export class AuthService {
   /**
    * Login cu email și parolă
    */
-  async login(user: User) {
+  async login(user: User, ipAddress?: string, userAgent?: string) {
     // Update last active
     user.lastActiveAt = new Date();
     await user.save();
+
+    // AUDIT LOG: Admin login
+    if (user.isAdmin) {
+      await this.auditService.log({
+        adminId: user.id,
+        adminEmail: user.email,
+        adminName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined,
+        action: 'ADMIN_LOGIN',
+        description: 'Admin logged in successfully',
+        ipAddress,
+        userAgent,
+      }).catch(err => {
+        // Don't block login if audit logging fails
+        console.error('[AUDIT] Failed to log admin login:', err);
+      });
+    }
 
     return this.createAuthResponse(user);
   }
@@ -188,13 +242,22 @@ export class AuthService {
 
   /**
    * Înregistrare cu telefon (pasul 1 - trimite OTP)
+   * GDPR: Validates and stores consent preferences
    */
-  async registerPhone(data: RegisterPhoneDto) {
+  async registerPhone(data: RegisterPhoneDto, ipAddress?: string, userAgent?: string) {
     const existingUser = await User.findOne({ where: { phone: data.phone } });
     if (existingUser) {
       throw new BadRequestException({
         code: 'PHONE_ALREADY_EXISTS',
         message: 'Un cont cu acest număr de telefon există deja',
+      });
+    }
+
+    // GDPR VALIDATION: All mandatory consents must be accepted
+    if (!data.acceptTerms || !data.acceptPrivacy || !data.acceptGdpr) {
+      throw new BadRequestException({
+        code: 'CONSENTS_REQUIRED',
+        message: 'Trebuie să accepți Termenii și Condițiile, Politica de Confidențialitate și prelucrarea datelor conform GDPR',
       });
     }
 
@@ -210,6 +273,16 @@ export class AuthService {
         password: hashedPassword,
         firstName: data.firstName,
         lastName: data.lastName,
+        // Store consent preferences
+        consents: {
+          acceptTerms: data.acceptTerms,
+          acceptPrivacy: data.acceptPrivacy,
+          acceptGdpr: data.acceptGdpr,
+          acceptMarketing: data.acceptMarketing,
+          acceptAnalytics: data.acceptAnalytics,
+        },
+        ipAddress,
+        userAgent,
       }),
     );
 
@@ -262,6 +335,7 @@ export class AuthService {
 
   /**
    * Verificare OTP telefon (finalizare login/register)
+   * GDPR: Creates consent records after successful registration
    */
   async verifyPhoneOtp(data: VerifyPhoneOtpDto) {
     const isRegister = await this.verifyOtp(`register:phone:${data.phone}`, data.code);
@@ -278,7 +352,7 @@ export class AuthService {
       throw new BadRequestException('Sesiunea de înregistrare a expirat');
     }
 
-    const { password, firstName, lastName } = JSON.parse(pendingData);
+    const { password, firstName, lastName, consents, ipAddress, userAgent } = JSON.parse(pendingData);
 
     const existing = await User.findOne({ where: { phone: data.phone } });
     if (existing) {
@@ -297,6 +371,20 @@ export class AuthService {
       isAdmin: false,
     });
 
+    // GDPR: Record consents
+    try {
+      await this.consentService.recordConsents(
+        user.id,
+        consents,
+        ipAddress,
+        userAgent
+      );
+    } catch (error) {
+      console.error('[CONSENT] Failed to record consents:', error);
+      // Don't block registration if consent recording fails
+      // But log it for investigation
+    }
+
     await this.redisClient.del(pendingKey);
     await this.redisClient.del(`otp:register:phone:${data.phone}`);
 
@@ -310,8 +398,9 @@ export class AuthService {
 
   /**
    * Login cu Google
+   * GDPR: Creates default consents for new OAuth users
    */
-  async googleLogin(idToken: string) {
+  async googleLogin(idToken: string, ipAddress?: string, userAgent?: string) {
     try {
       const ticket = await this.googleClient.verifyIdToken({
         idToken,
@@ -323,6 +412,7 @@ export class AuthService {
       const { email, sub: googleId, given_name, family_name } = payload;
 
       let user = await User.findOne({ where: { email } });
+      let isNewUser = false;
 
       if (!user) {
         // Create new user - ADR-001: No role selection
@@ -336,6 +426,7 @@ export class AuthService {
           phoneVerified: false,
           isAdmin: false,
         });
+        isNewUser = true;
       } else if (!user.googleId) {
         // Link existing account
         user.googleId = googleId;
@@ -346,6 +437,26 @@ export class AuthService {
           }
         }
         await user.save();
+      }
+
+      // GDPR: Record default consents for new OAuth users
+      if (isNewUser) {
+        try {
+          await this.consentService.recordConsents(
+            user.id,
+            {
+              acceptTerms: true,      // Implicit via OAuth
+              acceptPrivacy: true,    // Implicit via OAuth
+              acceptGdpr: true,       // Implicit via OAuth
+              acceptMarketing: false, // Default: no marketing
+              acceptAnalytics: false, // Default: no analytics
+            },
+            ipAddress,
+            userAgent
+          );
+        } catch (error) {
+          console.error('[CONSENT] Failed to record OAuth consents:', error);
+        }
       }
 
       user.lastActiveAt = new Date();
@@ -360,8 +471,9 @@ export class AuthService {
 
   /**
    * Login cu Apple
+   * GDPR: Creates default consents for new OAuth users
    */
-  async appleLogin(data: AppleAuthDto) {
+  async appleLogin(data: AppleAuthDto, ipAddress?: string, userAgent?: string) {
     try {
       const { identityToken, fullName, email: providedEmail } = data;
 
@@ -378,6 +490,7 @@ export class AuthService {
       }
 
       let user = await User.findOne({ where: { email: userEmail } });
+      let isNewUser = false;
 
       if (!user) {
         // Name is only sent on first login by Apple
@@ -394,6 +507,7 @@ export class AuthService {
           phoneVerified: false,
           isAdmin: false,
         });
+        isNewUser = true;
       } else if (!user.appleId) {
         user.appleId = appleId;
         if (!user.emailVerified) {
@@ -403,6 +517,26 @@ export class AuthService {
           }
         }
         await user.save();
+      }
+
+      // GDPR: Record default consents for new OAuth users
+      if (isNewUser) {
+        try {
+          await this.consentService.recordConsents(
+            user.id,
+            {
+              acceptTerms: true,      // Implicit via OAuth
+              acceptPrivacy: true,    // Implicit via OAuth
+              acceptGdpr: true,       // Implicit via OAuth
+              acceptMarketing: false, // Default: no marketing
+              acceptAnalytics: false, // Default: no analytics
+            },
+            ipAddress,
+            userAgent
+          );
+        } catch (error) {
+          console.error('[CONSENT] Failed to record OAuth consents:', error);
+        }
       }
 
       user.lastActiveAt = new Date();
@@ -648,7 +782,13 @@ export class AuthService {
   /**
    * Logout (revoke refresh token)
    */
-  async logout(refreshToken?: string, userId?: string | number, allDevices = false) {
+  async logout(
+    refreshToken?: string,
+    userId?: string | number,
+    allDevices = false,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
     if (refreshToken) {
       await this.redisClient.del(`refresh:${refreshToken}`);
     }
@@ -656,6 +796,25 @@ export class AuthService {
     if (allDevices && userId) {
       // TODO: Implement revoking all tokens for user
       // This would require storing refresh tokens with user association
+    }
+
+    // AUDIT LOG: Admin logout
+    if (userId) {
+      const user = await User.findByPk(Number(userId));
+      if (user?.isAdmin) {
+        await this.auditService.log({
+          adminId: user.id,
+          adminEmail: user.email,
+          adminName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined,
+          action: 'ADMIN_LOGOUT',
+          description: allDevices ? 'Admin logged out from all devices' : 'Admin logged out',
+          ipAddress,
+          userAgent,
+        }).catch(err => {
+          // Don't block logout if audit logging fails
+          console.error('[AUDIT] Failed to log admin logout:', err);
+        });
+      }
     }
 
     return { success: true, message: 'Logged out successfully' };

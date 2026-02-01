@@ -1,7 +1,7 @@
-import { Controller, Get, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Body, UseGuards, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
-import { AuthOnly } from '../../core/decorators.js';
+import { AuthOnly, CurrentUser } from '../../core/decorators.js';
 import { AdminGuard } from '../../core/admin.guard.js';
 
 @ApiTags('admin')
@@ -24,27 +24,59 @@ export class AdminController {
 
     @Delete('users/:id')
     @ApiOperation({ summary: 'Ban/Delete user (Admin)' })
-    async deleteUser(@Param('id') id: number) {
-        await this.adminService.deleteUser(id);
+    async deleteUser(
+        @Param('id') id: number,
+        @CurrentUser() admin: any,
+        @Req() req: any,
+        @Body('reason') reason?: string
+    ) {
+        await this.adminService.deleteUser(
+            id,
+            admin.id,
+            admin.email,
+            req.ip,
+            req.headers['user-agent'],
+            reason
+        );
         return { success: true };
     }
 
     @Patch('users/:id/verification-level')
     @ApiOperation({ summary: 'Update user verification level (Admin)' })
     async updateVerificationLevel(
-        @Param('id') id: number, 
-        @Body('level') level: 0 | 1 | 2 | 3
+        @Param('id') id: number,
+        @Body('level') level: 0 | 1 | 2 | 3,
+        @Body('reason') reason: string | undefined,
+        @CurrentUser() admin: any,
+        @Req() req: any
     ) {
-        return this.adminService.updateVerificationLevel(id, level);
+        return this.adminService.updateVerificationLevel(
+            id,
+            level,
+            admin.id,
+            admin.email,
+            req.ip,
+            req.headers['user-agent'],
+            reason
+        );
     }
 
     @Patch('users/:id/admin-status')
     @ApiOperation({ summary: 'Set user admin status (Admin)' })
     async setAdminStatus(
-        @Param('id') id: number, 
-        @Body('isAdmin') isAdmin: boolean
+        @Param('id') id: number,
+        @Body('isAdmin') isAdmin: boolean,
+        @CurrentUser() admin: any,
+        @Req() req: any
     ) {
-        return this.adminService.setAdminStatus(id, isAdmin);
+        return this.adminService.setAdminStatus(
+            id,
+            isAdmin,
+            admin.id,
+            admin.email,
+            req.ip,
+            req.headers['user-agent']
+        );
     }
 
     @Get('listings')
@@ -59,8 +91,22 @@ export class AdminController {
 
     @Patch('listings/:id/status')
     @ApiOperation({ summary: 'Update listing status (Admin)' })
-    async updateListingStatus(@Param('id') id: number, @Body('status') status: string) {
-        return this.adminService.updateListingStatus(id, status);
+    async updateListingStatus(
+        @Param('id') id: number,
+        @Body('status') status: string,
+        @Body('reason') reason: string | undefined,
+        @CurrentUser() admin: any,
+        @Req() req: any
+    ) {
+        return this.adminService.updateListingStatus(
+            id,
+            status,
+            admin.id,
+            admin.email,
+            req.ip,
+            req.headers['user-agent'],
+            reason
+        );
     }
 
     @Get('stats')

@@ -23,6 +23,7 @@ import { PromotionPlan } from './entities/promotion-plan.entity.js';
 import { ListingPromotion } from './entities/listing-promotion.entity.js';
 import { Transaction } from './entities/transaction.entity.js';
 import { Review } from './entities/review.entity.js';
+import { AdminAuditLog } from './entities/admin-audit-log.entity.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
@@ -67,6 +68,8 @@ pg.defaults.parseInt8 = true;
             Transaction,
             // Reviews
             Review,
+            // Admin audit logs
+            AdminAuditLog,
           ],
           synchronize: true,
           sync: { alter: true }, // Force alter to add missing columns

@@ -30,6 +30,7 @@ import {
   UploadedFile,
   UseInterceptors,
   ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -46,17 +47,26 @@ import {
   UpdateNotificationPreferencesDto,
 } from './user.dto.js';
 import {
+  WithdrawConsentDto,
+  GrantConsentDto,
+  UpdateConsentsDto,
+} from './consent.dto.js';
+import {
   Public,
   CurrentUserId,
   RequireAdmin,
 } from '../../core/decorators.js';
 import { AuthGuard } from '../../auth/auth.guard';
 import { AdminGuard } from '../../core/admin.guard';
+import { ConsentService } from '../../core/consent/consent.service.js';
 
 @ApiTags('users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly consentService: ConsentService,
+  ) {}
 
   // ============================================================================
   // CURRENT USER ENDPOINTS
@@ -138,6 +148,148 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Account deleted' })
   async deleteMyAccount(@CurrentUserId() userId: number) {
     return this.userService.deleteUser(userId);
+  }
+
+  // ============================================================================
+  // GDPR CONSENT MANAGEMENT
+  // ============================================================================
+
+  @UseGuards(AuthGuard)
+  @Get('me/consents')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my current consent status (GDPR)' })
+  @ApiResponse({ status: 200, description: 'Consent status for all types' })
+  async getMyConsents(@CurrentUserId() userId: number) {
+    const consents = await this.consentService.getUserConsents(userId);
+
+    // Transform to user-friendly format
+    const result: Record<string, any> = {};
+    for (const [type, consent] of Object.entries(consents)) {
+      result[type] = consent ? {
+        granted: consent.granted,
+        version: consent.version,
+        grantedAt: consent.grantedAt,
+        withdrawnAt: consent.withdrawnAt,
+        status: consent.getStatus(),
+      } : null;
+    }
+
+    return result;
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('me/consents/history')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my consent history (GDPR audit)' })
+  @ApiResponse({ status: 200, description: 'Full consent history' })
+  async getConsentHistory(@CurrentUserId() userId: number) {
+    return this.consentService.getConsentHistory(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('me/consents/withdraw')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Withdraw consent (GDPR right) - MARKETING or ANALYTICS only' })
+  @ApiResponse({ status: 200, description: 'Consent withdrawn' })
+  @ApiResponse({ status: 400, description: 'Cannot withdraw mandatory consent' })
+  async withdrawConsent(
+    @CurrentUserId() userId: number,
+    @Body() dto: WithdrawConsentDto,
+    @Req() req: any,
+  ) {
+    const consent = await this.consentService.withdrawConsent(
+      userId,
+      dto.consentType,
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    return {
+      success: true,
+      message: `Consent for ${dto.consentType} has been withdrawn`,
+      consent,
+    };
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('me/consents/grant')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Grant consent (GDPR) - For re-enabling MARKETING or ANALYTICS' })
+  @ApiResponse({ status: 200, description: 'Consent granted' })
+  async grantConsent(
+    @CurrentUserId() userId: number,
+    @Body() dto: GrantConsentDto,
+    @Req() req: any,
+  ) {
+    const consent = await this.consentService.grantConsent(
+      userId,
+      dto.consentType,
+      req.ip,
+      req.headers['user-agent']
+    );
+
+    return {
+      success: true,
+      message: `Consent for ${dto.consentType} has been granted`,
+      consent,
+    };
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('me/consents')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update optional consents (MARKETING, ANALYTICS)' })
+  @ApiResponse({ status: 200, description: 'Consents updated' })
+  async updateConsents(
+    @CurrentUserId() userId: number,
+    @Body() dto: UpdateConsentsDto,
+    @Req() req: any,
+  ) {
+    const results: any = {};
+
+    // Update marketing consent
+    if (dto.acceptMarketing !== undefined) {
+      if (dto.acceptMarketing) {
+        results.marketing = await this.consentService.grantConsent(
+          userId,
+          'MARKETING' as any,
+          req.ip,
+          req.headers['user-agent']
+        );
+      } else {
+        results.marketing = await this.consentService.withdrawConsent(
+          userId,
+          'MARKETING' as any,
+          req.ip,
+          req.headers['user-agent']
+        );
+      }
+    }
+
+    // Update analytics consent
+    if (dto.acceptAnalytics !== undefined) {
+      if (dto.acceptAnalytics) {
+        results.analytics = await this.consentService.grantConsent(
+          userId,
+          'ANALYTICS' as any,
+          req.ip,
+          req.headers['user-agent']
+        );
+      } else {
+        results.analytics = await this.consentService.withdrawConsent(
+          userId,
+          'ANALYTICS' as any,
+          req.ip,
+          req.headers['user-agent']
+        );
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Consents updated successfully',
+      results,
+    };
   }
 
   // ============================================================================

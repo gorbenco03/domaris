@@ -73,12 +73,15 @@ export class ViewingController {
   // AVAILABILITY
   // ============================================================================
 
+  @UseGuards(VerificationGuard)
+  @MinVerificationLevel(1)
   @Get('availability/:propertyId')
   @ApiOperation({
     summary: 'Get available viewing slots for a property',
-    description: 'Returns available dates and time slots for the next 30 days',
+    description: 'Returns available dates and time slots for the next 30 days. Requires email verification (Level 1).',
   })
   @ApiResponse({ status: 200, description: 'Available dates and slots' })
+  @ApiForbiddenResponse({ description: 'Email verification required' })
   async getAvailability(
     @Param('propertyId', ParseIntPipe) propertyId: number,
     @Query('startDate') startDate?: string,

@@ -19,6 +19,8 @@ import { DatabaseModule } from './db/database.module.js';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './core/redis.module';
 import { MessagingModule } from './core/messaging.module';
+import { AuditModule } from './core/audit/audit.module.js';
+import { ConsentModule } from './core/consent/consent.module.js';
 
 // Feature Modules
 import { ListingModule } from './modules/listing/listing.module.js';
@@ -47,6 +49,12 @@ import { ReviewModule } from './modules/review/review.module.js';
 
     // Messaging - Email & SMS (global)
     MessagingModule,
+
+    // Audit - Admin action logging (global)
+    AuditModule,
+
+    // Consent - GDPR consent tracking (global)
+    ConsentModule,
 
     // Redis - for sessions, OTP, caching
     RedisModule,

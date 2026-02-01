@@ -20,9 +20,11 @@ import { Op } from 'sequelize';
 import { User } from '../../db/entities/user.entity';
 import { KycVerification } from '../../db/entities/kyc-verification.entity';
 import { KycDocument } from '../../db/entities/kyc-document.entity';
+import { AuditService } from '../../core/audit/audit.service.js';
 
 @Injectable()
 export class KycService {
+  constructor(private readonly auditService: AuditService) {}
   private async getVerification(userId: number) {
     return KycVerification.findOne({
       where: { userId },
@@ -287,7 +289,13 @@ export class KycService {
   /**
    * Approve KYC verification (called by admin or automated system)
    */
-  async approveVerification(userId: number, adminId: number) {
+  async approveVerification(
+    userId: number,
+    adminId: number,
+    adminEmail: string,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
     const user = await User.findByPk(userId);
     if (!user) {
       throw new NotFoundException('Utilizator negăsit');
@@ -314,6 +322,17 @@ export class KycService {
     user.verificationLevel = Math.max(user.verificationLevel, verification.targetLevel);
     await user.save();
 
+    // AUDIT LOG
+    await this.auditService.logKycApproval(
+      adminId,
+      adminEmail,
+      verification.id,
+      userId,
+      verification.targetLevel,
+      ipAddress,
+      userAgent
+    );
+
     console.log(`[KYC] User ${userId} verified to level ${verification.targetLevel}`);
 
     return {
@@ -326,7 +345,22 @@ export class KycService {
   /**
    * Reject KYC verification
    */
-  async rejectVerification(userId: number, reason: string, adminId: number) {
+  async rejectVerification(
+    userId: number,
+    reason: string,
+    adminId: number,
+    adminEmail: string,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    // VALIDATION: Reason is REQUIRED for KYC rejection (compliance)
+    if (!reason || reason.trim().length === 0) {
+      throw new BadRequestException({
+        code: 'REASON_REQUIRED',
+        message: 'Reason is required for KYC rejection'
+      });
+    }
+
     const verification = await this.getVerification(userId);
     if (!verification) {
       throw new NotFoundException('Verificare negăsită');
@@ -345,6 +379,17 @@ export class KycService {
         rejectionReason: reason,
       },
       { where: { verificationId: verification.id } },
+    );
+
+    // AUDIT LOG
+    await this.auditService.logKycRejection(
+      adminId,
+      adminEmail,
+      verification.id,
+      userId,
+      reason,
+      ipAddress,
+      userAgent
     );
 
     console.log(`[KYC] User ${userId} verification rejected: ${reason}`);

@@ -24,6 +24,7 @@ import {
   UploadedFiles,
   UseGuards,
   ParseIntPipe,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -37,6 +38,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { KycService } from './kyc.service';
 import {
   CurrentUserId,
+  CurrentUser,
   RequireAdmin,
 } from '../../core/decorators';
 import { AuthGuard } from '../../auth/auth.guard';
@@ -197,8 +199,16 @@ export class KycController {
   async approveVerification(
     @Param('userId', ParseIntPipe) userId: number,
     @CurrentUserId() adminId: number,
+    @CurrentUser() admin: any,
+    @Req() req: any,
   ) {
-    return this.kycService.approveVerification(userId, adminId);
+    return this.kycService.approveVerification(
+      userId,
+      adminId,
+      admin.email,
+      req.ip,
+      req.headers['user-agent']
+    );
   }
 
   @Post('admin/reject/:userId')
@@ -228,7 +238,16 @@ export class KycController {
     @Param('userId', ParseIntPipe) userId: number,
     @Body('reason') reason: string,
     @CurrentUserId() adminId: number,
+    @CurrentUser() admin: any,
+    @Req() req: any,
   ) {
-    return this.kycService.rejectVerification(userId, reason, adminId);
+    return this.kycService.rejectVerification(
+      userId,
+      reason,
+      adminId,
+      admin.email,
+      req.ip,
+      req.headers['user-agent']
+    );
   }
 }

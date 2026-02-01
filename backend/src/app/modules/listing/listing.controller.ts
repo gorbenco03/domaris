@@ -30,6 +30,7 @@ import {
   UseInterceptors,
   UseGuards,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -409,14 +410,22 @@ export class ListingController {
     description: 'View statistics for your property (views, favorites, inquiries)',
   })
   @ApiResponse({ status: 200, description: 'Analytics data' })
+  @ApiForbiddenResponse({ description: 'Not the owner of this property' })
   async getAnalytics(
     @Param('id') id: string,
+    @CurrentUserId() userId: number,
     @Query('period') period: '7d' | '30d' | 'all' = '30d',
   ) {
     const numericId = parseInt(id, 10);
 
     if (isNaN(numericId)) {
       throw new NotFoundException('Invalid property ID');
+    }
+
+    // Verify ownership before returning analytics
+    const listing = await this.listingService.findOne(numericId);
+    if (listing.ownerId !== userId) {
+      throw new ForbiddenException('You can only view analytics for your own properties');
     }
 
     return this.analyticsService.getPropertyAnalytics(numericId, period);
