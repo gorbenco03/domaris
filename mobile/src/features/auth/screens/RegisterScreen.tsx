@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -51,10 +52,20 @@ const RegisterScreen: React.FC = () => {
   // Form state - Phone
   const [phone, setPhone] = useState('');
 
-  // Common state
+  // GDPR consents (3 mandatory, 2 optional)
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+  const [acceptGdpr, setAcceptGdpr] = useState(false);
+  const [acceptMarketing, setAcceptMarketing] = useState(false);
+  const [acceptAnalytics, setAcceptAnalytics] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Legal links (placeholder – replace with actual URLs when available)
+  const openTerms = () => Linking.openURL('https://domaris.md/terms');
+  const openPrivacy = () => Linking.openURL('https://domaris.md/privacy');
+  const openGdprInfo = () => Linking.openURL('https://domaris.md/gdpr');
 
   const validateEmailForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -85,8 +96,9 @@ const RegisterScreen: React.FC = () => {
       newErrors.confirmPassword = 'Parolele nu coincid';
     }
 
-    if (!acceptTerms) {
-      newErrors.terms = 'Trebuie să accepți termenii și condițiile';
+    if (!acceptTerms || !acceptPrivacy || !acceptGdpr) {
+      newErrors.consents =
+        'Trebuie să accepți Termenii și Condițiile, Politica de Confidențialitate și prelucrarea datelor conform GDPR';
     }
 
     setErrors(newErrors);
@@ -122,8 +134,9 @@ const RegisterScreen: React.FC = () => {
       newErrors.confirmPassword = 'Parolele nu coincid';
     }
 
-    if (!acceptTerms) {
-      newErrors.terms = 'Trebuie să accepți termenii și condițiile';
+    if (!acceptTerms || !acceptPrivacy || !acceptGdpr) {
+      newErrors.consents =
+        'Trebuie să accepți Termenii și Condițiile, Politica de Confidențialitate și prelucrarea datelor conform GDPR';
     }
 
     setErrors(newErrors);
@@ -142,12 +155,20 @@ const RegisterScreen: React.FC = () => {
     const lastName = nameParts.slice(1).join(' ');
 
     try {
+      const consents = {
+        acceptTerms,
+        acceptPrivacy,
+        acceptGdpr,
+        acceptMarketing,
+        acceptAnalytics,
+      };
       if (method === 'email') {
         await register({
           email,
           password,
           firstName,
           lastName,
+          ...consents,
         });
         console.log('OTP sent for email registration');
         navigation.navigate('OTPVerification', {
@@ -162,6 +183,7 @@ const RegisterScreen: React.FC = () => {
           password,
           firstName,
           lastName,
+          ...consents,
         });
         console.log('OTP sent for phone registration');
         navigation.navigate('OTPVerification', {
@@ -174,14 +196,22 @@ const RegisterScreen: React.FC = () => {
     } catch (error: any) {
       console.error('Registration error:', error);
       const apiError = error?.response?.data;
-      
-      if (apiError?.code === 'EMAIL_ALREADY_EXISTS') {
+
+      if (apiError?.code === 'CONSENTS_REQUIRED') {
+        setErrors({
+          consents:
+            apiError?.message ||
+            'Trebuie să accepți Termenii și Condițiile, Politica de Confidențialitate și prelucrarea datelor conform GDPR',
+        });
+      } else if (apiError?.code === 'EMAIL_ALREADY_EXISTS') {
         setErrors({ email: 'Acest email este deja utilizat' });
       } else if (apiError?.code === 'PHONE_ALREADY_EXISTS') {
         setErrors({ phone: 'Acest număr de telefon este deja utilizat' });
       } else {
-        setErrors({ 
-          general: apiError?.message || 'A apărut o eroare la înregistrare. Încearcă din nou.' 
+        setErrors({
+          general:
+            apiError?.message ||
+            'A apărut o eroare la înregistrare. Încearcă din nou.',
         });
       }
     } finally {
@@ -391,28 +421,96 @@ const RegisterScreen: React.FC = () => {
               </>
             )}
 
-            {/* Terms and Conditions */}
+            {/* GDPR Consents – 3 mandatory, 2 optional */}
             <Checkbox
               checked={acceptTerms}
-              onChange={setAcceptTerms}
-              error={!!errors.terms}
+              onChange={(v) => {
+                setAcceptTerms(v);
+                if (errors.consents) setErrors((e) => ({ ...e, consents: '' }));
+              }}
+              error={!!errors.consents}
               label={
                 <Text style={[styles.termsText, { color: theme.colors.textSecondary }]}>
                   Accept{' '}
-                  <Text style={[styles.termsLink, { color: theme.colors.accent.main }]}>
+                  <Text
+                    style={[styles.termsLink, { color: theme.colors.accent.main }]}
+                    onPress={openTerms}
+                  >
                     Termenii și Condițiile
-                  </Text>
-                  {' '}și{' '}
-                  <Text style={[styles.termsLink, { color: theme.colors.accent.main }]}>
-                    Politica de Confidențialitate
-                  </Text>
+                  </Text>{' '}
+                  *
                 </Text>
               }
               containerStyle={styles.termsCheckbox}
             />
-            {errors.terms && (
+            <Checkbox
+              checked={acceptPrivacy}
+              onChange={(v) => {
+                setAcceptPrivacy(v);
+                if (errors.consents) setErrors((e) => ({ ...e, consents: '' }));
+              }}
+              error={!!errors.consents}
+              label={
+                <Text style={[styles.termsText, { color: theme.colors.textSecondary }]}>
+                  Accept{' '}
+                  <Text
+                    style={[styles.termsLink, { color: theme.colors.accent.main }]}
+                    onPress={openPrivacy}
+                  >
+                    Politica de Confidențialitate
+                  </Text>{' '}
+                  *
+                </Text>
+              }
+              containerStyle={styles.termsCheckbox}
+            />
+            <Checkbox
+              checked={acceptGdpr}
+              onChange={(v) => {
+                setAcceptGdpr(v);
+                if (errors.consents) setErrors((e) => ({ ...e, consents: '' }));
+              }}
+              error={!!errors.consents}
+              label={
+                <Text style={[styles.termsText, { color: theme.colors.textSecondary }]}>
+                  Accept prelucrarea datelor conform{' '}
+                  <Text
+                    style={[styles.termsLink, { color: theme.colors.accent.main }]}
+                    onPress={openGdprInfo}
+                  >
+                    GDPR
+                  </Text>{' '}
+                  *
+                </Text>
+              }
+              containerStyle={styles.termsCheckbox}
+            />
+            <Checkbox
+              checked={acceptMarketing}
+              onChange={setAcceptMarketing}
+              label={
+                <Text style={[styles.termsText, { color: theme.colors.textSecondary }]}>
+                  Primesc comunicări de marketing
+                </Text>
+              }
+              containerStyle={styles.termsCheckbox}
+            />
+            <Checkbox
+              checked={acceptAnalytics}
+              onChange={setAcceptAnalytics}
+              label={
+                <Text style={[styles.termsText, { color: theme.colors.textSecondary }]}>
+                  Activare urmărire analitică
+                </Text>
+              }
+              containerStyle={styles.termsCheckbox}
+            />
+            <Text style={[styles.optionalHint, { color: theme.colors.textTertiary }]}>
+              * = Obligatoriu
+            </Text>
+            {errors.consents && (
               <Text style={[styles.errorText, { color: theme.colors.secondary.error }]}>
-                {errors.terms}
+                {errors.consents}
               </Text>
             )}
 
@@ -534,6 +632,12 @@ const styles = StyleSheet.create({
   },
   termsLink: {
     fontWeight: '600',
+  },
+  optionalHint: {
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 34,
+    marginBottom: 4,
   },
   errorText: {
     fontSize: 12,

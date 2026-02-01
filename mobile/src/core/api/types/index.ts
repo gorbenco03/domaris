@@ -67,6 +67,13 @@ export interface IRegisterEmailRequest {
   password: string;
   firstName?: string;
   lastName?: string;
+  /** GDPR: mandatory */
+  acceptTerms: boolean;
+  acceptPrivacy: boolean;
+  acceptGdpr: boolean;
+  /** GDPR: optional */
+  acceptMarketing?: boolean;
+  acceptAnalytics?: boolean;
 }
 
 export interface IRegisterPhoneRequest {
@@ -74,6 +81,13 @@ export interface IRegisterPhoneRequest {
   password: string;
   firstName?: string;
   lastName?: string;
+  /** GDPR: mandatory */
+  acceptTerms: boolean;
+  acceptPrivacy: boolean;
+  acceptGdpr: boolean;
+  /** GDPR: optional */
+  acceptMarketing?: boolean;
+  acceptAnalytics?: boolean;
 }
 
 export interface ILoginPhoneRequest {

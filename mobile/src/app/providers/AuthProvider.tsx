@@ -30,12 +30,18 @@ interface AuthContextValue {
 
 /**
  * Register data (aligned with backend - no userType per ADR-001)
+ * GDPR: acceptTerms, acceptPrivacy, acceptGdpr mandatory; acceptMarketing, acceptAnalytics optional
  */
 interface RegisterData {
   email: string;
   password: string;
   firstName?: string;
   lastName?: string;
+  acceptTerms: boolean;
+  acceptPrivacy: boolean;
+  acceptGdpr: boolean;
+  acceptMarketing?: boolean;
+  acceptAnalytics?: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);

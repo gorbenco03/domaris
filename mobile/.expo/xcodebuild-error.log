@@ -1,2 +1,9 @@
-2026-01-31 10:50:46.659 xcodebuild[16387:2682355]  DVTDeviceOperation: Encountered a build number "" that is incompatible with DVTBuildVersion.
-2026-01-31 10:50:47.070 xcodebuild[16387:2682299] [MT] DVTDeviceOperation: Encountered a build number "" that is incompatible with DVTBuildVersion.
+2026-02-01 15:22:36.239 xcodebuild[85469:3715754]  DVTDeviceOperation: Encountered a build number "" that is incompatible with DVTBuildVersion.
+2026-02-01 15:22:36.337 xcodebuild[85469:3715677] [MT] DVTDeviceOperation: Encountered a build number "" that is incompatible with DVTBuildVersion.
+2026-02-01 15:22:36.808 xcodebuild[85469:3715677] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+** BUILD FAILED **
+
+
+The following build commands failed:
+	Building project IMOBI with scheme IMOBI and configuration Debug
+(1 failure)
