@@ -19,6 +19,7 @@ node_modules
 
 ./mobile/ios
 ./mobile/android
+./mobile/.env.local
 
 # IDE - VSCode
 .vscode/*

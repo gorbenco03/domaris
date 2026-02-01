@@ -24,6 +24,7 @@ import { ListingPromotion } from './entities/listing-promotion.entity.js';
 import { Transaction } from './entities/transaction.entity.js';
 import { Review } from './entities/review.entity.js';
 import { AdminAuditLog } from './entities/admin-audit-log.entity.js';
+import { UserConsent } from './entities/user-consent.entity.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
@@ -70,6 +71,8 @@ pg.defaults.parseInt8 = true;
             Review,
             // Admin audit logs
             AdminAuditLog,
+            // GDPR consent tracking
+            UserConsent,
           ],
           synchronize: true,
           sync: { alter: true }, // Force alter to add missing columns
