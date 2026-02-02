@@ -22,11 +22,7 @@ import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { Button, Input, ScreenHeader } from '@/shared/components';
-import SocialButton from '@/shared/components/SocialButton';
 import { Mail, Lock, Home } from 'lucide-react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import * as Google from 'expo-auth-session/providers/google';
-import { env } from '@/config/env';
 
 const { height } = Dimensions.get('window');
 
@@ -35,19 +31,13 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
-  const { login, loginWithGoogle, loginWithApple } = useAuth();
+  const { login } = useAuth();
   
   /* State */
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-
-  const [, , googlePromptAsync] = Google.useIdTokenAuthRequest({
-    iosClientId: env.GOOGLE_IOS_CLIENT_ID,
-    androidClientId: env.GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: env.GOOGLE_WEB_CLIENT_ID,
-  });
 
   const resetToMain = () => {
     navigation.getParent()?.reset({
@@ -89,70 +79,6 @@ const LoginScreen: React.FC = () => {
         : (error?.response?.data?.message || 'Eroare la autentificare');
 
       setErrors({ password: isInvalidAuthResponse ? msg : 'Email sau parolă incorectă' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    if (!env.GOOGLE_IOS_CLIENT_ID && !env.GOOGLE_ANDROID_CLIENT_ID && !env.GOOGLE_WEB_CLIENT_ID) {
-      setErrors({ password: 'Lipsește configurarea Google Client ID. Adaugă EXPO_PUBLIC_GOOGLE_*_CLIENT_ID în mobile/.env.local.' });
-      return;
-    }
-
-    setIsLoading(true);
-    setErrors({});
-    try {
-      const result = await googlePromptAsync();
-      const idToken = (result as any)?.params?.id_token;
-      if (!idToken) {
-        throw new Error('GOOGLE_ID_TOKEN_MISSING');
-      }
-
-      await loginWithGoogle(idToken);
-      resetToMain();
-    } catch (error: any) {
-      console.error('Google login error:', error);
-      setErrors({ password: error?.response?.data?.message || 'Eroare la autentificarea cu Google' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    if (Platform.OS !== 'ios') return;
-
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-
-      if (!credential.identityToken) {
-        throw new Error('APPLE_IDENTITY_TOKEN_MISSING');
-      }
-
-      await loginWithApple({
-        identityToken: credential.identityToken,
-        authorizationCode: credential.authorizationCode || undefined,
-        fullName: credential.fullName
-          ? `${credential.fullName.givenName ?? ''} ${credential.fullName.familyName ?? ''}`.trim() || undefined
-          : undefined,
-        email: credential.email || undefined,
-      });
-
-      resetToMain();
-    } catch (error: any) {
-      const isCancelled = error?.code === 'ERR_REQUEST_CANCELED' || error?.message === 'ERR_REQUEST_CANCELED';
-      if (!isCancelled) {
-        console.error('Apple login error:', error);
-        setErrors({ password: error?.response?.data?.message || 'Eroare la autentificarea cu Apple' });
-      }
     } finally {
       setIsLoading(false);
     }
@@ -237,26 +163,6 @@ const LoginScreen: React.FC = () => {
                 fullWidth
                 style={styles.loginBtn}
               />
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>sau</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <SocialButton
-                provider="google"
-                onPress={handleGoogleLogin}
-                disabled={isLoading}
-              />
-
-              {Platform.OS === 'ios' && (
-                <SocialButton
-                  provider="apple"
-                  onPress={handleAppleLogin}
-                  disabled={isLoading}
-                />
-              )}
             </View>
           </View>
 
@@ -395,23 +301,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loginBtn: {},
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 18,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e2e8f0',
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'lowercase',
-  },
   registerSection: {
     flexDirection: 'row',
     justifyContent: 'center',

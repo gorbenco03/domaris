@@ -17,6 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "ro.riva.app",
       "buildNumber": "1",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "RIVA folosește camera pentru a fotografia proprietăți",
         "NSPhotoLibraryUsageDescription": "RIVA accesează galeria pentru a selecta fotografii ale proprietăților",
