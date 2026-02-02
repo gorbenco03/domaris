@@ -28,6 +28,7 @@ interface ChatHeaderProps {
   onCallPress?: () => void;
   onMenuPress?: () => void;
   onPropertyPress?: () => void;
+  onProfilePress?: () => void;
 }
 
 // ============================================
@@ -41,6 +42,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   onCallPress,
   onMenuPress,
   onPropertyPress,
+  onProfilePress,
 }) => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -73,8 +75,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           style={[styles.backButton, { borderWidth: 1, borderColor: theme.colors.border }]}
         />
 
-        {/* Avatar */}
-        <View style={styles.avatarContainer}>
+        {/* Avatar - Clickable for profile */}
+        <TouchableOpacity
+          style={styles.avatarContainer}
+          onPress={onProfilePress}
+          disabled={!onProfilePress}
+          activeOpacity={0.7}
+        >
           {participant.avatar ? (
             <Image
               source={{ uri: participant.avatar }}
@@ -104,10 +111,15 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
               ]}
             />
           )}
-        </View>
+        </TouchableOpacity>
 
-        {/* Participant info */}
-        <View style={styles.info}>
+        {/* Participant info - Clickable for profile */}
+        <TouchableOpacity
+          style={styles.info}
+          onPress={onProfilePress}
+          disabled={!onProfilePress}
+          activeOpacity={0.7}
+        >
           <Text
             style={[
               styles.name,
@@ -128,7 +140,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           >
             {participant.isOnline ? 'Online' : 'Offline'}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Action buttons */}
         <View style={styles.actions}>

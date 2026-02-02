@@ -47,6 +47,25 @@ export const TutorialOverlay: React.FC = () => {
     if (!currentStep) return;
 
     const bounds = await getTargetBounds(currentStep.targetKey);
+    if (!bounds) {
+      setTargetBounds(null);
+      return;
+    }
+
+    // Bottom tab icons are measured on the icon container only.
+    // Extend the highlight downwards so it includes the tab label.
+    if (currentStep.targetKey.startsWith('tab-')) {
+      const yOffset = 6;
+      const extraHeight = 18;
+
+      setTargetBounds({
+        ...bounds,
+        y: bounds.y + yOffset,
+        height: bounds.height + extraHeight,
+      });
+      return;
+    }
+
     setTargetBounds(bounds);
   }, [currentStep, getTargetBounds]);
 
@@ -58,7 +77,8 @@ export const TutorialOverlay: React.FC = () => {
         duration: TUTORIAL_ANIMATION.OVERLAY_FADE_DURATION,
       });
       // Small delay to ensure elements are mounted
-      setTimeout(measureTarget, 100);
+      const timer = setTimeout(measureTarget, 100);
+      return () => clearTimeout(timer);
     } else {
       overlayOpacity.value = withTiming(0, {
         duration: TUTORIAL_ANIMATION.OVERLAY_FADE_DURATION,
@@ -66,7 +86,7 @@ export const TutorialOverlay: React.FC = () => {
         runOnJS(setIsVisible)(false);
       });
     }
-  }, [isTutorialActive]);
+  }, [isTutorialActive, measureTarget, overlayOpacity]);
 
   // Re-measure when step changes
   useEffect(() => {

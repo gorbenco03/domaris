@@ -203,6 +203,8 @@ const CharacteristicsStep: React.FC<CharacteristicsStepProps> = ({
               keyboardType="numeric"
             />
           </View>
+        </View>
+        <View style={styles.row}>
           <View style={[styles.fieldContainer, { flex: 1 }]}>
             <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
               An construcție

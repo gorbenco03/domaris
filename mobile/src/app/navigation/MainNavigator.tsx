@@ -39,9 +39,7 @@ const TabIcon: React.FC<TabIconProps> = ({ focused, color, size, IconComponent, 
   const ref = useRef<View>(null);
 
   // Register as tutorial target if key provided
-  if (tutorialKey) {
-    useTutorialTarget(tutorialKey, ref);
-  }
+  useTutorialTarget(tutorialKey, ref);
 
   return (
     <View ref={ref}>
@@ -100,13 +98,14 @@ const MainNavigator: React.FC = () => {
               focused={focused} 
               color={color} 
               size={size} 
-              IconComponent={Home} 
+              IconComponent={Home}
+              tutorialKey="tab-home"
             />
           ),
         }}
         listeners={({ navigation, route }) => ({
           tabPress: (event) => {
-            const state = route.state;
+            const state = (route as any).state;
             
             // If already on Home screen, do nothing
             if (state && state.index === 0 && state.routes[0].name === 'Home') {
@@ -115,9 +114,7 @@ const MainNavigator: React.FC = () => {
             
             // Otherwise, reset to Home screen
             event.preventDefault();
-            navigation.navigate('HomeTab', {
-              screen: 'Home',
-            });
+            (navigation as any).navigate('HomeTab', { screen: 'Home' });
           },
         })}
       />
@@ -132,12 +129,13 @@ const MainNavigator: React.FC = () => {
               color={color} 
               size={size} 
               IconComponent={Search} 
+              tutorialKey="tab-search"
             />
           ),
         }}
         listeners={({ navigation, route }) => ({
           tabPress: (event) => {
-            const state = route.state;
+            const state = (route as any).state;
             
             // If already on SearchResults screen, do nothing
             if (state && state.index === 0) {
@@ -146,9 +144,7 @@ const MainNavigator: React.FC = () => {
             
             // Otherwise, reset to initial screen
             event.preventDefault();
-            navigation.navigate('SearchTab', {
-              screen: 'SearchResults',
-            });
+            (navigation as any).navigate('SearchTab', { screen: 'SearchResults' });
           },
         })}
       />
@@ -176,7 +172,7 @@ const MainNavigator: React.FC = () => {
           isAuthenticated
             ? ({ navigation, route }) => ({
                 tabPress: (event) => {
-                  const state = route.state;
+                  const state = (route as any).state;
                   
                   // If already on ConversationsList screen, do nothing
                   if (state && state.index === 0 && state.routes[0].name === 'ConversationsList') {
@@ -185,9 +181,7 @@ const MainNavigator: React.FC = () => {
                   
                   // Otherwise, reset to ConversationsList
                   event.preventDefault();
-                  navigation.navigate('MessagesTab', {
-                    screen: 'ConversationsList',
-                  });
+                  (navigation as any).navigate('MessagesTab', { screen: 'ConversationsList' });
                 },
               })
             : undefined
@@ -219,7 +213,7 @@ const MainNavigator: React.FC = () => {
           isAuthenticated
             ? ({ navigation, route }) => ({
                 tabPress: (event) => {
-                  const state = route.state;
+                  const state = (route as any).state;
                   
                   // If already on Favorites screen, do nothing
                   if (state && state.index === 0 && state.routes[0].name === 'Favorites') {
@@ -228,9 +222,7 @@ const MainNavigator: React.FC = () => {
                   
                   // Otherwise, reset to Favorites screen
                   event.preventDefault();
-                  navigation.navigate('FavoritesTab', {
-                    screen: 'Favorites',
-                  });
+                  (navigation as any).navigate('FavoritesTab', { screen: 'Favorites' });
                 },
               })
             : undefined
@@ -263,7 +255,7 @@ const MainNavigator: React.FC = () => {
             ? ({ navigation, route }) => ({
                 tabPress: (event) => {
                   // Get current state of ProfileTab
-                  const state = route.state;
+                  const state = (route as any).state;
                   
                   // If we're already on the Profile screen (root of stack), do nothing
                   if (state && state.index === 0 && state.routes[0].name === 'Profile') {
@@ -272,9 +264,7 @@ const MainNavigator: React.FC = () => {
                   
                   // Otherwise, reset to Profile screen
                   event.preventDefault();
-                  navigation.navigate('ProfileTab', {
-                    screen: 'Profile',
-                  });
+                  (navigation as any).navigate('ProfileTab', { screen: 'Profile' });
                 },
               })
             : undefined

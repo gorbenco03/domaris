@@ -680,7 +680,6 @@ const AvailabilitySettingsScreen: React.FC = () => {
           onPress={handleSave}
           loading={isLoading}
           fullWidth
-          icon={Check}
         />
       </View>
 

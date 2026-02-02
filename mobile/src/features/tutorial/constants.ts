@@ -19,15 +19,6 @@ export const TUTORIAL_STORAGE_KEYS = {
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
-    id: 'search',
-    targetKey: 'home-search-bar',
-    title: 'Căutare Rapidă',
-    description: 'Caută proprietăți după locație, tip sau caracteristici specifice.',
-    tooltipPosition: 'bottom',
-    highlightPadding: 8,
-    highlightBorderRadius: 16,
-  },
-  {
     id: 'categories',
     targetKey: 'home-categories',
     title: 'Categorii',
@@ -37,6 +28,15 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     highlightBorderRadius: 16,
   },
   {
+    id: 'home-notifications',
+    targetKey: 'home-notifications',
+    title: 'Notificări',
+    description: 'Aici vezi rapid noutăți: cereri de vizionare, mesaje și alerte importante.',
+    tooltipPosition: 'bottom',
+    highlightPadding: 10,
+    highlightBorderRadius: 24,
+  },
+  {
     id: 'ai-chat',
     targetKey: 'home-ai-banner',
     title: 'Asistent AI',
@@ -44,6 +44,24 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     tooltipPosition: 'top',
     highlightPadding: 8,
     highlightBorderRadius: 20,
+  },
+  {
+    id: 'tab-home',
+    targetKey: 'tab-home',
+    title: 'Acasă',
+    description: 'Revii rapid la pagina principală cu sugestii și categorii.',
+    tooltipPosition: 'top',
+    highlightPadding: 12,
+    highlightBorderRadius: 24,
+  },
+  {
+    id: 'tab-search',
+    targetKey: 'tab-search',
+    title: 'Caută',
+    description: 'Folosește filtrele ca să găsești proprietatea perfectă mai rapid.',
+    tooltipPosition: 'top',
+    highlightPadding: 12,
+    highlightBorderRadius: 24,
   },
   {
     id: 'favorites',
@@ -80,7 +98,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
 
 export const TUTORIAL_ANIMATION = {
   OVERLAY_FADE_DURATION: 300,
-  SPOTLIGHT_MOVE_DURATION: 400,
+  SPOTLIGHT_MOVE_DURATION: 250,
   TOOLTIP_FADE_DURATION: 250,
 } as const;
 
@@ -89,6 +107,6 @@ export const TUTORIAL_ANIMATION = {
 // ============================================
 
 export const TUTORIAL_OVERLAY = {
-  BACKDROP_OPACITY: 0.85,
+  BACKDROP_OPACITY: 0.6,
   SPOTLIGHT_PADDING: 8,
 } as const;

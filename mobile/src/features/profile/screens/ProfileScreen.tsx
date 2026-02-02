@@ -94,7 +94,7 @@ const ProfileScreen: React.FC = () => {
     bio: apiUser?.bio || '',
     phone: apiUser?.phone || '',
     // Stats (these come from the API user profile)
-    activeListings: (summary?.activeListings ?? apiUser?.activeListingsCount) || 0,
+    activeListings: apiUser?.activeListingsCount || 0,
     monthlyViews: summary?.totalViews ?? 0,
     monthlyContacts: summary?.totalContacts ?? 0,
     reviewCount: apiUser?.reviewsCount || 0,
@@ -191,18 +191,6 @@ const ProfileScreen: React.FC = () => {
               )}
             </View>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Settings')}
-            style={[
-              styles.headerIconButton,
-              {
-                backgroundColor: theme.colors.surface,
-                borderRadius: theme.borderRadius.full,
-              },
-            ]}
-          >
-            <Settings size={22} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
         </View>
 
         {/* Profile Card */}
@@ -223,7 +211,7 @@ const ProfileScreen: React.FC = () => {
               <Avatar
                 firstName={user.firstName}
                 lastName={user.lastName}
-                source={user.avatar}
+                source={user.avatar ?? undefined}
                 size="lg"
                 verified={user.verificationLevel >= 2}
                 showEditButton
@@ -335,16 +323,6 @@ const ProfileScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Premium Section */}
-        <ProfileSection title="Premium">
-          <ProfileMenuItem
-            icon={<Sparkles />}
-            label="Planuri de abonament"
-            description="Vezi toate beneficiile Premium"
-            onPress={() => navigation.navigate('Pricing')}
-          />
-        </ProfileSection>
-
         {/* Add Property Action Card */}
         <View style={{ marginHorizontal: theme.spacing[4], marginTop: theme.spacing[4] }}>
           <TouchableOpacity
@@ -383,6 +361,16 @@ const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Premium Section */}
+        <ProfileSection title="Premium">
+          <ProfileMenuItem
+            icon={<Sparkles />}
+            label="Planuri de abonament"
+            description="Vezi toate beneficiile Premium"
+            onPress={() => navigation.navigate('Pricing')}
+          />
+        </ProfileSection>
+
         {/* Core Features Section */}
         <ProfileSection title="Activitate">
           <ProfileMenuItem
@@ -414,20 +402,17 @@ const ProfileScreen: React.FC = () => {
           />
         </ProfileSection>
 
-        {/* Menu Sections */}
+        {/* Settings entry (single) */}
         <ProfileSection title="Setări">
           <ProfileMenuItem
             icon={<Settings />}
-            label="Preferințe notificări"
-            description="Push, email, SMS"
-            onPress={() => navigation.navigate('NotificationSettings')}
+            label="Setări"
+            description="Notificări, securitate, cont"
+            onPress={() => navigation.navigate('Settings')}
           />
-          <ProfileMenuItem
-            icon={<Shield />}
-            label="Securitate"
-            description="Parolă, 2FA, sesiuni"
-            onPress={() => navigation.navigate('ChangePassword')}
-          />
+        </ProfileSection>
+
+        <ProfileSection title="Verificare">
           <ProfileMenuItem
             icon={<BadgeCheck />}
             label="Verificare identitate"
@@ -459,7 +444,7 @@ const ProfileScreen: React.FC = () => {
         </ProfileSection>
 
         {/* Logout Button */}
-        <ProfileSection>
+        <ProfileSection style={{ marginTop: theme.spacing[3] }}>
           <ProfileMenuItem
             icon={<LogOut />}
             label="Deconectare"

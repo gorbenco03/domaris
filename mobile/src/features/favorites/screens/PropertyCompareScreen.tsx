@@ -24,7 +24,10 @@ import { Button, ScreenHeader } from '@/shared/components';
 import { FavoritesStackParamList } from '@/app/navigation/types';
 import { useCompareFavorites } from '../hooks/useFavorites';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const LABEL_COLUMN_WIDTH = 90;
+const HORIZONTAL_PADDING = 16;
+
 const PropertyCompareScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<FavoritesStackParamList, 'Compare'>>();
@@ -38,14 +41,14 @@ const PropertyCompareScreen: React.FC = () => {
   const { data: comparison, isLoading } = useCompareFavorites(activePropertyIds);
   const properties = comparison?.properties || [];
   const comparisonRows = comparison?.matrix || [];
+  
+  // Calculate column width to fit all properties on screen without horizontal scroll
   const columnWidth = useMemo(() => {
     const columns = Math.max(properties.length, 1);
-    return Math.max(120, (width - 120) / columns);
+    const availableWidth = SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - LABEL_COLUMN_WIDTH;
+    const gapSpace = (columns - 1) * 8; // gap between columns
+    return Math.floor((availableWidth - gapSpace) / columns);
   }, [properties.length]);
-  const tableContentWidth = useMemo(() => {
-    const columns = Math.max(properties.length, 1);
-    return 100 + columns * (columnWidth + 16);
-  }, [columnWidth, properties.length]);
 
   const handleRemoveProperty = (propertyId: number) => {
     const next = activePropertyIds.filter((id) => id !== propertyId);
@@ -56,14 +59,14 @@ const PropertyCompareScreen: React.FC = () => {
     setActivePropertyIds(next);
   };
 
-  const renderPropertyHeader = (property: { id: number; title: string; address?: string; city?: string; image?: string | null }) => (
+  const renderPropertyHeader = (property: { id: number; title: string; address?: string; city?: string; image?: string | null }, index: number) => (
     <View
       key={property.id}
       style={[
         styles.propertyHeader,
         {
           width: columnWidth,
-          marginHorizontal: 8,
+          marginLeft: index === 0 ? 0 : 8,
         },
       ]}
     >
@@ -163,7 +166,7 @@ const PropertyCompareScreen: React.FC = () => {
       ]}
     >
       {/* Label Column */}
-      <View style={[styles.labelColumn, { width: 100 }]}>
+      <View style={[styles.labelColumn, { width: LABEL_COLUMN_WIDTH }]}>
         <Text
           style={[
             styles.rowLabel,
@@ -188,7 +191,7 @@ const PropertyCompareScreen: React.FC = () => {
               styles.valueColumn,
               {
                 width: columnWidth,
-                marginHorizontal: 8,
+                marginLeft: 8,
                 borderRadius: theme.borderRadius.sm,
                 paddingVertical: theme.spacing[1],
               },
@@ -258,52 +261,39 @@ const PropertyCompareScreen: React.FC = () => {
       />
 
       <ScrollView
-        horizontal={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingHorizontal: HORIZONTAL_PADDING },
+        ]}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.headersContainer,
+        {/* Property Headers */}
+        <View style={[styles.headersRow, { paddingTop: theme.spacing[4] }]}>
+          <View style={{ width: LABEL_COLUMN_WIDTH }} />
+          {properties.map((property, index) => renderPropertyHeader(property, index))}
+        </View>
+
+        {/* Comparison Table */}
+        <View
+          style={[
+            styles.table,
             {
-              paddingHorizontal: theme.spacing[4],
-              paddingTop: theme.spacing[4],
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.borderRadius.xl,
+              marginTop: theme.spacing[4],
+              padding: theme.spacing[2],
+              ...theme.shadows.card,
             },
           ]}
         >
-          <View style={{ width: tableContentWidth }}>
-            <View style={styles.headersRow}>
-              <View style={{ width: 100 }} />
-              {properties.map(renderPropertyHeader)}
-            </View>
-
-            <View style={[styles.tableContainer]}>
-              <View
-                style={[
-                  styles.table,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    borderRadius: theme.borderRadius.xl,
-                    marginTop: theme.spacing[4],
-                    padding: theme.spacing[2],
-                    ...theme.shadows.card,
-                  },
-                ]}
-              >
-                {comparisonRows.map(renderComparisonRow)}
-              </View>
-            </View>
-          </View>
-        </ScrollView>
+          {comparisonRows.map(renderComparisonRow)}
+        </View>
 
         {/* Action Buttons */}
         <View
           style={[
             styles.actionsContainer,
             {
-              paddingHorizontal: theme.spacing[4],
               paddingTop: theme.spacing[6],
               paddingBottom: theme.spacing[8],
               gap: theme.spacing[3],
@@ -339,9 +329,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     // Content container
-  },
-  headersContainer: {
-    flexDirection: 'row',
   },
   headersRow: {
     flexDirection: 'row',

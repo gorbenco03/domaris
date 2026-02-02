@@ -591,6 +591,18 @@ const ChatScreen: React.FC = () => {
         onCallPress={handleCallPress}
         onMenuPress={handleMenuPress}
         onPropertyPress={() => propertyPreview && setShowQuickActions(true)}
+        onProfilePress={() => {
+          if (participant.id) {
+            // Navigate through nested navigators to ProfileTab -> PublicProfile
+            navigation.navigate('Main' as any, {
+              screen: 'ProfileTab',
+              params: {
+                screen: 'PublicProfile',
+                params: { userId: participant.id },
+              },
+            });
+          }
+        }}
       />
 
 

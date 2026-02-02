@@ -71,7 +71,7 @@ export class UserConsent extends Model {
     @Column({
         type: DataType.ENUM(...Object.values(ConsentType)),
         allowNull: false,
-        comment: 'Type of consent: TERMS, PRIVACY, GDPR, MARKETING, ANALYTICS',
+        // Note: comment removed to avoid Sequelize generating invalid SQL (USING attached to COMMENT ON COLUMN)
     })
     consentType!: ConsentType;
 

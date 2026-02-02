@@ -243,10 +243,44 @@ const ViewingDetailScreen: React.FC = () => {
     );
   };
 
+  const handleGoBack = () => {
+    // Check if we can go back in the navigation stack
+    const canGoBack = navigation.canGoBack();
+    const state = navigation.getState();
+    const hasMultipleRoutes = state?.routes?.length > 1;
+    
+    if (canGoBack && hasMultipleRoutes) {
+      navigation.goBack();
+    } else {
+      // If coming from notification or deep link, reset to Viewings list
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Viewings' }],
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      {/* Fixed Header with Back Button */}
+      <View style={[styles.fixedHeader, { backgroundColor: theme.colors.background }]}>
+        <TouchableOpacity
+          onPress={handleGoBack}
+          style={[
+            styles.headerBackButton,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+          ]}
+        >
+          <ArrowLeft size={22} color={theme.colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+          Detalii vizionare
+        </Text>
+        <View style={{ width: 44 }} />
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header with Property Image */}
+        {/* Property Image */}
         <View style={styles.imageContainer}>
           {viewing.property.imageUrl ? (
             <Image source={{ uri: viewing.property.imageUrl }} style={styles.propertyImage} />
@@ -255,25 +289,6 @@ const ViewingDetailScreen: React.FC = () => {
               <Home size={48} color={theme.colors.textTertiary} />
             </View>
           )}
-          
-          {/* Back Button */}
-          <IconButton
-            icon={<ArrowLeft size={22} color={theme.colors.textPrimary} />}
-            onPress={() => {
-              // Always go back to Viewings list
-              if (navigation.canGoBack()) {
-                navigation.goBack();
-              } else {
-                navigation.navigate('Viewings');
-              }
-            }}
-            variant="surface"
-            size="md"
-            style={[
-              styles.backButton,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          />
           
           {/* Status Badge */}
           <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
@@ -306,23 +321,23 @@ const ViewingDetailScreen: React.FC = () => {
             
             <View style={styles.dateTimeRow}>
               <View style={[styles.dateTimeBox, { backgroundColor: theme.colors.primary.main }]}>
-                <Calendar size={20} color="#fff" />
-                <View>
-                  <Text style={styles.dateTimeLabel}>Data</Text>
-                  <Text style={styles.dateTimeValue}>
-                    {formatDate(slot.date).charAt(0).toUpperCase() + formatDate(slot.date).slice(1)}
-                  </Text>
+                <View style={styles.dateTimeIconContainer}>
+                  <Calendar size={24} color="#fff" />
                 </View>
+                <Text style={styles.dateTimeLabel}>Data</Text>
+                <Text style={styles.dateTimeValue} numberOfLines={1} adjustsFontSizeToFit>
+                  {formatDate(slot.date).charAt(0).toUpperCase() + formatDate(slot.date).slice(1)}
+                </Text>
               </View>
               
               <View style={[styles.dateTimeBox, { backgroundColor: theme.colors.accent.main }]}>
-                <Clock size={20} color="#fff" />
-                <View>
-                  <Text style={styles.dateTimeLabel}>Ora</Text>
-                  <Text style={styles.dateTimeValue}>
-                    {slot.startTime} - {slot.endTime}
-                  </Text>
+                <View style={styles.dateTimeIconContainer}>
+                  <Clock size={24} color="#fff" />
                 </View>
+                <Text style={styles.dateTimeLabel}>Ora</Text>
+                <Text style={styles.dateTimeValue} numberOfLines={1}>
+                  {slot.startTime} - {slot.endTime}
+                </Text>
               </View>
             </View>
           </View>
@@ -585,8 +600,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  fixedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerBackButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
   imageContainer: {
-    height: 240,
+    height: 200,
     position: 'relative',
   },
   propertyImage: {
@@ -668,21 +702,32 @@ const styles = StyleSheet.create({
   },
   dateTimeBox: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
-    gap: 12,
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  dateTimeIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   dateTimeLabel: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
-    marginBottom: 2,
+    fontWeight: '500',
+    marginBottom: 4,
   },
   dateTimeValue: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   meetingPointRow: {
     flexDirection: 'row',

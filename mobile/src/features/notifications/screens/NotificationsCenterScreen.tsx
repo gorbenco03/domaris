@@ -95,31 +95,86 @@ const NotificationsCenterScreen: React.FC = () => {
     const { actionData } = notification;
     const notificationType = notification.type;
 
-    if (notificationType === 'feedback_request' && actionData?.viewingId) {
-      // Navigate to viewing detail to leave feedback
-      navigation.navigate('ViewingDetail', { viewingId: String(actionData.viewingId) });
-    } else if (notificationType === 'new_review' && actionData?.viewingId) {
-      // Navigate to reviews screen
-      navigation.navigate('Reviews', { isOwnProfile: true });
-    } else if (notificationType === 'review_response') {
-      // Navigate to reviews screen
-      navigation.navigate('Reviews', { isOwnProfile: true });
-    } else if (notificationType === 'viewing_reminder' && actionData?.viewingId) {
-      navigation.navigate('ViewingDetail', { viewingId: String(actionData.viewingId) });
-    } else if (actionData?.propertyId) {
-      // Generic property-related notification
-      navigation.dispatch(
-        CommonActions.navigate({
-          name: 'Main',
-          params: {
-            screen: 'SearchTab',
+    // NotificationsCenterScreen is a modal in RootNavigator
+    // We need to first close modal then navigate through Main -> ProfileTab -> Screen
+
+    // Helper to navigate to viewing detail
+    const navigateToViewingDetail = (viewingId: string) => {
+      // Close modal first
+      navigation.goBack();
+      // Then navigate through nested navigators
+      setTimeout(() => {
+        navigation.dispatch(
+          CommonActions.navigate({
+            name: 'Main',
             params: {
-              screen: 'PropertyDetail',
-              params: { propertyId: String(actionData.propertyId) },
+              screen: 'ProfileTab',
+              params: {
+                screen: 'ViewingDetail',
+                params: { viewingId },
+              },
             },
-          },
-        })
-      );
+          })
+        );
+      }, 100);
+    };
+
+    // Helper to navigate to reviews screen
+    const navigateToReviews = () => {
+      navigation.goBack();
+      setTimeout(() => {
+        navigation.dispatch(
+          CommonActions.navigate({
+            name: 'Main',
+            params: {
+              screen: 'ProfileTab',
+              params: {
+                screen: 'Reviews',
+                params: { isOwnProfile: true },
+              },
+            },
+          })
+        );
+      }, 100);
+    };
+
+    // Helper to navigate to property detail
+    const navigateToProperty = (propertyId: string) => {
+      navigation.goBack();
+      setTimeout(() => {
+        navigation.dispatch(
+          CommonActions.navigate({
+            name: 'Main',
+            params: {
+              screen: 'SearchTab',
+              params: {
+                screen: 'PropertyDetail',
+                params: { propertyId },
+              },
+            },
+          })
+        );
+      }, 100);
+    };
+
+    // Get viewingId from various possible fields in metadata
+    const viewingId = actionData?.viewingId || actionData?.viewing_id || actionData?.id;
+    
+    // Check if this is a viewing-related notification
+    const isViewingNotification = 
+      notificationType === 'viewing_request' ||
+      notificationType === 'viewing_confirmed' ||
+      notificationType === 'viewing_cancelled' ||
+      notificationType === 'viewing_reminder' ||
+      notificationType === 'feedback_request' ||
+      notificationType.includes('viewing');
+
+    if (isViewingNotification && viewingId) {
+      navigateToViewingDetail(String(viewingId));
+    } else if (notificationType === 'new_review' || notificationType === 'review_response') {
+      navigateToReviews();
+    } else if (actionData?.propertyId || actionData?.property_id) {
+      navigateToProperty(String(actionData.propertyId || actionData.property_id));
     }
   };
 

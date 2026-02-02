@@ -26,12 +26,14 @@ import { useTutorialContext } from '../contexts/TutorialContext';
  * ```
  */
 export const useTutorialTarget = (
-  key: string,
+  key: string | undefined,
   ref: RefObject<View | null>
 ): void => {
   const { registerTarget, unregisterTarget } = useTutorialContext();
 
   useEffect(() => {
+    if (!key) return;
+
     registerTarget(key, ref);
 
     return () => {

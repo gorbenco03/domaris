@@ -137,7 +137,11 @@ export const TutorialTooltip: React.FC<TutorialTooltipProps> = ({
   const styles = createStyles(theme, position, tooltipTop, arrowLeft);
 
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
+    <Animated.View
+      shouldRasterizeIOS
+      renderToHardwareTextureAndroid
+      style={[styles.container, animatedStyle]}
+    >
       {/* Arrow */}
       <View style={styles.arrow} />
 

@@ -4,7 +4,7 @@
  * Step 1: Email or Phone
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Platform,
   TouchableOpacity,
   Linking,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -29,7 +30,7 @@ import {
   PasswordStrength,
   ScreenHeader,
 } from '@/shared/components';
-import { Mail, Phone, User, Lock } from 'lucide-react-native';
+import { Mail, Phone, User, Lock, ArrowLeft } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -230,15 +231,26 @@ const RegisterScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <ScreenHeader
-            title=""
-            rightSlot={
-              <View style={styles.progressContainer}>
-                <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
-                <View style={[styles.progressStep, { backgroundColor: theme.colors.divider }]} />
-              </View>
-            }
-          />
+          {/* Custom Header - cleaner look for auth screens */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={[
+                styles.backButton,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <ArrowLeft size={22} color={theme.colors.textPrimary} />
+            </TouchableOpacity>
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressStep, { backgroundColor: theme.colors.accent.main }]} />
+              <View style={[styles.progressStep, { backgroundColor: theme.colors.divider }]} />
+            </View>
+            <View style={{ width: 44 }} />
+          </View>
 
           {/* Title */}
           <View style={styles.titleContainer}>

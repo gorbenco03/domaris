@@ -722,39 +722,58 @@ const FavoritesListScreen: React.FC = () => {
           style={[
             styles.floatingButtonContainer,
             {
+              backgroundColor: theme.colors.background,
+              borderTopWidth: 1,
+              borderTopColor: theme.colors.border,
               paddingHorizontal: theme.spacing[4],
-              paddingBottom: theme.spacing[4],
+              paddingTop: theme.spacing[3],
+              paddingBottom: theme.spacing[6],
             },
           ]}
         >
           <View style={styles.floatingActionsRow}>
             <TouchableOpacity
-              style={[styles.moveButton, { borderColor: theme.colors.border }]}
+              style={[
+                styles.moveButton,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.surface,
+                },
+              ]}
               onPress={() => setIsMoveModalOpen(true)}
             >
               <Text style={[styles.moveButtonText, { color: theme.colors.textPrimary }]}>
                 Mută în listă
               </Text>
             </TouchableOpacity>
-            {selectedProperties.length >= 2 && (
-              <LinearGradient
-                colors={[theme.colors.accent.main, theme.colors.accent.dark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.compareButton, { borderRadius: theme.borderRadius.lg }]}
+            <LinearGradient
+              colors={[theme.colors.accent.main, theme.colors.accent.dark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.compareButton, { borderRadius: theme.borderRadius.lg }]}
+            >
+              <TouchableOpacity
+                style={styles.compareButtonInner}
+                onPress={() =>
+                  navigation.navigate('Compare', { propertyIds: selectedProperties })
+                }
+                disabled={selectedProperties.length < 2}
               >
-                <TouchableOpacity
-                  style={styles.compareButtonInner}
-                  onPress={() =>
-                    navigation.navigate('Compare', { propertyIds: selectedProperties })
-                  }
+                <Text
+                  style={[
+                    styles.compareButtonText,
+                    {
+                      color: theme.colors.surface,
+                      opacity: selectedProperties.length < 2 ? 0.5 : 1,
+                    },
+                  ]}
                 >
-                  <Text style={[styles.compareButtonText, { color: theme.colors.surface }]}>
-                    Compară {selectedProperties.length} proprietăți
-                  </Text>
-                </TouchableOpacity>
-              </LinearGradient>
-            )}
+                  {selectedProperties.length < 2
+                    ? 'Selectează încă 1'
+                    : `Compară ${selectedProperties.length} proprietăți`}
+                </Text>
+              </TouchableOpacity>
+            </LinearGradient>
           </View>
         </View>
       )}
@@ -1046,6 +1065,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   floatingActionsRow: {
     flexDirection: 'row',

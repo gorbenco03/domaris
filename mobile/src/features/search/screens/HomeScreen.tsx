@@ -84,10 +84,12 @@ const HomeScreen: React.FC = () => {
   // Tutorial target refs
   const categoriesRef = useRef<View>(null);
   const aiBannerRef = useRef<View>(null);
+  const notificationsRef = useRef<View>(null);
 
   // Register tutorial targets
   useTutorialTarget('home-categories', categoriesRef);
   useTutorialTarget('home-ai-banner', aiBannerRef);
+  useTutorialTarget('home-notifications', notificationsRef);
 
   const handleQuickFilterToggle = (filterId: string) => {
     setQuickFilters((prev) =>
@@ -177,6 +179,7 @@ const HomeScreen: React.FC = () => {
             </View>
           </View>
           <TouchableOpacity 
+            ref={notificationsRef}
             style={[styles.notificationButton, { backgroundColor: theme.colors.surface }]}
             onPress={() => {
               if (!requireAuth({ message: 'Autentifică-te pentru a vedea notificările.' })) {
