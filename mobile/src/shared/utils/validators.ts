@@ -51,7 +51,6 @@ export const registerSchema = z.object({
   confirmPassword: z.string(),
   firstName: nameSchema,
   lastName: nameSchema,
-  phone: phoneSchema,
   userType: z.enum(['seeker', 'owner']),
   acceptTerms: z.boolean().refine((val) => val === true, {
     message: 'Trebuie să accepți termenii și condițiile',

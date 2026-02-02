@@ -11,6 +11,9 @@ interface EnvConfig {
   ENABLE_ANALYTICS: boolean;
   SENTRY_DSN?: string;
   GOOGLE_MAPS_API_KEY?: string;
+  GOOGLE_IOS_CLIENT_ID?: string;
+  GOOGLE_ANDROID_CLIENT_ID?: string;
+  GOOGLE_WEB_CLIENT_ID?: string;
   MAPBOX_ACCESS_TOKEN: string;
 }
 
@@ -25,6 +28,9 @@ const getEnvConfig = (): EnvConfig => {
     ENABLE_ANALYTICS: env === 'production',
     SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
     GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+    GOOGLE_IOS_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    GOOGLE_ANDROID_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    GOOGLE_WEB_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     MAPBOX_ACCESS_TOKEN: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1IjoiZ29yYmVuY28wMyIsImEiOiJjbGc2OHg0dTQxMjhlMnRyejN5Y2xmZ3d6In0.tTql8D8ra4QBhzSowQtXMg',
   };
 };

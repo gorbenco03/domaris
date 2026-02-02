@@ -12,7 +12,7 @@ import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { authApi } from '@/features/auth/services';
 import { Button, Input, ScreenHeader } from '@/shared/components';
-import { Mail, Send, Check } from 'lucide-react-native';
+import { Mail, Send, Check, ArrowLeft } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>;
 
@@ -47,7 +47,6 @@ const ForgotPasswordScreen: React.FC = () => {
       console.log('Password reset code sent to:', email);
       navigation.navigate('OTPVerification', { 
         email, 
-        type: 'email', 
         purpose: 'reset-password' 
       });
     } catch (error: any) {

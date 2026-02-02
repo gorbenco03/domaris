@@ -25,9 +25,6 @@ import { type AuthModuleOptions } from './auth.module.js';
 import {
   RegisterEmailDto,
   VerifyEmailOtpDto,
-  RegisterPhoneDto,
-  LoginPhoneDto,
-  VerifyPhoneOtpDto,
   AppleAuthDto,
   ForgotPasswordDto,
   ResetPasswordDto,
@@ -44,7 +41,6 @@ import { AuditService } from '../core/audit/audit.service.js';
 import { ConsentService } from '../core/consent/consent.service.js';
 
 // OTP Configuration
-const OTP_LENGTH = 6;
 const OTP_EXPIRY_SECONDS = 600; // 10 minutes
 const OTP_MAX_ATTEMPTS = 5;
 
@@ -221,7 +217,7 @@ export class AuthService {
     if (user.isAdmin) {
       await this.auditService.log({
         adminId: user.id,
-        adminEmail: user.email,
+        adminEmail: user.email ?? '',
         adminName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined,
         action: 'ADMIN_LOGIN',
         description: 'Admin logged in successfully',
@@ -236,160 +232,9 @@ export class AuthService {
     return this.createAuthResponse(user);
   }
 
-  // ============================================================================
+  // ==========================================================================
   // PHONE/OTP AUTH
-  // ============================================================================
-
-  /**
-   * Înregistrare cu telefon (pasul 1 - trimite OTP)
-   * GDPR: Validates and stores consent preferences
-   */
-  async registerPhone(data: RegisterPhoneDto, ipAddress?: string, userAgent?: string) {
-    const existingUser = await User.findOne({ where: { phone: data.phone } });
-    if (existingUser) {
-      throw new BadRequestException({
-        code: 'PHONE_ALREADY_EXISTS',
-        message: 'Un cont cu acest număr de telefon există deja',
-      });
-    }
-
-    // GDPR VALIDATION: All mandatory consents must be accepted
-    if (!data.acceptTerms || !data.acceptPrivacy || !data.acceptGdpr) {
-      throw new BadRequestException({
-        code: 'CONSENTS_REQUIRED',
-        message: 'Trebuie să accepți Termenii și Condițiile, Politica de Confidențialitate și prelucrarea datelor conform GDPR',
-      });
-    }
-
-    // Store pending registration data
-    const pendingKey = `pending_register:phone:${data.phone}`;
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-
-    await this.redisClient.setex(
-      pendingKey,
-      OTP_EXPIRY_SECONDS,
-      JSON.stringify({
-        phone: data.phone,
-        password: hashedPassword,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        // Store consent preferences
-        consents: {
-          acceptTerms: data.acceptTerms,
-          acceptPrivacy: data.acceptPrivacy,
-          acceptGdpr: data.acceptGdpr,
-          acceptMarketing: data.acceptMarketing,
-          acceptAnalytics: data.acceptAnalytics,
-        },
-        ipAddress,
-        userAgent,
-      }),
-    );
-
-    const code = await this.generateAndStoreOtp(`register:phone:${data.phone}`);
-    await this.smsService.sendOtpCode(data.phone, code);
-
-    const isDev = process.env.NODE_ENV !== 'production';
-    return {
-      success: true,
-      message: 'Cod de înregistrare trimis',
-      expiresIn: OTP_EXPIRY_SECONDS,
-      ...(isDev && { code }),
-    };
-  }
-
-
-  /**
-   * Login cu telefon (trimite OTP)
-   */
-  async loginPhone(data: LoginPhoneDto) {
-    const user = await User.findOne({ where: { phone: data.phone } });
-    if (!user) {
-      throw new NotFoundException({
-        code: 'USER_NOT_FOUND',
-        message: 'Nu există un cont cu acest număr de telefon',
-      });
-    }
-
-    if (!user.password) {
-      throw new BadRequestException({
-        code: 'PASSWORD_NOT_SET',
-        message: 'Setează o parolă înainte de autentificare cu telefon',
-      });
-    }
-
-    const isValid = await bcrypt.compare(data.password, user.password);
-    if (!isValid) {
-      throw new UnauthorizedException({
-        code: 'INVALID_CREDENTIALS',
-        message: 'Credențiale invalide',
-      });
-    }
-
-    user.lastActiveAt = new Date();
-    await user.save();
-
-    return this.createAuthResponse(user);
-  }
-
-
-  /**
-   * Verificare OTP telefon (finalizare login/register)
-   * GDPR: Creates consent records after successful registration
-   */
-  async verifyPhoneOtp(data: VerifyPhoneOtpDto) {
-    const isRegister = await this.verifyOtp(`register:phone:${data.phone}`, data.code);
-    if (!isRegister) {
-      throw new BadRequestException({
-        code: 'OTP_INVALID',
-        message: 'Cod invalid sau expirat',
-      });
-    }
-    const pendingKey = `pending_register:phone:${data.phone}`;
-    const pendingData = await this.redisClient.get(pendingKey);
-
-    if (!pendingData) {
-      throw new BadRequestException('Sesiunea de înregistrare a expirat');
-    }
-
-    const { password, firstName, lastName, consents, ipAddress, userAgent } = JSON.parse(pendingData);
-
-    const existing = await User.findOne({ where: { phone: data.phone } });
-    if (existing) {
-      await this.redisClient.del(pendingKey);
-      throw new BadRequestException('Contul a fost deja creat');
-    }
-
-    const user = await User.create({
-      phone: data.phone,
-      password,
-      firstName,
-      lastName,
-      verificationLevel: 1,
-      phoneVerified: true,
-      emailVerified: false,
-      isAdmin: false,
-    });
-
-    // GDPR: Record consents
-    try {
-      await this.consentService.recordConsents(
-        user.id,
-        consents,
-        ipAddress,
-        userAgent
-      );
-    } catch (error) {
-      console.error('[CONSENT] Failed to record consents:', error);
-      // Don't block registration if consent recording fails
-      // But log it for investigation
-    }
-
-    await this.redisClient.del(pendingKey);
-    await this.redisClient.del(`otp:register:phone:${data.phone}`);
-
-    return this.createAuthResponse(user);
-  }
+  // ==========================================================================
 
 
   // ============================================================================
@@ -804,7 +649,7 @@ export class AuthService {
       if (user?.isAdmin) {
         await this.auditService.log({
           adminId: user.id,
-          adminEmail: user.email,
+          adminEmail: user.email ?? '',
           adminName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined,
           action: 'ADMIN_LOGOUT',
           description: allDevices ? 'Admin logged out from all devices' : 'Admin logged out',

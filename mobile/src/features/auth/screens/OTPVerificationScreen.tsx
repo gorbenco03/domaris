@@ -20,7 +20,7 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { authApi } from '@/features/auth/services';
 import { Button, OTPInput, ScreenHeader } from '@/shared/components';
-import { Mail, Phone, RefreshCw, Check } from 'lucide-react-native';
+import { Mail, RefreshCw, Check } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'OTPVerification'>;
 type RoutePropType = RouteProp<AuthStackParamList, 'OTPVerification'>;
@@ -31,10 +31,10 @@ const OTPVerificationScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RoutePropType>();
   const { theme } = useTheme();
-  const { verifyPhoneOtp, verifyEmailOtp } = useAuth();
+  const { verifyEmailOtp } = useAuth();
 
-  const { email = '', phone = '', type, purpose, registerData } = route.params;
-  const destination = type === 'email' ? email : phone;
+  const { email, purpose, registerData } = route.params;
+  const destination = email;
 
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -71,11 +71,7 @@ const OTPVerificationScreen: React.FC = () => {
         return;
       }
 
-      if (type === 'email') {
-        await verifyEmailOtp(destination, code);
-      } else {
-        await verifyPhoneOtp(destination, code);
-      }
+      await verifyEmailOtp(destination, code);
 
       setVerified(true);
       console.log('OTP verified successfully');
@@ -100,43 +96,43 @@ const OTPVerificationScreen: React.FC = () => {
     } finally {
       setIsVerifying(false);
     }
-  }, [destination, verifyEmailOtp, verifyPhoneOtp, attempts, navigation, purpose, type, isVerifying, verified]);
+  }, [destination, verifyEmailOtp, attempts, navigation, purpose, isVerifying, verified]);
 
   const handleResend = async () => {
     setError('');
     setIsVerifying(true);
 
     try {
-      if (type === 'phone') {
-        if (purpose === 'register') {
-          if (!registerData?.password) {
-            setError('Reintrodu parola în pasul anterior pentru a retrimite codul.');
-            setIsVerifying(false);
-            return;
-          }
-          await authApi.registerWithPhone({
-            phone: destination,
-            password: registerData?.password || '',
-            firstName: registerData?.firstName,
-            lastName: registerData?.lastName,
-          });
+      if (purpose === 'register') {
+        if (!registerData?.password) {
+          setError('Reintrodu parola în pasul anterior pentru a retrimite codul.');
+          setIsVerifying(false);
+          return;
         }
-      } else if (type === 'email') {
-        if (purpose === 'register') {
-          if (!registerData?.password) {
-            setError('Reintrodu parola în pasul anterior pentru a retrimite codul.');
-            setIsVerifying(false);
-            return;
-          }
-          await authApi.registerWithEmail({
-            email: destination,
-            password: registerData?.password || '',
-            firstName: registerData?.firstName,
-            lastName: registerData?.lastName,
-          });
-        } else if (purpose === 'reset-password') {
-          await authApi.forgotPassword({ email: destination });
+
+        if (
+          typeof registerData?.acceptTerms !== 'boolean' ||
+          typeof registerData?.acceptPrivacy !== 'boolean' ||
+          typeof registerData?.acceptGdpr !== 'boolean'
+        ) {
+          setError('Reia înregistrarea pentru a retrimite codul.');
+          setIsVerifying(false);
+          return;
         }
+
+        await authApi.registerWithEmail({
+          email: destination,
+          password: registerData?.password || '',
+          firstName: registerData?.firstName,
+          lastName: registerData?.lastName,
+          acceptTerms: registerData.acceptTerms,
+          acceptPrivacy: registerData.acceptPrivacy,
+          acceptGdpr: registerData.acceptGdpr,
+          acceptMarketing: registerData.acceptMarketing,
+          acceptAnalytics: registerData.acceptAnalytics,
+        });
+      } else if (purpose === 'reset-password') {
+        await authApi.forgotPassword({ email: destination });
       }
       
       setOtp('');
@@ -167,7 +163,7 @@ const OTPVerificationScreen: React.FC = () => {
 
         <View style={styles.content}>
           <View style={[styles.iconContainer, { backgroundColor: verified ? theme.colors.accent.main : `${theme.colors.primary.main}15` }]}>
-            {verified ? <Check size={40} color="#ffffff" /> : type === 'email' ? <Mail size={40} color={theme.colors.primary.main} /> : <Phone size={40} color={theme.colors.primary.main} />}
+            {verified ? <Check size={40} color="#ffffff" /> : <Mail size={40} color={theme.colors.primary.main} />}
           </View>
 
           <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{verified ? 'Verificat cu succes!' : 'Verifică codul'}</Text>

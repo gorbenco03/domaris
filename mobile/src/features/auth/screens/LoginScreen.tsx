@@ -12,7 +12,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Animated,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,7 +22,11 @@ import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { Button, Input, ScreenHeader } from '@/shared/components';
-import { Mail, Lock, Home, Phone } from 'lucide-react-native';
+import SocialButton from '@/shared/components/SocialButton';
+import { Mail, Lock, Home } from 'lucide-react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Google from 'expo-auth-session/providers/google';
+import { env } from '@/config/env';
 
 const { height } = Dimensions.get('window');
 
@@ -32,37 +35,38 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
-  const { login, loginWithPhone } = useAuth();
+  const { login, loginWithGoogle, loginWithApple } = useAuth();
   
   /* State */
-  const [method, setMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; phone?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+  const [, , googlePromptAsync] = Google.useIdTokenAuthRequest({
+    iosClientId: env.GOOGLE_IOS_CLIENT_ID,
+    androidClientId: env.GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: env.GOOGLE_WEB_CLIENT_ID,
+  });
+
+  const resetToMain = () => {
+    navigation.getParent()?.reset({
+      index: 0,
+      routes: [{ name: 'Main' as never }],
+    });
+  };
 
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
-    
-    if (method === 'email') {
-      if (!email.trim()) {
-        newErrors.email = 'Emailul este obligatoriu';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        newErrors.email = 'Format email invalid';
-      }
-      if (!password) {
-        newErrors.password = 'Parola este obligatorie';
-      }
-    } else {
-      if (!phone.trim()) {
-        newErrors.phone = 'Numărul de telefon este obligatoriu';
-      } else if (!/^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ''))) {
-        newErrors.phone = 'Format telefon invalid';
-      }
-      if (!password) {
-        newErrors.password = 'Parola este obligatorie';
-      }
+
+    if (!email.trim()) {
+      newErrors.email = 'Emailul este obligatoriu';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Format email invalid';
+    }
+
+    if (!password) {
+      newErrors.password = 'Parola este obligatorie';
     }
 
     setErrors(newErrors);
@@ -75,15 +79,8 @@ const LoginScreen: React.FC = () => {
     setErrors({});
 
     try {
-      if (method === 'email') {
-        await login(email, password);
-      } else {
-        await loginWithPhone(phone, password);
-      }
-      navigation.getParent()?.reset({
-        index: 0,
-        routes: [{ name: 'Main' as never }],
-      });
+      await login(email, password);
+      resetToMain();
     } catch (error: any) {
       console.error('Login error:', error);
       const isInvalidAuthResponse = error?.message === 'AUTH_RESPONSE_INVALID';
@@ -91,10 +88,70 @@ const LoginScreen: React.FC = () => {
         ? 'Serverul a trimis un răspuns OTP. Verifică dacă backend-ul este actualizat.'
         : (error?.response?.data?.message || 'Eroare la autentificare');
 
-      if (method === 'email') {
-        setErrors({ password: isInvalidAuthResponse ? msg : 'Email sau parolă incorectă' });
-      } else {
-        setErrors({ phone: msg });
+      setErrors({ password: isInvalidAuthResponse ? msg : 'Email sau parolă incorectă' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!env.GOOGLE_IOS_CLIENT_ID && !env.GOOGLE_ANDROID_CLIENT_ID && !env.GOOGLE_WEB_CLIENT_ID) {
+      setErrors({ password: 'Lipsește configurarea Google Client ID. Adaugă EXPO_PUBLIC_GOOGLE_*_CLIENT_ID în mobile/.env.local.' });
+      return;
+    }
+
+    setIsLoading(true);
+    setErrors({});
+    try {
+      const result = await googlePromptAsync();
+      const idToken = (result as any)?.params?.id_token;
+      if (!idToken) {
+        throw new Error('GOOGLE_ID_TOKEN_MISSING');
+      }
+
+      await loginWithGoogle(idToken);
+      resetToMain();
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      setErrors({ password: error?.response?.data?.message || 'Eroare la autentificarea cu Google' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    if (Platform.OS !== 'ios') return;
+
+    setIsLoading(true);
+    setErrors({});
+
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        throw new Error('APPLE_IDENTITY_TOKEN_MISSING');
+      }
+
+      await loginWithApple({
+        identityToken: credential.identityToken,
+        authorizationCode: credential.authorizationCode || undefined,
+        fullName: credential.fullName
+          ? `${credential.fullName.givenName ?? ''} ${credential.fullName.familyName ?? ''}`.trim() || undefined
+          : undefined,
+        email: credential.email || undefined,
+      });
+
+      resetToMain();
+    } catch (error: any) {
+      const isCancelled = error?.code === 'ERR_REQUEST_CANCELED' || error?.message === 'ERR_REQUEST_CANCELED';
+      if (!isCancelled) {
+        console.error('Apple login error:', error);
+        setErrors({ password: error?.response?.data?.message || 'Eroare la autentificarea cu Apple' });
       }
     } finally {
       setIsLoading(false);
@@ -136,93 +193,41 @@ const LoginScreen: React.FC = () => {
 
           {/* Login Card */}
           <View style={[styles.card, { backgroundColor: theme.colors.surface, ...theme.shadows.xl }]}>
-            {/* Method Tabs */}
-            <View style={styles.tabsContainer}>
-              <TouchableOpacity
-                style={[styles.tab, method === 'email' && styles.activeTab, { borderColor: method === 'email' ? theme.colors.primary.main : theme.colors.border }]}
-                onPress={() => setMethod('email')}
-              >
-                <Mail size={18} color={method === 'email' ? theme.colors.primary.main : theme.colors.textSecondary} />
-                <Text style={[styles.tabText, { color: method === 'email' ? theme.colors.primary.main : theme.colors.textSecondary }]}>Email</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.tab, method === 'phone' && styles.activeTab, { borderColor: method === 'phone' ? theme.colors.primary.main : theme.colors.border }]}
-                onPress={() => setMethod('phone')}
-              >
-                <Phone size={18} color={method === 'phone' ? theme.colors.primary.main : theme.colors.textSecondary} />
-                <Text style={[styles.tabText, { color: method === 'phone' ? theme.colors.primary.main : theme.colors.textSecondary }]}>Telefon</Text>
-              </TouchableOpacity>
-            </View>
-
             {/* Form Fields */}
             <View style={styles.form}>
-              {method === 'email' ? (
-                <>
-                  <Input
-                    placeholder="Email"
-                    value={email}
-                    onChangeText={(t) => { setEmail(t); if (errors.email) setErrors({ ...errors, email: undefined }); }}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    leftIcon={<Mail size={20} color={theme.colors.textTertiary} />}
-                    error={errors.email}
-                    containerStyle={styles.input}
-                  />
-                  <Input
-                    placeholder="Parolă"
-                    value={password}
-                    onChangeText={(t) => { setPassword(t); if (errors.password) setErrors({ ...errors, password: undefined }); }}
-                    secureTextEntry
-                    autoComplete="password"
-                    leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
-                    error={errors.password}
-                    containerStyle={styles.input}
-                  />
+              <>
+                <Input
+                  placeholder="Email"
+                  value={email}
+                  onChangeText={(t) => { setEmail(t); if (errors.email) setErrors({ ...errors, email: undefined }); }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  leftIcon={<Mail size={20} color={theme.colors.textTertiary} />}
+                  error={errors.email}
+                  containerStyle={styles.input}
+                />
+                <Input
+                  placeholder="Parolă"
+                  value={password}
+                  onChangeText={(t) => { setPassword(t); if (errors.password) setErrors({ ...errors, password: undefined }); }}
+                  secureTextEntry
+                  autoComplete="password"
+                  leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
+                  error={errors.password}
+                  containerStyle={styles.input}
+                />
 
-                  {/* Forgot Password */}
-                  <TouchableOpacity 
-                    onPress={() => navigation.navigate('ForgotPassword')} 
-                    style={styles.forgotBtn}
-                  >
-                    <Text style={[styles.forgotText, { color: theme.colors.accent.main }]}>
-                      Am uitat parola
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <Input
-                    placeholder="Număr de telefon"
-                    value={phone}
-                    onChangeText={(t) => { setPhone(t); if (errors.phone) setErrors({ ...errors, phone: undefined }); }}
-                    keyboardType="phone-pad"
-                    autoComplete="tel"
-                    leftIcon={<Phone size={20} color={theme.colors.textTertiary} />}
-                    error={errors.phone}
-                    containerStyle={styles.input}
-                  />
-                  <Input
-                    placeholder="Parolă"
-                    value={password}
-                    onChangeText={(t) => { setPassword(t); if (errors.password) setErrors({ ...errors, password: undefined }); }}
-                    secureTextEntry
-                    autoComplete="password"
-                    leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
-                    error={errors.password}
-                    containerStyle={styles.input}
-                  />
-                  <TouchableOpacity 
-                    onPress={() => navigation.navigate('ForgotPassword')} 
-                    style={styles.forgotBtn}
-                  >
-                    <Text style={[styles.forgotText, { color: theme.colors.accent.main }]}>
-                      Am uitat parola
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
+                {/* Forgot Password */}
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('ForgotPassword')} 
+                  style={styles.forgotBtn}
+                >
+                  <Text style={[styles.forgotText, { color: theme.colors.accent.main }]}>
+                    Am uitat parola
+                  </Text>
+                </TouchableOpacity>
+              </>
 
               {/* Login Button */}
               <Button
@@ -232,6 +237,26 @@ const LoginScreen: React.FC = () => {
                 fullWidth
                 style={styles.loginBtn}
               />
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>sau</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <SocialButton
+                provider="google"
+                onPress={handleGoogleLogin}
+                disabled={isLoading}
+              />
+
+              {Platform.OS === 'ios' && (
+                <SocialButton
+                  provider="apple"
+                  onPress={handleAppleLogin}
+                  disabled={isLoading}
+                />
+              )}
             </View>
           </View>
 
@@ -370,6 +395,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loginBtn: {},
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'lowercase',
+  },
   registerSection: {
     flexDirection: 'row',
     justifyContent: 'center',

@@ -4,7 +4,7 @@
  * Step 1: Email or Phone
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import {
   Platform,
   TouchableOpacity,
   Linking,
-  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -22,7 +21,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/app/navigation/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
-import { authApi } from '@/features/auth/services';
 import {
   Button,
   Input,
@@ -30,28 +28,20 @@ import {
   PasswordStrength,
   ScreenHeader,
 } from '@/shared/components';
-import { Mail, Phone, User, Lock, ArrowLeft } from 'lucide-react-native';
+import { Mail, User, Lock, ArrowLeft } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
-
-type RegisterMethod = 'email' | 'phone';
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { theme } = useTheme();
   const { register } = useAuth();
 
-  // Auth method
-  const [method, setMethod] = useState<RegisterMethod>('email');
-
   // Form state - Email
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-
-  // Form state - Phone
-  const [phone, setPhone] = useState('');
 
   // GDPR consents (3 mandatory, 2 optional)
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -106,47 +96,8 @@ const RegisterScreen: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const validatePhoneForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!name.trim()) {
-      newErrors.name = 'Numele este obligatoriu';
-    }
-
-    if (!phone.trim()) {
-      newErrors.phone = 'Numărul de telefon este obligatoriu';
-    } else if (!/^\+[1-9]\d{1,14}$/.test(phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Format telefon invalid (ex: +40712345678)';
-    }
-
-    if (!password) {
-      newErrors.password = 'Parola este obligatorie';
-    } else if (password.length < 8) {
-      newErrors.password = 'Minim 8 caractere';
-    } else if (!/[A-Z]/.test(password)) {
-      newErrors.password = 'Trebuie să conțină o literă mare';
-    } else if (!/[0-9]/.test(password)) {
-      newErrors.password = 'Trebuie să conțină o cifră';
-    } else if (!/[!@#$%^&*]/.test(password)) {
-      newErrors.password = 'Trebuie să conțină un caracter special';
-    }
-
-    if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Parolele nu coincid';
-    }
-
-    if (!acceptTerms || !acceptPrivacy || !acceptGdpr) {
-      newErrors.consents =
-        'Trebuie să accepți Termenii și Condițiile, Politica de Confidențialitate și prelucrarea datelor conform GDPR';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleRegister = async () => {
-    const isValid = method === 'email' ? validateEmailForm() : validatePhoneForm();
-    if (!isValid) return;
+    if (!validateEmailForm()) return;
 
     setIsLoading(true);
     setErrors({});
@@ -163,37 +114,28 @@ const RegisterScreen: React.FC = () => {
         acceptMarketing,
         acceptAnalytics,
       };
-      if (method === 'email') {
-        await register({
-          email,
-          password,
+      await register({
+        email,
+        password,
+        firstName,
+        lastName,
+        ...consents,
+      });
+      console.log('OTP sent for email registration');
+      navigation.navigate('OTPVerification', {
+        email,
+        purpose: 'register',
+        registerData: {
           firstName,
           lastName,
-          ...consents,
-        });
-        console.log('OTP sent for email registration');
-        navigation.navigate('OTPVerification', {
-          email,
-          type: 'email',
-          purpose: 'register',
-          registerData: { firstName, lastName, password },
-        });
-      } else {
-        await authApi.registerWithPhone({
-          phone,
           password,
-          firstName,
-          lastName,
-          ...consents,
-        });
-        console.log('OTP sent for phone registration');
-        navigation.navigate('OTPVerification', {
-          phone,
-          type: 'phone',
-          purpose: 'register',
-          registerData: { firstName, lastName, password },
-        });
-      }
+          acceptTerms,
+          acceptPrivacy,
+          acceptGdpr,
+          acceptMarketing,
+          acceptAnalytics,
+        },
+      });
     } catch (error: any) {
       console.error('Registration error:', error);
       const apiError = error?.response?.data;
@@ -206,8 +148,6 @@ const RegisterScreen: React.FC = () => {
         });
       } else if (apiError?.code === 'EMAIL_ALREADY_EXISTS') {
         setErrors({ email: 'Acest email este deja utilizat' });
-      } else if (apiError?.code === 'PHONE_ALREADY_EXISTS') {
-        setErrors({ phone: 'Acest număr de telefon este deja utilizat' });
       } else {
         setErrors({
           general:
@@ -262,58 +202,6 @@ const RegisterScreen: React.FC = () => {
             </Text>
           </View>
 
-          {/* Method Tabs */}
-          <View style={[styles.methodTabs, { backgroundColor: theme.colors.surface }]}>
-            <TouchableOpacity
-              onPress={() => setMethod('email')}
-              style={[
-                styles.methodTab,
-                method === 'email' && {
-                  backgroundColor: theme.colors.primary.main,
-                },
-              ]}
-            >
-              <Mail
-                size={18}
-                color={method === 'email' ? '#ffffff' : theme.colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.methodTabText,
-                  {
-                    color: method === 'email' ? '#ffffff' : theme.colors.textSecondary,
-                  },
-                ]}
-              >
-                Email
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setMethod('phone')}
-              style={[
-                styles.methodTab,
-                method === 'phone' && {
-                  backgroundColor: theme.colors.primary.main,
-                },
-              ]}
-            >
-              <Phone
-                size={18}
-                color={method === 'phone' ? '#ffffff' : theme.colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.methodTabText,
-                  {
-                    color: method === 'phone' ? '#ffffff' : theme.colors.textSecondary,
-                  },
-                ]}
-              >
-                Telefon
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Registration Form */}
           <View style={styles.form}>
             {/* Common Name Field */}
@@ -331,107 +219,56 @@ const RegisterScreen: React.FC = () => {
               containerStyle={styles.input}
             />
 
-            {method === 'email' ? (
-              <>
-                <Input
-                  label="Email"
-                  placeholder="nume@email.com"
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    if (errors.email) setErrors({ ...errors, email: '' });
-                  }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  leftIcon={<Mail size={20} color={theme.colors.textTertiary} />}
-                  error={errors.email}
-                  containerStyle={styles.input}
-                />
+            <>
+              <Input
+                label="Email"
+                placeholder="nume@email.com"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) setErrors({ ...errors, email: '' });
+                }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                leftIcon={<Mail size={20} color={theme.colors.textTertiary} />}
+                error={errors.email}
+                containerStyle={styles.input}
+              />
 
-                <Input
-                  label="Parolă"
-                  placeholder="Minim 8 caractere"
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    if (errors.password) setErrors({ ...errors, password: '' });
-                  }}
-                  secureTextEntry
-                  leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
-                  error={errors.password}
-                  containerStyle={styles.input}
-                />
+              <Input
+                label="Parolă"
+                placeholder="Minim 8 caractere"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) setErrors({ ...errors, password: '' });
+                }}
+                secureTextEntry
+                leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
+                error={errors.password}
+                containerStyle={styles.input}
+              />
 
-                {password.length > 0 && (
-                  <PasswordStrength password={password} showRequirements />
-                )}
+              {password.length > 0 && (
+                <PasswordStrength password={password} showRequirements />
+              )}
 
-                <Input
-                  label="Confirmă parola"
-                  placeholder="Repetă parola"
-                  value={confirmPassword}
-                  onChangeText={(text) => {
-                    setConfirmPassword(text);
-                    if (errors.confirmPassword)
-                      setErrors({ ...errors, confirmPassword: '' });
-                  }}
-                  secureTextEntry
-                  leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
-                  error={errors.confirmPassword}
-                  containerStyle={styles.confirmPasswordInput}
-                />
-              </>
-            ) : (
-              <>
-                <Input
-                  label="Număr de telefon"
-                  placeholder="+40 7XX XXX XXX"
-                  value={phone}
-                  onChangeText={(text) => {
-                    setPhone(text);
-                    if (errors.phone) setErrors({ ...errors, phone: '' });
-                  }}
-                  keyboardType="phone-pad"
-                  leftIcon={<Phone size={20} color={theme.colors.textTertiary} />}
-                  error={errors.phone}
-                  containerStyle={styles.input}
-                />
-
-                <Input
-                  label="Parolă"
-                  placeholder="Minim 8 caractere"
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    if (errors.password) setErrors({ ...errors, password: '' });
-                  }}
-                  secureTextEntry
-                  leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
-                  error={errors.password}
-                  containerStyle={styles.input}
-                />
-
-                {password.length > 0 && (
-                  <PasswordStrength password={password} showRequirements />
-                )}
-
-                <Input
-                  label="Confirmă parola"
-                  placeholder="Repetă parola"
-                  value={confirmPassword}
-                  onChangeText={(text) => {
-                    setConfirmPassword(text);
-                    if (errors.confirmPassword)
-                      setErrors({ ...errors, confirmPassword: '' });
-                  }}
-                  secureTextEntry
-                  leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
-                  error={errors.confirmPassword}
-                  containerStyle={styles.confirmPasswordInput}
-                />
-              </>
-            )}
+              <Input
+                label="Confirmă parola"
+                placeholder="Repetă parola"
+                value={confirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  if (errors.confirmPassword)
+                    setErrors({ ...errors, confirmPassword: '' });
+                }}
+                secureTextEntry
+                leftIcon={<Lock size={20} color={theme.colors.textTertiary} />}
+                error={errors.confirmPassword}
+                containerStyle={styles.confirmPasswordInput}
+              />
+            </>
 
             {/* GDPR Consents – 3 mandatory, 2 optional */}
             <Checkbox

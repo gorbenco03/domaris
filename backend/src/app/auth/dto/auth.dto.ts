@@ -14,7 +14,6 @@ import {
   MinLength,
   MaxLength,
   Matches,
-  IsPhoneNumber,
   IsNotEmpty,
   IsBoolean,
 } from 'class-validator';
@@ -112,82 +111,6 @@ export class VerifyEmailOtpDto {
   code!: string;
 }
 
-
-/**
- * Înregistrare cu telefon (trimite OTP)
- * GDPR: Requires mandatory consents for Terms, Privacy, GDPR
- */
-export class RegisterPhoneDto {
-  @ApiProperty({ example: '+40712345678' })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^\+?[1-9]\d{7,14}$/, { message: 'Număr de telefon invalid' })
-  phone!: string;
-
-  @ApiProperty({ minLength: 8 })
-  @IsString()
-  @MinLength(8, { message: 'Parola trebuie să aibă minim 8 caractere' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-    message: 'Parola trebuie să conțină cel puțin o literă mare, una mică și o cifră',
-  })
-  password!: string;
-
-  @ApiPropertyOptional({ example: 'Ion' })
-  @IsString()
-  @IsOptional()
-  firstName?: string;
-
-  @ApiPropertyOptional({ example: 'Popescu' })
-  @IsString()
-  @IsOptional()
-  lastName?: string;
-
-  // ============================================================================
-  // GDPR CONSENTS (MANDATORY)
-  // ============================================================================
-
-  @ApiProperty({
-    description: 'Acceptance of Terms & Conditions (mandatory)',
-    example: true
-  })
-  @IsBoolean({ message: 'Acceptarea Termenilor și Condițiilor este obligatorie' })
-  acceptTerms!: boolean;
-
-  @ApiProperty({
-    description: 'Acceptance of Privacy Policy (mandatory)',
-    example: true
-  })
-  @IsBoolean({ message: 'Acceptarea Politicii de Confidențialitate este obligatorie' })
-  acceptPrivacy!: boolean;
-
-  @ApiProperty({
-    description: 'Acceptance of GDPR data processing (mandatory)',
-    example: true
-  })
-  @IsBoolean({ message: 'Acceptarea prelucrării datelor conform GDPR este obligatorie' })
-  acceptGdpr!: boolean;
-
-  // ============================================================================
-  // OPTIONAL CONSENTS
-  // ============================================================================
-
-  @ApiPropertyOptional({
-    description: 'Consent for marketing communications (optional)',
-    example: false
-  })
-  @IsBoolean()
-  @IsOptional()
-  acceptMarketing?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Consent for analytics tracking (optional)',
-    example: false
-  })
-  @IsBoolean()
-  @IsOptional()
-  acceptAnalytics?: boolean;
-}
-
 // ============================================================================
 // LOGIN DTOs
 // ============================================================================
@@ -204,38 +127,6 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty({ message: 'Parola este obligatorie' })
   password!: string;
-}
-
-/**
- * Login cu telefon (trimite OTP)
- */
-export class LoginPhoneDto {
-  @ApiProperty({ example: '+40712345678' })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^\+?[1-9]\d{7,14}$/, { message: 'Număr de telefon invalid' })
-  phone!: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty({ message: 'Parola este obligatorie' })
-  password!: string;
-}
-
-/**
- * Verificare OTP telefon (pentru login sau verificare)
- */
-export class VerifyPhoneOtpDto {
-  @ApiProperty({ example: '+40712345678' })
-  @IsString()
-  @IsNotEmpty()
-  phone!: string;
-
-  @ApiProperty({ example: '123456', minLength: 6, maxLength: 6 })
-  @IsString()
-  @MinLength(6)
-  @MaxLength(6)
-  code!: string;
 }
 
 // ============================================================================

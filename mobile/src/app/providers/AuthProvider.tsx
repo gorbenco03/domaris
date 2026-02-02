@@ -8,6 +8,7 @@ import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useAuthStore, User } from '@/core/stores/authStore';
 import { tokenManager } from '@/core/auth/tokenManager';
 import { authApi } from '@/features/auth/api';
+import type { IAppleAuthRequest } from '@/core/api/types';
 
 // ============================================
 // CONTEXT
@@ -19,10 +20,10 @@ interface AuthContextValue {
   isLoading: boolean;
   isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithPhone: (phone: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
+  loginWithApple: (data: IAppleAuthRequest) => Promise<void>;
   register: (data: RegisterData) => Promise<any>;
   verifyEmailOtp: (email: string, code: string) => Promise<void>;
-  verifyPhoneOtp: (phone: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUser: (userData: any) => Promise<void>; // Direct update for client changes
@@ -64,6 +65,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       typeof response.refreshToken !== 'string'
     ) {
       throw new Error('AUTH_RESPONSE_INVALID');
+    }
+  };
+
+  /**
+   * Login with Google (backend OAuth)
+   */
+  const loginWithGoogle = async (idToken: string): Promise<void> => {
+    store.setLoading(true);
+
+    try {
+      const response = await authApi.loginWithGoogle({ idToken });
+      ensureAuthTokens(response);
+
+      await store.login(
+        response.user,
+        response.accessToken,
+        response.refreshToken
+      );
+    } catch (error) {
+      store.setLoading(false);
+      throw error;
+    }
+  };
+
+  /**
+   * Login with Apple (backend OAuth)
+   */
+  const loginWithApple = async (data: IAppleAuthRequest): Promise<void> => {
+    store.setLoading(true);
+
+    try {
+      const response = await authApi.loginWithApple(data);
+      ensureAuthTokens(response);
+
+      await store.login(
+        response.user,
+        response.accessToken,
+        response.refreshToken
+      );
+    } catch (error) {
+      store.setLoading(false);
+      throw error;
     }
   };
 
@@ -114,27 +157,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
-   * Login with phone and password
-   */
-  const loginWithPhone = async (phone: string, password: string): Promise<void> => {
-    store.setLoading(true);
-
-    try {
-      const response = await authApi.loginWithPhone({ phone, password });
-      ensureAuthTokens(response);
-
-      await store.login(
-        response.user,
-        response.accessToken,
-        response.refreshToken
-      );
-    } catch (error) {
-      store.setLoading(false);
-      throw error;
-    }
-  };
-
-  /**
    * Register with email and password (sends OTP)
    */
   const register = async (data: RegisterData): Promise<any> => {
@@ -158,28 +180,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     try {
       const response = await authApi.verifyEmailOtp({ email, code });
-      ensureAuthTokens(response);
-
-      await store.login(
-        response.user,
-        response.accessToken,
-        response.refreshToken
-      );
-    } catch (error) {
-      store.setLoading(false);
-      throw error;
-    }
-  };
-
-
-  /**
-   * Verify phone OTP (real backend call)
-   */
-  const verifyPhoneOtp = async (phone: string, code: string): Promise<void> => {
-    store.setLoading(true);
-
-    try {
-      const response = await authApi.verifyPhoneOtp({ phone, code });
       ensureAuthTokens(response);
 
       await store.login(
@@ -237,10 +237,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading: store.isLoading,
     isInitialized: store.isInitialized,
     login,
-    loginWithPhone,
+    loginWithGoogle,
+    loginWithApple,
     register,
     verifyEmailOtp,
-    verifyPhoneOtp,
     logout,
     refreshUser,
     updateUser,

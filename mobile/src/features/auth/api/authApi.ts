@@ -8,9 +8,6 @@ import { API_ENDPOINTS } from '@/core/api/endpoints';
 import type {
   ILoginEmailRequest,
   IRegisterEmailRequest,
-  IRegisterPhoneRequest,
-  ILoginPhoneRequest,
-  IVerifyPhoneOtpRequest,
   IVerifyEmailOtpRequest,
   IGoogleAuthRequest,
   IAppleAuthRequest,
@@ -55,20 +52,6 @@ export const verifyEmailOtp = async (
   return response.data;
 };
 
-
-/**
- * Register with phone (sends OTP)
- */
-export const registerWithPhone = async (
-  data: IRegisterPhoneRequest
-): Promise<IOtpSentResponse> => {
-  const response = await apiClient.post<IOtpSentResponse>(
-    `${API_ENDPOINTS.AUTH.REGISTER}/phone`,
-    data
-  );
-  return response.data;
-};
-
 // ============================================================================
 // LOGIN
 // ============================================================================
@@ -81,32 +64,6 @@ export const loginWithEmail = async (
 ): Promise<IAuthResponseData> => {
   const response = await apiClient.post<IAuthResponseData>(
     API_ENDPOINTS.AUTH.LOGIN,
-    data
-  );
-  return response.data;
-};
-
-/**
- * Login with phone and password
- */
-export const loginWithPhone = async (
-  data: ILoginPhoneRequest
-): Promise<IAuthResponseData> => {
-  const response = await apiClient.post<IAuthResponseData>(
-    `${API_ENDPOINTS.AUTH.LOGIN}/phone`,
-    data
-  );
-  return response.data;
-};
-
-/**
- * Verify phone OTP (completes registration)
- */
-export const verifyPhoneOtp = async (
-  data: IVerifyPhoneOtpRequest
-): Promise<IAuthResponseData> => {
-  const response = await apiClient.post<IAuthResponseData>(
-    API_ENDPOINTS.AUTH.VERIFY_OTP,
     data
   );
   return response.data;
@@ -287,12 +244,9 @@ export const authApi = {
   // Registration
   registerWithEmail,
   verifyEmailOtp,
-  registerWithPhone,
 
   // Login
   loginWithEmail,
-  loginWithPhone,
-  verifyPhoneOtp,
 
 
   // OAuth

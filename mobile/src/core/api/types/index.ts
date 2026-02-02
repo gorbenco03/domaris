@@ -76,30 +76,6 @@ export interface IRegisterEmailRequest {
   acceptAnalytics?: boolean;
 }
 
-export interface IRegisterPhoneRequest {
-  phone: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-  /** GDPR: mandatory */
-  acceptTerms: boolean;
-  acceptPrivacy: boolean;
-  acceptGdpr: boolean;
-  /** GDPR: optional */
-  acceptMarketing?: boolean;
-  acceptAnalytics?: boolean;
-}
-
-export interface ILoginPhoneRequest {
-  phone: string;
-  password: string;
-}
-
-export interface IVerifyPhoneOtpRequest {
-  phone: string;
-  code: string;
-}
-
 export interface IGoogleAuthRequest {
   idToken: string;
 }

@@ -39,10 +39,7 @@ import { AuthService } from './auth.service';
 import {
   RegisterEmailDto,
   VerifyEmailOtpDto,
-  RegisterPhoneDto,
   LoginDto,
-  LoginPhoneDto,
-  VerifyPhoneOtpDto,
   GoogleAuthDto,
   AppleAuthDto,
   ForgotPasswordDto,
@@ -89,17 +86,6 @@ export class AuthController {
     return this.authService.verifyEmailOtp(body);
   }
 
-
-  @Public()
-  @Post('register/phone')
-  @ApiOperation({ summary: 'Register with phone (sends OTP)' })
-  @ApiResponse({ status: 200, description: 'OTP sent', type: OtpSentResponseDto })
-  @ApiResponse({ status: 400, description: 'Phone already exists' })
-  @HttpCode(HttpStatus.OK)
-  async registerPhone(@Body() body: RegisterPhoneDto, @Req() req: any) {
-    return this.authService.registerPhone(body, req.ip, req.headers['user-agent']);
-  }
-
   // ============================================================================
   // LOGIN
   // ============================================================================
@@ -116,26 +102,6 @@ export class AuthController {
       throw new Error('Invalid credentials');
     }
     return this.authService.login(user, req.ip, req.headers['user-agent']);
-  }
-
-  @Public()
-  @Post('login/phone')
-  @ApiOperation({ summary: 'Login with phone and password' })
-  @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  @HttpCode(HttpStatus.OK)
-  async loginPhone(@Body() body: LoginPhoneDto) {
-    return this.authService.loginPhone(body);
-  }
-
-  @Public()
-  @Post('verify-phone-otp')
-  @ApiOperation({ summary: 'Verify phone OTP (completes register)' })
-  @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
-  @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
-  @HttpCode(HttpStatus.OK)
-  async verifyPhoneOtp(@Body() body: VerifyPhoneOtpDto) {
-    return this.authService.verifyPhoneOtp(body);
   }
 
   // ============================================================================

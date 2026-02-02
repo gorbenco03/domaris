@@ -6,7 +6,7 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { IPropertyListing } from '@/core/api/types';
+import type { IProperty } from '@/core/api/types';
 
 // ============================================
 // AUTH STACK
@@ -20,14 +20,17 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
   ResetPassword: { email: string; code: string };
   OTPVerification: {
-    email?: string;
-    phone?: string;
-    type: 'email' | 'phone';
+    email: string;
     purpose: 'register' | 'reset-password' | 'verify';
     registerData?: {
       firstName?: string;
       lastName?: string;
       password?: string;
+      acceptTerms?: boolean;
+      acceptPrivacy?: boolean;
+      acceptGdpr?: boolean;
+      acceptMarketing?: boolean;
+      acceptAnalytics?: boolean;
     };
   };
   UserTypeSelection: undefined;
@@ -112,7 +115,7 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   MyProperties: undefined;
   CreateProperty: undefined;
-  EditProperty: { propertyId: string; property?: IPropertyListing };
+  EditProperty: { propertyId: string; property?: IProperty };
   PropertyStats: { propertyId: string };
   Viewings: undefined;
   ViewingDetail: { viewingId: string };
