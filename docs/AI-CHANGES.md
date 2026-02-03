@@ -304,3 +304,293 @@ These were left intact for backward compatibility:
   - `schedule_viewing`
   - `save_search`
 - Add telemetry event table (DB) for model cost + conversions
+
+---
+
+## 11. AI Strategy & Data Flywheel — Real Estate Platform
+
+Mai jos este un document **clar, structurat și gata de pus în documentația tehnică / product**.
+Nu este motivational — este **un blueprint real de produs**.
+
+### 11.1 Obiectiv strategic
+
+Scopul nu este doar implementarea unor funcționalități AI, ci construirea unui **data flywheel** care va crea un avantaj competitiv pe termen lung.
+
+Principiul de bază:
+
+```
+Better data → Better matching → Better user experience → More usage → Even better data
+```
+
+AI-ul devine valoros doar atunci când este alimentat constant de date reale de comportament și intenție.
+
+### 11.2 Cele 3 feature-uri AI prioritare
+
+Acestea trebuie construite în această ordine deoarece creează fundația de date necesară pentru modele din ce în ce mai inteligente.
+
+#### Feature 1 — Conversational AI Real Estate Agent (Intent Collection Engine)
+
+##### Scop
+
+Transformarea search-ului clasic într-o conversație naturală, similară cu interacțiunea cu un agent imobiliar.
+
+Dar obiectivul real nu este chat-ul.
+
+Obiectivul real este **colectarea structurată a intenției cumpărătorilor**.
+
+##### Cum trebuie să funcționeze
+
+Userul nu doar cere un apartament.
+
+AI-ul trebuie să ghideze conversația (natural, nu ca un formular mascat), de exemplu:
+
+- Buget
+- Zone preferate
+- Număr camere
+- Suprafață minimă
+- Tip proprietate
+- Buy vs Rent
+- Credit vs Cash
+- Timeline (urgent / explorator)
+- Scop (locuință / investiție)
+
+##### Cerință critică — structurarea datelor
+
+După fiecare conversație, trebuie extras un obiect structurat:
+
+```json
+{
+  "budget_min": 70000,
+  "budget_max": 90000,
+  "preferred_areas": ["Botanica"],
+  "rooms": 2,
+  "property_type": "apartment",
+  "financing": "mortgage",
+  "urgency": "3_months",
+  "intent_type": "buy"
+}
+```
+
+Nu salva doar text brut.
+
+Textul nu scalează.
+
+Structura scalează.
+
+##### Date colectate (aur pur)
+
+- Cerere reală din piață
+- Distribuția bugetelor
+- Zonele dorite
+- Elasticitatea prețului
+- Motivele cumpărării
+
+Majoritatea portalurilor nu au aceste date curate.
+
+Acesta poate deveni un moat major.
+
+##### Impact strategic
+
+După 6–12 luni vei putea construi:
+
+- Demand Heatmaps: unde există cumpărători, dar nu există supply
+- Smart Alerts: când apare o proprietate compatibilă → notificare instant
+- Buyer-Seller Matching: nu mai ai doar listinguri, ai matchmaking
+
+#### Feature 2 — AI Price Advisor (pentru selleri)
+
+##### Scop
+
+Ajută proprietarii să seteze un preț corect folosind:
+
+- Comparabile din platformă
+- Tranzacții reale (când vei avea datele statistice)
+- Cererea actuală
+- Caracteristicile proprietății
+
+##### Cum trebuie gândit (important)
+
+Nu promite „prețul corect”.
+
+Promite: **interval de preț probabil**.
+
+Real estate este zgomotos.
+
+Modelele prea sigure distrug trust-ul.
+
+##### Input-uri pentru model
+
+Structurate:
+
+- Locație
+- mp
+- etaj
+- an construcție
+- tip clădire
+- număr camere
+
+Behavioral:
+
+- Cerere pentru zonă
+- Engagement pe listinguri similare
+
+Future gold:
+
+- Prețuri reale de tranzacționare
+
+##### Computer vision (high ROI)
+
+Analizează pozele pentru a detecta semnale utile (nu perfecțiune):
+
+- Renovated vs vechi
+- Calitatea finisajelor
+- Luminozitate
+- Mobilat / nemobilat
+
+##### UX recomandat
+
+Pe pagina de setare a prețului:
+
+> Preț recomandat: 82,000 – 89,000 €
+> Proprietățile similare se vând în medie în 45 zile.
+
+##### Efect strategic ascuns
+
+Prețuri mai corecte → proprietăți se vând mai repede → buyer experience mai bun → marketplace mai activ.
+
+Acesta este un flywheel.
+
+#### Feature 3 — Behavioral Ranking & Matching Engine
+
+Cel mai subestimat feature din marketplace-uri.
+
+Creează diferența dintre portaluri mediocre și produse addictive.
+
+##### Ce trebuie să track-uiești obligatoriu
+
+Listing level:
+
+- Impressions
+- CTR
+- Save rate
+- Inquiry rate
+- Share rate
+- Dwell time
+- Return views
+
+User level:
+
+- Favorite
+- Mesaje
+- Programări
+- Timp pe pagină
+- Interacțiuni cu pozele
+
+Track everything.
+
+Storage este ieftin.
+
+Data este priceless.
+
+##### Primul pas nu este ML
+
+Începe cu un scor heuristic:
+
+```
+ListingScore =
+0.30 * InquiryRate +
+0.25 * SaveRate +
+0.20 * CTR +
+0.15 * DwellTime +
+0.10 * Freshness
+```
+
+Instant ai un feed mai bun decât majoritatea competitorilor.
+
+Fără AI complex.
+
+##### Evoluția naturală
+
+- Stage 1 — Heuristics (rapid, controlabil)
+- Stage 2 — Learning to Rank (după ce ai volum)
+- Stage 3 — Personalization (feed diferit pentru fiecare user)
+
+### 11.3 Data infrastructure (non-negotiable)
+
+Dacă sari peste asta, limitezi AI-ul pentru ani.
+
+Construiește un behavioral data pipeline:
+
+```
+User Action → Event → Data Warehouse → Models
+```
+
+Nu te baza doar pe tool-uri de analytics.
+
+Ai nevoie de acces la raw data.
+
+Tipuri de date strategice:
+
+1) Behavioral data: ce fac userii
+
+2) Intent data: ce spun că vor (chat)
+
+3) Transaction data: ce se cumpără real
+
+Când le combini, ai o vedere completă a pieței: foarte rară și foarte defensibilă.
+
+### 11.4 Roadmap recomandat (90 zile)
+
+Luna 1:
+
+- Tracking complet
+- Lansare conversational AI
+- Intent extraction
+
+Luna 2:
+
+- Behavioral ranking
+- Smart alerts
+- Recommended listings
+
+Luna 3:
+
+- AI price advisor
+- Demand dashboards
+- Seller insights
+
+După acest punct, AI-ul începe să devină diferențiator real.
+
+### 11.5 Greșeală majoră de evitat
+
+Nu construi modele sofisticate prea devreme:
+
+- AVM ultra-complex
+- Price prediction hardcore
+- Demand forecasting
+
+Fără suficient semnal, optimizezi pe zgomot.
+
+### 11.6 Principiul de aur
+
+Nu construi inteligență pe care nu o poți măsura.
+
+Întreabă mereu:
+
+- Crește acest sistem inquiries?
+- Crește conversia?
+- Reduce time-to-sell?
+
+Dacă nu poți măsura, nu este încă valoros.
+
+### 11.7 Adevărul pe care puțini îl înțeleg
+
+Primul moat nu este AI.
+
+Primul moat este data.
+
+Modelele pot fi replicate.
+
+Datele nu.
+
+Acesta va fi un document pentru feature-ul următor ce ține de AI.

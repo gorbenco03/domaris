@@ -124,6 +124,13 @@ export const API_ENDPOINTS = {
     AGENT_VALUATION_LISTING: (listingId: string) => `/ai/agent/valuation/${listingId}`,
   },
 
+  // App
+  APP: {
+    STATUS: '/app/status',
+    VERSION: '/app/version',
+    MAINTENANCE: '/app/maintenance',
+  },
+
   // Analytics
   ANALYTICS: {
     PROPERTY_SUGGESTIONS: (id: string) => `/properties/${id}/analytics/suggestions`,

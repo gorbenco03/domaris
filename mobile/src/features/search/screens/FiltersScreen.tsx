@@ -190,10 +190,14 @@ const FiltersScreen: React.FC = () => {
       (key) => activeFilters[key] === undefined && delete activeFilters[key]
     );
 
-    navigation.navigate({
-      name: 'SearchResults',
-      params: { filters: activeFilters },
-      merge: true,
+    navigation.goBack();
+
+    requestAnimationFrame(() => {
+      navigation.navigate({
+        name: 'SearchResults',
+        params: { filters: activeFilters },
+        merge: true,
+      });
     });
   };
 

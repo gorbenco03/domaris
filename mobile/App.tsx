@@ -23,6 +23,8 @@ import { TutorialGate, TutorialProvider } from '@/features/tutorial';
 // Navigation
 import RootNavigator from '@/app/navigation/RootNavigator';
 
+import AppStatusGate from '@/shared/components/AppStatusGate';
+
 // Keep splash screen visible while loading resources
 SplashScreen.preventAutoHideAsync();
 
@@ -44,7 +46,9 @@ const AppContent: React.FC = () => {
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={theme.colors.background}
       />
-      <RootNavigator />
+      <AppStatusGate>
+        <RootNavigator />
+      </AppStatusGate>
     </>
   );
 };
