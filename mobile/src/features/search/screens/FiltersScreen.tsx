@@ -18,7 +18,7 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton, Button, Chip, Divider } from '@/shared/components';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { IAdvancedSearchFilters } from '@/features/search/services';
-import { AmenitySelector, type Amenity } from '@/shared/components';
+import AmenitySelector, { type Amenity } from '@/shared/components/AmenitySelector';
 
 // ============================================
 // TYPES
@@ -190,7 +190,11 @@ const FiltersScreen: React.FC = () => {
       (key) => activeFilters[key] === undefined && delete activeFilters[key]
     );
 
-    navigation.navigate('SearchResults', { filters: activeFilters });
+    navigation.navigate({
+      name: 'SearchResults',
+      params: { filters: activeFilters },
+      merge: true,
+    });
   };
 
   return (
@@ -213,7 +217,15 @@ const FiltersScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        horizontal={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        alwaysBounceHorizontal={false}
+        directionalLockEnabled
+        contentContainerStyle={{ width: '100%' }}
+      >
         {/* Transaction Type */}
         <FilterSection title="Tip tranzacție">
           <View style={styles.chipsGrid}>
@@ -606,13 +618,19 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  container: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
+    padding: 16,
     borderBottomWidth: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   headerTitle: {
     fontSize: 18,
@@ -627,10 +645,6 @@ const styles = StyleSheet.create({
   resetText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
   },
   section: {
     paddingVertical: 24,

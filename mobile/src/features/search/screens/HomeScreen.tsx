@@ -135,6 +135,15 @@ const HomeScreen: React.FC = () => {
   }));
 
   const handleSearch = (filters: Record<string, unknown>) => {
+    const parent = navigation.getParent();
+    if (parent) {
+      (parent.navigate as any)('SearchTab', {
+        screen: 'SearchResults',
+        params: { filters },
+      });
+      return;
+    }
+
     navigation.navigate('SearchResults', { filters });
   };
 

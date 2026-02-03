@@ -150,14 +150,182 @@ export const estimatePrice = async (
 };
 
 // ============================================================================
+// 🤖 CONVERSATIONAL AGENT (NEW - Multi-tier AI)
+// ============================================================================
+
+export interface IAgentChatRequest {
+  message: string;
+  conversationId?: string;
+  context?: {
+    tone?: 'professional' | 'friendly' | 'concise';
+    language?: 'ro' | 'en';
+    maxResults?: number;
+    userPreferences?: {
+      preferredCities?: string[];
+      budgetMin?: number;
+      budgetMax?: number;
+      preferredRooms?: number;
+    };
+  };
+}
+
+export interface IAgentChatResponse {
+  conversationId: string;
+  message: string;
+  properties?: Array<{
+    id: number;
+    title: string;
+    city: string;
+    neighborhood?: string;
+    priceEur: number;
+    transactionType: string;
+    rooms: number;
+    surfaceSqm: number;
+    imageUrl?: string;
+  }>;
+  intent: {
+    type: string;
+    confidence: number;
+    tier: number;
+  };
+  toolsUsed: string[];
+  suggestedActions?: Array<{
+    type: string;
+    label: string;
+    payload?: Record<string, any>;
+  }>;
+  debug?: {
+    tier: number;
+    latencyMs: number;
+    cached: boolean;
+  };
+}
+
+/**
+ * Chat with the Conversational Agent (NEW - uses multi-tier routing)
+ * Tier 0: Deterministic (free)
+ * Tier 1: Cheap model (low cost)
+ * Tier 2: Strong LLM (when needed)
+ */
+export const agentChat = async (
+  request: IAgentChatRequest
+): Promise<IAgentChatResponse> => {
+  const response = await apiClient.post<IAgentChatResponse>(
+    API_ENDPOINTS.AI.AGENT_CHAT,
+    request
+  );
+  return response.data;
+};
+
+/**
+ * Get AI decision statistics (tier usage, latency)
+ */
+export const getAgentStats = async (): Promise<{
+  tier0: number;
+  tier1: number;
+  tier2: number;
+  avgLatency: number;
+}> => {
+  const response = await apiClient.get(API_ENDPOINTS.AI.AGENT_STATS);
+  return response.data;
+};
+
+// ============================================================================
+// 💰 AVM - AUTOMATED VALUATION MODEL (NEW)
+// ============================================================================
+
+export interface IAVMRequest {
+  city: string;
+  neighborhood?: string;
+  propertyType: string;
+  transactionType: 'RENT' | 'SALE';
+  rooms: number;
+  surfaceSqm: number;
+  floor?: number;
+  totalFloors?: number;
+  yearBuilt?: number;
+  amenities?: string[];
+  condition?: 'new' | 'renovated' | 'good' | 'needs_work';
+  isFurnished?: boolean;
+}
+
+export interface IAVMResponse {
+  valuation: {
+    recommendedPrice: number;
+    priceRange: { min: number; max: number };
+    currency: string;
+    liquidityScore: number;
+    dealAttractivenessScore: number;
+    confidence: number;
+    confidenceBreakdown: {
+      compCount: number;
+      featureCoverage: number;
+      areaVolatility: number;
+    };
+    comparables: {
+      count: number;
+      avgPrice: number;
+      avgPricePerSqm: number;
+      medianPrice: number;
+    };
+    factors: Array<{
+      name: string;
+      impact: number;
+      description: string;
+    }>;
+  };
+  explanation: {
+    summary: string;
+    priceJustification: string;
+    marketContext: string;
+    recommendations: string[];
+    sellerTips?: string[];
+  };
+}
+
+/**
+ * Get AI price recommendation (AVM)
+ * Returns recommended price, confidence, liquidity score, and explanation
+ */
+export const getValuation = async (
+  request: IAVMRequest
+): Promise<IAVMResponse> => {
+  const response = await apiClient.post<IAVMResponse>(
+    API_ENDPOINTS.AI.AGENT_VALUATION,
+    request
+  );
+  return response.data;
+};
+
+/**
+ * Get AI price recommendation for an existing listing
+ */
+export const getListingValuation = async (
+  listingId: number
+): Promise<IAVMResponse> => {
+  const response = await apiClient.get<IAVMResponse>(
+    API_ENDPOINTS.AI.AGENT_VALUATION_LISTING(String(listingId))
+  );
+  return response.data;
+};
+
+// ============================================================================
 // EXPORT ALL
 // ============================================================================
 
 export const aiApi = {
-  // Chat
+  // Legacy Chat (backward compatible)
   chatWithAI,
   sendMessage,
   sendMessageWithHistory,
+
+  // NEW: Conversational Agent (multi-tier)
+  agentChat,
+  getAgentStats,
+
+  // NEW: AVM (Automated Valuation Model)
+  getValuation,
+  getListingValuation,
 
   // Description Generation (Level 2+)
   generatePropertyDescription,
@@ -167,7 +335,7 @@ export const aiApi = {
   analyzeListingDraft,
   getPropertySummary,
 
-  // Price Estimation (PUBLIC)
+  // Price Estimation (PUBLIC - legacy)
   estimatePrice,
 };
 

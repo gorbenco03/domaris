@@ -60,7 +60,7 @@ const IdentityVerificationScreen: React.FC = () => {
 
   const pickFromLibrary = async (setter: (file: UploadFile | null) => void) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted && permission.status !== 'limited') {
+    if (!permission.granted) {
       Alert.alert('Permisiune necesară', 'Avem nevoie de acces la galerie.');
       return;
     }
@@ -181,7 +181,14 @@ const IdentityVerificationScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <ScreenHeader title="Verificare Identitate" />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        horizontal={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        alwaysBounceHorizontal={false}
+        directionalLockEnabled
+      >
         <Card variant="outlined" style={styles.infoCard}>
           <View style={styles.infoRow}>
             <ShieldCheck size={20} color={theme.colors.accent.main} />
@@ -308,7 +315,7 @@ const IdentityVerificationScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingBottom: 40, width: '100%' },
   infoCard: { padding: 16, marginBottom: 16 },
   statusCard: { padding: 16, marginBottom: 16 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },

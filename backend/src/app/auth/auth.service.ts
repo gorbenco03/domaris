@@ -361,8 +361,18 @@ export class AuthService {
 
       if (!user) {
         // Name is only sent on first login by Apple
-        const firstName = fullName ? fullName.split(' ')[0] : 'Apple User';
-        const lastName = fullName ? fullName.split(' ').slice(1).join(' ') : '';
+        const fallbackFromEmail = userEmail.split('@')[0] || 'User';
+        const fallbackParts = fallbackFromEmail
+          .replace(/[._-]+/g, ' ')
+          .split(' ')
+          .map((p: string) => p.trim())
+          .filter(Boolean);
+
+        const normalizedFullName = fullName?.trim();
+        const fullNameParts = normalizedFullName ? normalizedFullName.split(/\s+/).filter(Boolean) : [];
+
+        const firstName = (fullNameParts[0] || fallbackParts[0] || 'User').slice(0, 50);
+        const lastName = (fullNameParts.slice(1).join(' ') || fallbackParts.slice(1).join(' ')).slice(0, 50);
 
         user = await User.create({
           email: userEmail,
@@ -377,6 +387,11 @@ export class AuthService {
         isNewUser = true;
       } else if (!user.appleId) {
         user.appleId = appleId;
+        if ((user.firstName === 'Apple User' || !user.firstName) && fullName?.trim()) {
+          const fullNameParts = fullName.trim().split(/\s+/).filter(Boolean);
+          user.firstName = (fullNameParts[0] || user.firstName || 'User').slice(0, 50);
+          user.lastName = (fullNameParts.slice(1).join(' ') || user.lastName || '').slice(0, 50);
+        }
         if (!user.emailVerified) {
           user.emailVerified = true;
           if (user.verificationLevel < 1) {

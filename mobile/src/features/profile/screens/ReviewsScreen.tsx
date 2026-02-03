@@ -454,7 +454,11 @@ const ReviewsScreen: React.FC = () => {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        horizontal={false}
+        showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
+        alwaysBounceHorizontal={false}
+        directionalLockEnabled
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -614,6 +618,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 100,
+    width: '100%',
   },
   statsCard: {
     padding: 20,

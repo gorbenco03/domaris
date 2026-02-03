@@ -40,6 +40,13 @@ import { PAGINATION } from '@/config/constants';
 
 type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
+type SearchBarSuggestion = {
+  id: string;
+  text: string;
+  type: 'recent' | 'popular' | 'location';
+  subtitle?: string;
+};
+
 // ============================================
 // MOCK DATA
 // ============================================
@@ -158,11 +165,13 @@ const SearchResultsScreen: React.FC = () => {
   }, [searchText, filters.query, filters.city, filters.neighborhood]);
 
   const { data: suggestionsData } = useSearchSuggestions(searchText.trim());
-  const suggestions = useMemo(() => {
+  const suggestions = useMemo<SearchBarSuggestion[]>(() => {
     return (suggestionsData || []).map((suggestion: ISearchSuggestion, index: number) => ({
       id: `${suggestion.type}-${suggestion.text}-${index}`,
       text: suggestion.text,
-      type: suggestion.type === 'city' || suggestion.type === 'neighborhood' ? 'location' : 'popular',
+      type: (suggestion.type === 'city' || suggestion.type === 'neighborhood'
+        ? 'location'
+        : 'popular') as SearchBarSuggestion['type'],
       subtitle:
         suggestion.type === 'city'
           ? 'Oraș'
@@ -320,7 +329,7 @@ const SearchResultsScreen: React.FC = () => {
     });
   };
 
-  const renderHeader = () => (
+  const renderHeader = useCallback(() => (
     <View style={styles.headerContainer}>
       {/* Search Bar Row */}
       <View style={styles.searchRow}>
@@ -400,7 +409,25 @@ const SearchResultsScreen: React.FC = () => {
       </View>
 
     </View>
-  );
+  ), [
+    navigation,
+    theme.colors,
+    theme.shadows,
+    searchText,
+    suggestions,
+    totalCount,
+    filters,
+    getActiveFiltersCount,
+    handleFilterPress,
+    handleFiltersPress,
+    handleSearchSubmit,
+    handleSuggestionSelect,
+    openSortMenu,
+    getCurrentSortLabel,
+    sortBy,
+  ]);
+
+  const headerElement = useMemo(() => renderHeader(), [renderHeader]);
 
   const renderProperty = ({ item }: { item: IPropertyListItem }) => {
     // Map API item to PropertyCard props
@@ -477,11 +504,13 @@ const SearchResultsScreen: React.FC = () => {
         data={results}
         renderItem={renderProperty}
         keyExtractor={(item) => String(item.id)}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={headerElement}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
         onScrollBeginDrag={() => setShowSortModal(false)}
         refreshControl={
           <RefreshControl

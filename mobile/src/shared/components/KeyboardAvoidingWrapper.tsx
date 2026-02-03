@@ -42,9 +42,13 @@ const KeyboardAvoidingWrapper: React.FC<KeyboardAvoidingWrapperProps> = ({
   const content = scrollEnabled ? (
     <ScrollView
       contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
+      horizontal={false}
       keyboardShouldPersistTaps="handled"
+      showsHorizontalScrollIndicator={false}
       showsVerticalScrollIndicator={false}
       bounces={false}
+      alwaysBounceHorizontal={false}
+      directionalLockEnabled
     >
       {children}
     </ScrollView>
@@ -77,6 +81,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    width: '100%',
   },
 });
 

@@ -394,7 +394,11 @@ const CreatePropertyWizard: React.FC = () => {
           ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          horizontal={false}
           showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          alwaysBounceHorizontal={false}
+          directionalLockEnabled
           keyboardShouldPersistTaps="handled"
         >
           {renderStep()}
@@ -481,6 +485,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
+    width: '100%',
   },
   footer: {
     flexDirection: 'row',

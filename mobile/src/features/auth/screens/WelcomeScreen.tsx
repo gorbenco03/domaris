@@ -8,6 +8,7 @@ import React from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   StatusBar,
   Dimensions,
@@ -22,7 +23,6 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { Button } from '@/shared/components';
 import SocialButton from '@/shared/components/SocialButton';
-import { Home } from 'lucide-react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Google from 'expo-auth-session/providers/google';
 import { env } from '@/config/env';
@@ -138,12 +138,16 @@ const WelcomeScreen: React.FC = () => {
         <View style={styles.brandSection}>
           <View style={styles.logoContainer}>
             <LinearGradient
-              colors={[theme.colors.accent.main, theme.colors.accent.dark]}
+              colors={['#ffffff', '#ffffff']}
               style={styles.logoGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Home size={36} color="#ffffff" strokeWidth={2.5} />
+              <Image
+                source={require('../../../../assets/logotype.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </LinearGradient>
           </View>
           <Text style={styles.logoText}>RIVA</Text>
@@ -158,6 +162,26 @@ const WelcomeScreen: React.FC = () => {
           {errorMessage ? (
             <Text style={styles.errorText}>{errorMessage}</Text>
           ) : null}
+
+          <SocialButton
+            provider="google"
+            onPress={handleGoogleLogin}
+            disabled={isLoading}
+          />
+
+          {Platform.OS === 'ios' && (
+            <SocialButton
+              provider="apple"
+              onPress={handleAppleLogin}
+              disabled={isLoading}
+            />
+          )}
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>sau</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
           {/* Email CTAs */}
           <Button
@@ -176,26 +200,6 @@ const WelcomeScreen: React.FC = () => {
             style={styles.secondaryButton}
             textStyle={styles.secondaryButtonText}
           />
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>sau</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <SocialButton
-            provider="google"
-            onPress={handleGoogleLogin}
-            disabled={isLoading}
-          />
-
-          {Platform.OS === 'ios' && (
-            <SocialButton
-              provider="apple"
-              onPress={handleAppleLogin}
-              disabled={isLoading}
-            />
-          )}
         </View>
 
         {/* Footer */}
@@ -265,11 +269,15 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#10b981',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 12,
+  },
+  logoImage: {
+    width: 60,
+    height: 60,
   },
   logoText: {
     fontSize: 48,

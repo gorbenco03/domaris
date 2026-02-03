@@ -7,6 +7,7 @@ import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   StyleSheet,
+  StyleProp,
   ViewStyle,
   Animated,
 } from 'react-native';
@@ -26,7 +27,7 @@ interface IconButtonProps {
   size?: IconButtonSize;
   color?: string;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   testID?: string;
 }
 

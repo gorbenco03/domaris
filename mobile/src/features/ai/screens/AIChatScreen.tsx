@@ -27,7 +27,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Button, IconButton } from '@/shared/components';
-import { aiApi } from '../api/aiApi';
+import { aiApi, IAgentChatResponse } from '../api/aiApi';
 
 interface Message {
   id: string;
@@ -77,13 +77,14 @@ const AIChatScreen: React.FC = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationId, setConversationId] = useState<string | undefined>();
 
-  // Mock suggestions
+  // Quick suggestions for first-time users
   const quickSuggestions = [
+    'Apartament în Botanica',
+    '2 camere sub 400€',
     'Cu parcare',
-    'Renovat recent',
-    'Mobilat',
-    'Etaj intermediar',
+    'Mobilat complet',
   ];
 
   const handleSend = async () => {
@@ -101,19 +102,21 @@ const AIChatScreen: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const history = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-      const response = await aiApi.chatWithAI({
+      // Use the new multi-tier agent endpoint
+      const response = await aiApi.agentChat({
         message: userMessage.content,
-        conversationHistory: history,
+        conversationId,
         context: {
           tone: 'friendly',
           language: 'ro',
           maxResults: 5,
         },
       });
+
+      // Store conversationId for session continuity
+      if (response.conversationId) {
+        setConversationId(response.conversationId);
+      }
 
       const mappedProperties: PropertySuggestion[] =
         (response.properties || []).map((property: any) => ({
@@ -138,7 +141,7 @@ const AIChatScreen: React.FC = () => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.response || 'Am procesat cererea ta.',
+        content: response.message || 'Am procesat cererea ta.',
         timestamp: new Date(),
         properties: mappedProperties,
       };

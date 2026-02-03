@@ -156,7 +156,7 @@ const ViewingDetailScreen: React.FC = () => {
         {
           text: 'Respinge',
           style: 'destructive',
-          onPress: (reason) => {
+          onPress: (reason?: string) => {
             if (reason) {
               rejectMutation.mutate(
                 { id: viewing.id, reason },
@@ -279,7 +279,14 @@ const ViewingDetailScreen: React.FC = () => {
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        horizontal={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        alwaysBounceHorizontal={false}
+        directionalLockEnabled
+        contentContainerStyle={{ width: '100%' }}
+      >
         {/* Property Image */}
         <View style={styles.imageContainer}>
           {viewing.property.imageUrl ? (

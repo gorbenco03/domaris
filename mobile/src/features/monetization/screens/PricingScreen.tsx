@@ -220,7 +220,11 @@ const PricingScreen: React.FC = () => {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        horizontal={false}
+        showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
+        alwaysBounceHorizontal={false}
+        directionalLockEnabled
       >
         {/* Hero Section */}
         <View style={[styles.heroSection, { paddingHorizontal: theme.spacing[4] }]}>
@@ -655,6 +659,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 32,
+    width: '100%',
   },
   loadingContainer: {
     flex: 1,

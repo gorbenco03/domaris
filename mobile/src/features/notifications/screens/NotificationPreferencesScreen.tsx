@@ -57,7 +57,15 @@ const NotificationPreferencesScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <ScreenHeader title="Setări notificări" />
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        horizontal={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+        alwaysBounceHorizontal={false}
+        directionalLockEnabled
+      >
         {/* Push Section */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <View style={[styles.sectionHeader, { borderBottomColor: theme.colors.divider }]}>
@@ -129,7 +137,7 @@ const NotificationPreferencesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 20 },
+  scrollContent: { padding: 20, width: '100%' },
   section: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 16, borderBottomWidth: 1 },
   // sectionHeader borderBottomColor applied dynamically
