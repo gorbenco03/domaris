@@ -322,10 +322,32 @@ export class AuthService {
     try {
       const { identityToken, fullName, email: providedEmail } = data;
 
-      const payload = await appleSignin.verifyIdToken(identityToken, {
-        audience: process.env.APPLE_CLIENT_ID,
-        ignoreExpiration: true,
-      });
+      const configuredAudiences = (process.env.APPLE_AUDIENCE || process.env.APPLE_CLIENT_ID || '')
+        .split(',')
+        .map((a) => a.trim())
+        .filter(Boolean);
+
+      if (configuredAudiences.length === 0) {
+        throw new UnauthorizedException('Apple authentication misconfigured: missing APPLE_AUDIENCE');
+      }
+
+      let payload: any;
+      let lastVerifyError: unknown;
+      for (const audience of configuredAudiences) {
+        try {
+          payload = await appleSignin.verifyIdToken(identityToken, {
+            audience,
+            ignoreExpiration: true,
+          });
+          break;
+        } catch (e) {
+          lastVerifyError = e;
+        }
+      }
+
+      if (!payload) {
+        throw lastVerifyError || new UnauthorizedException('Invalid Apple token');
+      }
 
       const { email, sub: appleId } = payload;
       const userEmail = email || providedEmail;

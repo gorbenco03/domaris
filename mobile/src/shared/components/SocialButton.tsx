@@ -73,6 +73,7 @@ const SocialButton: React.FC<SocialButtonProps> = ({
           name={config.iconName}
           size={20}
           color={config.iconColor}
+          style={styles.socialIcon}
         />
       </View>
       <Text style={[styles.text, { color: config.textColor }]}>
