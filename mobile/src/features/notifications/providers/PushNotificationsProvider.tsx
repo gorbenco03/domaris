@@ -139,7 +139,9 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
         if (!token) return;
 
         const existingToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY);
-        if (existingToken === token) return;
+        if (existingToken === token) {
+          console.log('ℹ️ Push token already stored locally; re-registering with backend');
+        }
 
         let deviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY);
         if (!deviceId) {
@@ -149,6 +151,7 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
           await SecureStore.setItemAsync(DEVICE_ID_KEY, deviceId);
         }
 
+        console.log('📨 Registering push token with backend');
         await notificationsApi.registerPushToken({
           token,
           platform: Platform.OS === 'ios' ? 'ios' : 'android',

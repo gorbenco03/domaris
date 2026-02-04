@@ -8,6 +8,7 @@ import {
   NotFoundException,
   ForbiddenException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { Conversation } from '../../db/entities/conversation.entity';
 import { Message } from '../../db/entities/message.entity';
@@ -31,6 +32,7 @@ interface GetMessagesParams {
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
   constructor(
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
     private readonly pushService: PushNotificationService,
@@ -261,6 +263,7 @@ export class ChatService {
     content: string,
     type: string = 'TEXT',
   ) {
+    this.logger.debug(`💬 sendMessage sender=${senderId} convo=${conversationId}`);
     const conversation = await Conversation.findByPk(conversationId);
     if (!conversation) {
       throw new NotFoundException('Conversație negăsită');
@@ -368,12 +371,9 @@ export class ChatService {
   async isUserOnline(userId: number): Promise<boolean> {
     try {
       const presence = await this.redisClient.get(`user:${userId}:presence`);
-      if (presence) {
-        return true;
-      }
-
       const socketsCount = await this.redisClient.scard(`user:${userId}:sockets`);
-      return socketsCount > 0;
+      this.logger.debug(`📡 onlineCheck user=${userId} presence=${Boolean(presence)} sockets=${socketsCount}`);
+      return Boolean(presence) && socketsCount > 0;
     } catch {
       return false;
     }
@@ -393,7 +393,10 @@ export class ChatService {
       return;
     }
 
+    this.logger.debug(`🔔 notifyRecipientIfOffline sender=${senderId} recipient=${recipientId}`);
+
     const isOnline = await this.isUserOnline(recipientId);
+    this.logger.debug(`🟢 recipient ${recipientId} online=${isOnline}`);
     if (isOnline) {
       return;
     }

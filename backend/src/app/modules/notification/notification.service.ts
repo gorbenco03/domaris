@@ -57,10 +57,11 @@ export class NotificationService {
 
     async registerToken(userId: number, data: { token: string; platform: 'ios' | 'android' | 'web'; deviceId: string }) {
         const { token, platform, deviceId } = data;
+        this.logger.log(`📲 Register push token user=${userId} deviceId=${deviceId} platform=${platform}`);
         // Enforce global uniqueness for Expo push tokens.
         // A device push token identifies the physical installation; it must not be linked to multiple users.
         const existingByToken = await Device.findOne({ where: { token } });
-        if (existingByToken && existingByToken.userId !== userId) {
+        if (existingByToken) {
             existingByToken.userId = userId;
             existingByToken.deviceId = deviceId;
             existingByToken.platform = platform;

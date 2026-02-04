@@ -77,10 +77,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // Map pentru tracking utilizatori în conversații: conversationId -> Set<socketId>
   private conversationSockets: Map<number, Set<string>> = new Map();
 
+  private readonly onlineUsersKey = 'online:users';
+
   constructor(
     private readonly chatService: ChatService,
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-  ) {}
+  ) {
+    this.startPresenceCleanup();
+  }
 
   // ============================================================================
   // CONNECTION LIFECYCLE
@@ -114,7 +118,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Salvăm în Redis pentru tracking cross-instance
       await this.redisClient.sadd(`user:${user.id}:sockets`, client.id);
       await this.redisClient.set(`socket:${client.id}:user`, user.id.toString());
-      await this.redisClient.setex(`user:${user.id}:presence`, 60, '1');
+      await this.redisClient.setex(`user:${user.id}:presence`, 30, '1');
+      await this.redisClient.sadd(this.onlineUsersKey, user.id.toString());
 
       await this.cleanupStaleSockets(user.id);
 
@@ -159,6 +164,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.redisClient.srem(`user:${userId}:sockets`, client.id);
       await this.redisClient.del(`socket:${client.id}:user`);
       await this.redisClient.del(`user:${userId}:presence`);
+      await this.redisClient.srem(this.onlineUsersKey, userId.toString());
 
       await this.cleanupStaleSockets(userId);
 
@@ -302,7 +308,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    await this.redisClient.setex(`user:${userId}:presence`, 60, '1');
+    await this.redisClient.setex(`user:${userId}:presence`, 30, '1');
+    await this.redisClient.sadd(this.onlineUsersKey, userId.toString());
   }
 
   /**
@@ -463,6 +470,33 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (staleSocketIds.length > 0) {
       await this.redisClient.srem(`user:${userId}:sockets`, ...staleSocketIds);
     }
+  }
+
+  private startPresenceCleanup() {
+    setInterval(async () => {
+      if (!this.server?.sockets) {
+        return;
+      }
+
+      const userIds = await this.redisClient.smembers(this.onlineUsersKey);
+      if (userIds.length === 0) {
+        return;
+      }
+
+      for (const userId of userIds) {
+        const presence = await this.redisClient.get(`user:${userId}:presence`);
+        if (presence) {
+          continue;
+        }
+
+        await this.cleanupStaleSockets(Number(userId));
+        const remainingSockets = await this.redisClient.scard(`user:${userId}:sockets`);
+        if (remainingSockets === 0) {
+          await this.redisClient.srem(this.onlineUsersKey, userId);
+          await this.broadcastUserStatus(Number(userId), 'offline');
+        }
+      }
+    }, 30000);
   }
 
   /**

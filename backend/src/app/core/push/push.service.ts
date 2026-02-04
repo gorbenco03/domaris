@@ -135,6 +135,7 @@ export class PushNotificationService {
    */
   async sendToDevice(options: SendToDeviceOptions): Promise<boolean> {
     try {
+      this.logger.debug(`📨 sendToDevice provider=${this.provider} token=${options.token}`);
       switch (this.provider) {
         case 'firebase':
           return await this.sendWithFirebase(options);
