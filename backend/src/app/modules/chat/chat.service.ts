@@ -16,6 +16,7 @@ import { ListingImage } from '../../db/entities/listingImage.entity';
 import { User } from '../../db/entities/user.entity';
 import { Op } from 'sequelize';
 import Redis from 'ioredis';
+import { PushNotificationService } from '../../core/push/push.service';
 
 interface GetConversationsParams {
   type?: 'all' | 'unread' | 'archived';
@@ -32,6 +33,7 @@ interface GetMessagesParams {
 export class ChatService {
   constructor(
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
+    private readonly pushService: PushNotificationService,
   ) {}
   // ============================================================================
   // CONVERSATIONS
@@ -279,6 +281,8 @@ export class ChatService {
     conversation.changed('updatedAt', true);
     await conversation.save();
 
+    await this.notifyRecipientIfOffline(conversation, senderId, content);
+
     return this.formatMessage(message, senderId);
   }
 
@@ -363,11 +367,52 @@ export class ChatService {
    */
   async isUserOnline(userId: number): Promise<boolean> {
     try {
+      const presence = await this.redisClient.get(`user:${userId}:presence`);
+      if (presence) {
+        return true;
+      }
+
       const socketsCount = await this.redisClient.scard(`user:${userId}:sockets`);
       return socketsCount > 0;
     } catch {
       return false;
     }
+  }
+
+  private async notifyRecipientIfOffline(
+    conversation: Conversation,
+    senderId: number,
+    content: string,
+  ) {
+    const recipientId =
+      conversation.participant1Id === senderId
+        ? conversation.participant2Id
+        : conversation.participant1Id;
+
+    if (!recipientId) {
+      return;
+    }
+
+    const isOnline = await this.isUserOnline(recipientId);
+    if (isOnline) {
+      return;
+    }
+
+    const sender = await User.findByPk(senderId, {
+      attributes: ['firstName', 'lastName'],
+    });
+
+    const senderName = sender
+      ? `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || 'Utilizator'
+      : 'Utilizator';
+
+    await this.pushService.notifyNewMessage(
+      recipientId,
+      senderName,
+      content || 'Ai primit un mesaj nou',
+      conversation.id,
+      conversation.propertyId || undefined,
+    );
   }
 
   // ============================================================================

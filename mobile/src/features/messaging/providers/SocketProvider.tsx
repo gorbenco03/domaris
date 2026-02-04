@@ -26,11 +26,17 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     }
 
     let isActive = true;
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
     const connectSocket = async () => {
       const accessToken = await tokenManager.getAccessToken();
       if (accessToken && isActive) {
         socketService.connect(accessToken);
+        if (!heartbeatTimer) {
+          heartbeatTimer = setInterval(() => {
+            socketService.sendPresencePing();
+          }, 20000);
+        }
       }
     };
 
@@ -38,6 +44,10 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     return () => {
       isActive = false;
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
       socketService.disconnect();
     };
   }, [isAuthenticated]);

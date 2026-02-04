@@ -3,7 +3,7 @@
  * Main profile view showing user information and settings
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Notifications from 'expo-notifications';
 import {
   Edit3,
   Settings,
@@ -35,6 +36,7 @@ import {
   CreditCard,
   Zap,
   Plus,
+  Phone,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -85,14 +87,51 @@ const ProfileScreen: React.FC = () => {
     }
   }, [refetchUser, refetchSummary, refetchUnread]);
 
+  // Debug: Get push token
+  useEffect(() => {
+    const getPushToken = async () => {
+      try {
+        console.log('🔔 Getting push token...');
+        
+        // Request permissions
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('❌ Push notifications permission not granted');
+          return;
+        }
+
+        // Get token
+        const token = await Notifications.getExpoPushTokenAsync({
+          projectId: '5986308b-82d0-4d84-af05-6e614efc3263',
+        });
+
+        console.log('✅ Push Token:', token.data);
+        console.log('📋 Use this token to send test notifications:');
+        console.log(`curl -X POST https://api.expo.dev/v2/push/send \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "to": "${token.data}",
+    "title": "Test Sprint 1",
+    "body": "Notificare test RIVA"
+  }'`);
+        
+      } catch (error) {
+        console.error('❌ Error getting push token:', error);
+      }
+    };
+    
+    getPushToken();
+  }, []);
+
   // Merge store user (auth context) with full profile details from API
   const user = {
     ...storeUser,
     ...apiUser,
-    // Fallbacks for optional fields
-    location: apiUser?.location || 'București, România',
+    // Real data from extended profile
+    location: apiUser?.city && apiUser?.country ? `${apiUser.city}, ${apiUser.country}` : apiUser?.location || '',
     bio: apiUser?.bio || '',
     phone: apiUser?.phone || '',
+    address: apiUser?.address || '',
     // Stats (these come from the API user profile)
     activeListings: apiUser?.activeListingsCount || 0,
     monthlyViews: summary?.totalViews ?? 0,
@@ -215,10 +254,10 @@ const ProfileScreen: React.FC = () => {
                 size="lg"
                 verified={user.verificationLevel >= 2}
                 showEditButton
-                onEditPress={() => navigation.navigate('EditProfile')}
+                onEditPress={() => navigation.navigate('ProfileEdit')}
               />
               <TouchableOpacity
-                onPress={() => navigation.navigate('EditProfile')}
+                onPress={() => navigation.navigate('ProfileEdit')}
                 style={[
                   styles.editButton,
                   {
@@ -258,12 +297,32 @@ const ProfileScreen: React.FC = () => {
                 </View>
               )}
 
-              <View style={styles.locationRow}>
-                <MapPin size={14} color="rgba(255, 255, 255, 0.7)" />
-                <Text style={styles.locationText}>
-                  {user.location}
-                </Text>
-              </View>
+              {user.location && (
+                <View style={styles.locationRow}>
+                  <MapPin size={14} color="rgba(255, 255, 255, 0.7)" />
+                  <Text style={styles.locationText}>
+                    {user.location}
+                  </Text>
+                </View>
+              )}
+
+              {user.phone && (
+                <View style={styles.locationRow}>
+                  <Phone size={14} color="rgba(255, 255, 255, 0.7)" />
+                  <Text style={styles.locationText}>
+                    {user.phone}
+                  </Text>
+                </View>
+              )}
+
+              {user.address && (
+                <View style={styles.locationRow}>
+                  <Home size={14} color="rgba(255, 255, 255, 0.7)" />
+                  <Text style={styles.locationText}>
+                    {user.address}
+                  </Text>
+                </View>
+              )}
 
               <View style={styles.locationRow}>
                 <Calendar size={14} color="rgba(255, 255, 255, 0.7)" />
@@ -374,10 +433,10 @@ const ProfileScreen: React.FC = () => {
         {/* Core Features Section */}
         <ProfileSection title="Activitate">
           <ProfileMenuItem
-            icon={<Bell />}
-            label="Notificări"
-            description="Vezi ultimele noutăți"
-            onPress={() => navigation.navigate('Notifications')}
+            icon={<Settings />}
+            label="Setări Notificări"
+            description="Personalizează alertele și orele de liniște"
+            onPress={() => navigation.navigate('NotificationSettings')}
           />
           <ProfileMenuItem
             icon={<Home />}

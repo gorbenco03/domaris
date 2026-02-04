@@ -6,9 +6,11 @@
  * Suportă multiple provideri:
  * - console: Pentru development (log în terminal)
  * - firebase: Pentru producție cu Firebase Cloud Messaging (Android + iOS)
+ * - expo: Pentru Expo Push (token Expo)
  * 
  * Configurare prin variabile de mediu:
- * - PUSH_PROVIDER: console | firebase
+ * - PUSH_PROVIDER: console | firebase | expo
+ * - EXPO_ACCESS_TOKEN: Optional, for Expo push API auth
  * - FIREBASE_PROJECT_ID: Project ID Firebase
  * - FIREBASE_CLIENT_EMAIL: Service account email
  * - FIREBASE_PRIVATE_KEY: Private key (base64 encoded)
@@ -81,6 +83,7 @@ export class PushNotificationService {
     const { userId, notification, saveToDatabase = true, type = NotificationTypes.SYSTEM } = options;
 
     try {
+      this.logger.debug(`🔔 Push sendToUser: user=${userId} type=${type}`);
       // Salvează notificarea în baza de date ÎNTÂI (pentru Notification Center)
       if (saveToDatabase) {
         await Notification.create({
@@ -98,6 +101,8 @@ export class PushNotificationService {
       const devices = await Device.findAll({
         where: { userId },
       });
+
+      this.logger.debug(`📱 Devices for user ${userId}: ${devices.length}`);
 
       if (devices.length === 0) {
         this.logger.debug(`No devices registered for user ${userId} - skipping push`);
@@ -133,6 +138,8 @@ export class PushNotificationService {
       switch (this.provider) {
         case 'firebase':
           return await this.sendWithFirebase(options);
+        case 'expo':
+          return await this.sendWithExpo(options);
         case 'console':
         default:
           return await this.sendWithConsole(options);
@@ -410,6 +417,42 @@ export class PushNotificationService {
       }
       throw error;
     }
+  }
+
+  private async sendWithExpo(options: SendToDeviceOptions): Promise<boolean> {
+    const accessToken = this.configService.get<string>('EXPO_ACCESS_TOKEN');
+    const payload = {
+      to: options.token,
+      title: options.notification.title,
+      body: options.notification.body,
+      data: options.notification.data || {},
+      sound: options.notification.sound || 'default',
+    };
+
+    const response = await fetch('https://api.expo.dev/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      this.logger.warn(`Expo push failed with HTTP ${response.status}`);
+      return false;
+    }
+
+    const result = (await response.json()) as {
+      data?: { status?: string; message?: string; details?: Record<string, unknown> };
+    };
+
+    if (result.data?.status === 'error') {
+      this.logger.warn(`Expo push error: ${result.data.message || 'unknown'}`);
+      return false;
+    }
+
+    return true;
   }
 
   // ============================================================================

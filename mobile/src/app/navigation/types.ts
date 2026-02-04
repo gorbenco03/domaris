@@ -113,6 +113,9 @@ export type FavoritesStackParamList = {
 export type ProfileStackParamList = {
   Profile: undefined;
   EditProfile: undefined;
+  // Sprint 1: New profile screens
+  ProfileEdit: undefined;
+  NotificationSettings: undefined;
   MyProperties: undefined;
   CreateProperty: undefined;
   EditProperty: { propertyId: string; property?: IProperty };
@@ -123,7 +126,7 @@ export type ProfileStackParamList = {
   AvailabilitySettings: undefined;
   Notifications: undefined;
   Settings: undefined;
-  NotificationSettings: undefined;
+  NotificationPreferences: undefined;
   ChangePassword: undefined;
   VerificationHub: undefined;
   IdentityVerification: undefined;

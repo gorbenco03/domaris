@@ -1,4 +1,4 @@
-import { Table, Column, DataType, HasMany, BeforeCreate, BeforeUpdate } from 'sequelize-typescript';
+import { Table, Column, DataType, BeforeCreate, BeforeUpdate } from 'sequelize-typescript';
 import { ExtModel } from './extend.model.js';
 
 /**
@@ -71,8 +71,37 @@ export class User extends ExtModel {
   @Column(DataType.STRING)
   location?: string | null;
 
+  // Extended address fields - Sprint 1
+  @Column(DataType.TEXT)
+  address?: string | null;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  city?: string | null;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  country?: string | null;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  postalCode?: string | null;
+
   @Column(DataType.STRING)
   avatar?: string | null;
+
+  // Social links - Sprint 1
+  @Column({
+    type: DataType.JSONB,
+    defaultValue: {},
+  })
+  socialLinks!: Record<string, string>;
 
   // ============================================================================
   // VERIFICATION - ADR-001 CORE
@@ -148,7 +177,7 @@ export class User extends ExtModel {
   reviewsCount!: number;
 
   // ============================================================================
-  // NOTIFICATION PREFERENCES
+  // NOTIFICATION PREFERENCES & QUIET HOURS
   // ============================================================================
 
   @Column({
@@ -162,6 +191,7 @@ export class User extends ExtModel {
       viewingReminders: true,
       priceDrops: true,
       newListingsAlerts: true,
+      quietHoursEnabled: false,
     },
   })
   notificationPreferences!: {
@@ -173,7 +203,21 @@ export class User extends ExtModel {
     viewingReminders: boolean;
     priceDrops: boolean;
     newListingsAlerts: boolean;
+    quietHoursEnabled: boolean;
   };
+
+  // Quiet hours for notifications - Sprint 1
+  @Column({
+    type: DataType.TIME,
+    defaultValue: '22:00:00',
+  })
+  notificationQuietHoursStart!: string;
+
+  @Column({
+    type: DataType.TIME,
+    defaultValue: '08:00:00',
+  })
+  notificationQuietHoursEnd!: string;
 
   // ============================================================================
   // ACTIVITY
@@ -263,11 +307,20 @@ export class User extends ExtModel {
       firstName: this.firstName,
       lastName: this.lastName,
       avatar: this.avatar,
+      bio: this.bio,
+      address: this.address,
+      city: this.city,
+      country: this.country,
+      postalCode: this.postalCode,
+      socialLinks: this.socialLinks,
       verificationLevel: this.verificationLevel,
       isAdmin: this.isAdmin,
       emailVerified: this.emailVerified,
       phoneVerified: this.phoneVerified,
       hasActiveSubscription: this.hasActiveSubscription,
+      notificationPreferences: this.notificationPreferences,
+      notificationQuietHoursStart: this.notificationQuietHoursStart,
+      notificationQuietHoursEnd: this.notificationQuietHoursEnd,
     };
   }
 
@@ -281,6 +334,9 @@ export class User extends ExtModel {
       lastName: this.lastName ? this.lastName.charAt(0) + '.' : undefined, // Privacy
       avatar: this.avatar,
       bio: this.bio,
+      city: this.city,
+      country: this.country,
+      socialLinks: this.socialLinks,
       verificationLevel: this.verificationLevel,
       rating: this.rating,
       reviewsCount: this.reviewsCount,

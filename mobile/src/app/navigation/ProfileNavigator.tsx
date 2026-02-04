@@ -15,6 +15,10 @@ import {
   ReviewsScreen,
   PublicProfileScreen,
 } from '@/features/profile/screens';
+
+// Sprint 1: New profile screens
+import { ProfileEditScreen } from '@/features/profile/ProfileEditScreen';
+import { NotificationSettingsScreen } from '@/features/profile/NotificationSettingsScreen';
 import {
   VerificationHubScreen,
   IdentityVerificationScreen,
@@ -42,8 +46,11 @@ const ProfileNavigator: React.FC = () => {
     >
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      {/* Sprint 1: New profile screens */}
+      <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="NotificationSettings" component={NotificationPreferencesScreen} />
+      <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="VerificationHub" component={VerificationHubScreen} />
       <Stack.Screen name="IdentityVerification" component={IdentityVerificationScreen} />

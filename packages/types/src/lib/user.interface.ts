@@ -29,6 +29,13 @@ export interface IUser {
   avatar?: string | null;
   bio?: string | null;
   location?: string | null;
+  
+  // Sprint 1: Extended profile fields
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  socialLinks?: Record<string, string>;
 
   // Verificare (SINGURA "poartă" pentru acces - ADR-001)
   verificationLevel: VerificationLevel;
@@ -54,6 +61,10 @@ export interface IUser {
 
   // Preferințe notificări
   notificationPreferences: INotificationPreferences;
+  
+  // Sprint 1: Notification quiet hours
+  notificationQuietHoursStart?: string;
+  notificationQuietHoursEnd?: string;
 
   // Timestamps
   createdAt: Date | string;
@@ -62,7 +73,7 @@ export interface IUser {
 }
 
 /**
- * Preferințe notificări utilizator
+ * Preferințe notificări utilizator - Sprint 1 extended
  */
 export interface INotificationPreferences {
   email: boolean;
@@ -75,10 +86,13 @@ export interface INotificationPreferences {
   viewingReminders: boolean;
   priceDrops: boolean;
   newListingsAlerts: boolean;
+
+  // Sprint 1: Quiet hours
+  quietHoursEnabled: boolean;
 }
 
 /**
- * Preferințe notificări default
+ * Preferințe notificări default - Sprint 1 extended
  */
 export const DEFAULT_NOTIFICATION_PREFERENCES: INotificationPreferences = {
   email: true,
@@ -89,6 +103,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: INotificationPreferences = {
   viewingReminders: true,
   priceDrops: true,
   newListingsAlerts: true,
+  quietHoursEnabled: false,
 };
 
 // ============================================================================
@@ -154,6 +169,21 @@ export interface IUserSession {
   emailVerified: boolean;
   phoneVerified: boolean;
   hasActiveSubscription: boolean;
+  
+  // Sprint 1: Extended profile fields
+  bio?: string | null;
+  location?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  socialLinks?: Record<string, string>;
+  
+  // Sprint 1: Notification settings
+  notificationPreferences?: INotificationPreferences;
+  notificationQuietHoursStart?: string;
+  notificationQuietHoursEnd?: string;
 }
 
 // ============================================================================

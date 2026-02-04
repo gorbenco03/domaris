@@ -6,7 +6,7 @@
 
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { User } from '../../db/entities/user.entity.js';
-import { CompleteProfileDto, UpdateNotificationPreferencesDto } from './user.dto.js';
+import { CompleteProfileDto, UpdateNotificationPreferencesDto, UpdateQuietHoursDto } from './user.dto.js';
 import { Listing } from '../../db/entities/listing.entity.js';
 import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { Op } from 'sequelize';
@@ -59,7 +59,7 @@ export class UserService {
   }
 
   /**
-   * Update current user's profile
+   * Update current user's profile - Sprint 1 extended
    */
   async updateProfile(userId: number, dto: CompleteProfileDto) {
     const user = await User.findByPk(userId);
@@ -93,6 +93,23 @@ export class UserService {
       }
     }
 
+    // Sprint 1: Extended address fields
+    if (dto.address !== undefined) user.address = dto.address;
+    if (dto.city !== undefined) user.city = dto.city;
+    if (dto.country !== undefined) user.country = dto.country;
+    if (dto.postalCode !== undefined) user.postalCode = dto.postalCode;
+
+    // Sprint 1: Social links
+    if (dto.socialLinks !== undefined) {
+      // Validate social links format (basic URL validation)
+      for (const [platform, url] of Object.entries(dto.socialLinks)) {
+        if (url && !url.startsWith('http')) {
+          throw new BadRequestException(`URL invalid pentru ${platform}: trebuie să înceapă cu http/https`);
+        }
+      }
+      user.socialLinks = dto.socialLinks;
+    }
+
     await user.save();
     return this.getProfile(userId);
   }
@@ -113,6 +130,26 @@ export class UserService {
     return { 
       success: true, 
       notificationPreferences: user.notificationPreferences,
+    };
+  }
+
+  /**
+   * Update quiet hours settings - Sprint 1
+   */
+  async updateQuietHours(userId: number, dto: UpdateQuietHoursDto) {
+    const user = await User.findByPk(userId);
+    if (!user) throw new NotFoundException('Utilizator negăsit');
+
+    if (dto.start !== undefined) user.notificationQuietHoursStart = dto.start;
+    if (dto.end !== undefined) user.notificationQuietHoursEnd = dto.end;
+
+    await user.save();
+    return {
+      success: true,
+      quietHours: {
+        start: user.notificationQuietHoursStart,
+        end: user.notificationQuietHoursEnd,
+      },
     };
   }
 

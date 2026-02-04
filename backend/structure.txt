@@ -11,14 +11,17 @@
 │   ├── 002-cleanup-unified-account.sql
 │   ├── 003-add-listing-views-anonymous-id.sql
 │   ├── 004-add-audit-log-immutability-triggers.sql
+│   ├── 005-add-profile-fields.sql
 │   └── 005-fix-user-consents-consent-type-enum.sql
 ├── package.json
 ├── scripts
+│   ├── clear-device-tokens.js
 │   ├── kyc-review.js
 │   ├── list-kyc-requests.js
 │   ├── list-users.js
 │   ├── seed-listings.js
-│   └── set-verification-level.js
+│   ├── set-verification-level.js
+│   └── wipe-db.js
 ├── src
 │   ├── app
 │   │   ├── app.controller.ts
@@ -90,7 +93,18 @@
 │   │   │   ├── ai
 │   │   │   │   ├── ai.controller.ts
 │   │   │   │   ├── ai.module.ts
-│   │   │   │   └── ai.service.ts
+│   │   │   │   ├── ai.service.ts
+│   │   │   │   ├── avm
+│   │   │   │   │   └── valuation-engine.ts
+│   │   │   │   ├── gateway
+│   │   │   │   │   └── ai-gateway.service.ts
+│   │   │   │   ├── router
+│   │   │   │   │   └── intent-router.ts
+│   │   │   │   ├── tools
+│   │   │   │   │   ├── definitions.ts
+│   │   │   │   │   └── executor.ts
+│   │   │   │   └── types
+│   │   │   │       └── index.ts
 │   │   │   ├── analytics
 │   │   │   │   ├── analytics.controller.ts
 │   │   │   │   ├── analytics.module.ts
@@ -178,4 +192,4 @@
 ├── tsconfig.tsbuildinfo
 └── webpack.config.js
 
-41 directories, 138 files
+46 directories, 147 files

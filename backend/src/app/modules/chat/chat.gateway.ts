@@ -37,7 +37,6 @@ import { jwtVerify } from 'jose';
 import Redis from 'ioredis';
 import { ChatService } from './chat.service';
 import { User } from '../../db/entities/user.entity';
-import { PushNotificationService } from '../../core/push/push.service';
 
 // Types for WebSocket events
 interface JoinConversationPayload {
@@ -81,7 +80,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly chatService: ChatService,
     @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
-    private readonly pushService: PushNotificationService,
   ) {}
 
   // ============================================================================
@@ -116,6 +114,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Salvăm în Redis pentru tracking cross-instance
       await this.redisClient.sadd(`user:${user.id}:sockets`, client.id);
       await this.redisClient.set(`socket:${client.id}:user`, user.id.toString());
+      await this.redisClient.setex(`user:${user.id}:presence`, 60, '1');
+
+      await this.cleanupStaleSockets(user.id);
 
       // Join room personală pentru notificări directe
       client.join(`user:${user.id}`);
@@ -157,6 +158,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Elimină din Redis
       await this.redisClient.srem(`user:${userId}:sockets`, client.id);
       await this.redisClient.del(`socket:${client.id}:user`);
+      await this.redisClient.del(`user:${userId}:presence`);
+
+      await this.cleanupStaleSockets(userId);
 
       // Verifică dacă utilizatorul mai are alte conexiuni
       const remainingSockets = await this.redisClient.scard(`user:${userId}:sockets`);
@@ -286,6 +290,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.logger.error(`Send message error: ${error.message}`);
       return { error: error.message };
     }
+  }
+
+  /**
+   * Presence ping - refresh online TTL
+   */
+  @SubscribeMessage('presence:ping')
+  async handlePresencePing(@ConnectedSocket() client: Socket) {
+    const userId = this.connectedUsers.get(client.id);
+    if (!userId) {
+      return;
+    }
+
+    await this.redisClient.setex(`user:${userId}:presence`, 60, '1');
   }
 
   /**
@@ -428,6 +445,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /**
+   * Remove socket IDs that are no longer active from Redis
+   */
+  private async cleanupStaleSockets(userId: number) {
+    const socketIds = await this.redisClient.smembers(`user:${userId}:sockets`);
+    if (socketIds.length === 0) {
+      return;
+    }
+
+    if (!this.server?.sockets?.sockets) {
+      return;
+    }
+
+    const activeSocketIds = new Set(this.server.sockets.sockets.keys());
+    const staleSocketIds = socketIds.filter((socketId) => !activeSocketIds.has(socketId));
+
+    if (staleSocketIds.length > 0) {
+      await this.redisClient.srem(`user:${userId}:sockets`, ...staleSocketIds);
+    }
+  }
+
+  /**
    * Notifică destinatarul despre mesaj nou
    */
   private async notifyOfflineRecipient(
@@ -455,27 +493,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const recipientSocketIds = await this.redisClient.smembers(`user:${recipientId}:sockets`);
     const isInConversation = recipientSocketIds.some(socketId => conversationSockets?.has(socketId));
 
-    // Dacă destinatarul NU e în conversația respectivă, creăm notificare în baza de date
     if (!isInConversation) {
-      const sender = await User.findByPk(senderId, {
-        attributes: ['firstName', 'lastName'],
+      await User.findByPk(senderId, {
+        attributes: ['id'],
       });
-      
-      const senderName = sender 
-        ? `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || 'Utilizator'
-        : 'Utilizator';
-
-      // Verifică dacă destinatarul e conectat la WebSocket
-      const isOnline = await this.isUserOnline(recipientId);
-
-      // notifyNewMessage salvează în DB și trimite push doar dacă user e offline
-      await this.pushService.notifyNewMessage(
-        recipientId,
-        senderName,
-        message.content || 'Ai primit un mesaj nou',
-        conversationId,
-        conversation.property?.id,
-      );
     }
   }
 

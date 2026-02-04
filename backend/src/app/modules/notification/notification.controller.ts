@@ -44,4 +44,10 @@ export class NotificationController {
     async updatePreferences(@CurrentUser() user: any, @Body() prefs: any) {
         return this.notificationService.updatePreferences(user.id, prefs);
     }
+
+    @Post('test/send')
+    @ApiOperation({ summary: 'Send test notification (SECURE - only to logged user devices)' })
+    async sendTestNotification(@CurrentUser() user: any, @Body() body: { title?: string; message?: string }) {
+        return this.notificationService.sendTestNotification(user.id, body);
+    }
 }

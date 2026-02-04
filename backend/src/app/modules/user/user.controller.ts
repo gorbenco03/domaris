@@ -45,6 +45,7 @@ import { UserService } from './user.service.js';
 import {
   CompleteProfileDto,
   UpdateNotificationPreferencesDto,
+  UpdateQuietHoursDto,
 } from './user.dto.js';
 import {
   WithdrawConsentDto,
@@ -130,6 +131,18 @@ export class UserController {
     @Body() dto: UpdateNotificationPreferencesDto,
   ) {
     return this.userService.updateNotificationPreferences(userId, dto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('me/quiet-hours')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update notification quiet hours' })
+  @ApiResponse({ status: 200, description: 'Quiet hours updated' })
+  async updateQuietHours(
+    @CurrentUserId() userId: number,
+    @Body() dto: UpdateQuietHoursDto,
+  ) {
+    return this.userService.updateQuietHours(userId, dto);
   }
 
   @UseGuards(AuthGuard)

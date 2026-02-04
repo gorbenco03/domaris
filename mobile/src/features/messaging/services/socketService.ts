@@ -238,6 +238,14 @@ class SocketService {
   }
 
   /**
+   * Presence ping to refresh online TTL
+   */
+  sendPresencePing() {
+    if (!this.socket) return;
+    this.socket.emit('presence:ping');
+  }
+
+  /**
    * Remove all listeners
    */
   removeAllListeners() {

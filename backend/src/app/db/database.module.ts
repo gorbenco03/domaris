@@ -77,11 +77,8 @@ pg.defaults.parseInt8 = true;
           synchronize: true,
           sync: { alter: true }, // Force alter to add missing columns
           logging: (sql: string) => {
-            // Log only in development or if explicitly enabled
-            if (
-              process.env.DB_LOGGING === 'true' ||
-              process.env.NODE_ENV !== 'production'
-            ) {
+            // Log only when explicitly enabled
+            if (process.env.DB_LOGGING === 'true') {
               console.log('📊 [DB Query]', sql.substring(0, 200));
             }
           },

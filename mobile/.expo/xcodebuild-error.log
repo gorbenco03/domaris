@@ -1,2 +1,8 @@
-2026-02-04 01:00:13.801 xcodebuild[65098:6538938]  DVTDeviceOperation: Encountered a build number "" that is incompatible with DVTBuildVersion.
-2026-02-04 01:00:14.140 xcodebuild[65098:6538843] [MT] DVTDeviceOperation: Encountered a build number "" that is incompatible with DVTBuildVersion.
+2026-02-05 00:19:25.093 xcodebuild[4029:8029250]  DVTDeviceOperation: Encountered a build number "" that is incompatible with DVTBuildVersion.
+2026-02-05 00:19:25.347 xcodebuild[4029:8029166] [MT] DVTDeviceOperation: Encountered a build number "" that is incompatible with DVTBuildVersion.
+** BUILD FAILED **
+
+
+The following build commands failed:
+	Building workspace RIVA with scheme RIVA and configuration Debug
+(1 failure)

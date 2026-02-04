@@ -14,6 +14,7 @@
 │   ├── icon.png
 │   ├── icons
 │   ├── images
+│   ├── logotype.png
 │   ├── notification-icon.png
 │   └── splash-icon.png
 ├── babel.config.js
@@ -50,6 +51,7 @@
 │   │   └── SECURITY-ARCHITECTURE.md
 │   └── ui-ux
 │       └── DESIGN-SYSTEM.md
+├── eas.json
 ├── eslint.config.js
 ├── index.ts
 ├── package-lock.json
@@ -82,15 +84,19 @@
 │   ├── config
 │   │   ├── constants.ts
 │   │   ├── env.ts
-│   │   └── theme.ts
+│   │   ├── theme.ts
+│   │   └── useTheme.ts
 │   ├── core
 │   │   ├── analytics
 │   │   │   └── anonymousId.ts
 │   │   ├── api
 │   │   │   ├── client.ts
 │   │   │   ├── endpoints.ts
-│   │   │   └── types
-│   │   │       └── index.ts
+│   │   │   ├── types
+│   │   │   │   └── index.ts
+│   │   │   └── userApi.ts
+│   │   ├── appStatus
+│   │   │   └── appStatusApi.ts
 │   │   ├── auth
 │   │   │   └── tokenManager.ts
 │   │   ├── storage
@@ -100,6 +106,8 @@
 │   │   │   ├── index.ts
 │   │   │   └── uiStore.ts
 │   │   └── websocket
+│   ├── debug
+│   │   └── pushTokenDebug.tsx
 │   ├── features
 │   │   ├── ai
 │   │   │   ├── api
@@ -244,6 +252,8 @@
 │   │   │   │   └── index.ts
 │   │   │   └── types.ts
 │   │   ├── profile
+│   │   │   ├── NotificationSettingsScreen.tsx
+│   │   │   ├── ProfileEditScreen.tsx
 │   │   │   ├── api
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── reviewsApi.ts
@@ -372,6 +382,7 @@
 │   └── shared
 │       ├── components
 │       │   ├── AmenitySelector.tsx
+│       │   ├── AppStatusGate.tsx
 │       │   ├── AuthRequiredScreen.tsx
 │       │   ├── Badge.tsx
 │       │   ├── Button.tsx
@@ -383,6 +394,7 @@
 │       │   ├── IconButton.tsx
 │       │   ├── Input.tsx
 │       │   ├── KeyboardAvoidingWrapper.tsx
+│       │   ├── MaintenanceScreen.tsx
 │       │   ├── OTPInput.tsx
 │       │   ├── OwnerDashboardWidget.tsx
 │       │   ├── PasswordStrength.tsx
@@ -391,6 +403,7 @@
 │       │   ├── ScreenHeader.tsx
 │       │   ├── Skeleton.tsx
 │       │   ├── SocialButton.tsx
+│       │   ├── UpdateRequiredScreen.tsx
 │       │   ├── VerificationRequiredScreen.tsx
 │       │   └── index.ts
 │       ├── hooks
@@ -418,6 +431,8 @@
 │           └── validators.ts
 ├── structura.txt
 ├── structure.txt
+├── test-push-token.js
+├── test-push-token.mjs
 └── tsconfig.json
 
-117 directories, 304 files
+119 directories, 317 files

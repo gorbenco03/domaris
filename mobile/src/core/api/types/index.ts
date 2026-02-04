@@ -56,6 +56,60 @@ export type {
 
 import type { IUserSession } from '@domaris/types';
 
+// Sprint 1: Extended profile types
+export interface IUpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  bio?: string;
+  location?: string;
+  phone?: string;
+  // Extended address fields
+  address?: string;
+  city?: string;
+  country?: string;
+  postalCode?: string;
+  // Social links
+  socialLinks?: Record<string, string>;
+}
+
+export interface IUpdateProfileResponse {
+  success: boolean;
+  user: IUserSession;
+}
+
+// Sprint 1: Notification preferences with quiet hours
+export interface IUpdateNotificationPreferencesRequest {
+  email?: boolean;
+  push?: boolean;
+  sms?: boolean;
+  marketing?: boolean;
+  newMessages?: boolean;
+  viewingReminders?: boolean;
+  priceDrops?: boolean;
+  newListingsAlerts?: boolean;
+  quietHoursEnabled?: boolean;
+}
+
+export interface IUpdateNotificationPreferencesResponse {
+  success: boolean;
+  notificationPreferences: any; // Temporarily use any until INotificationPreferences is properly exported
+}
+
+// Sprint 1: Quiet hours
+export interface IUpdateQuietHoursRequest {
+  start?: string; // HH:mm format
+  end?: string;   // HH:mm format
+}
+
+export interface IUpdateQuietHoursResponse {
+  success: boolean;
+  quietHours: {
+    start: string;
+    end: string;
+  };
+}
+
 // Additional auth types based on backend DTOs
 export interface ILoginEmailRequest {
   email: string;

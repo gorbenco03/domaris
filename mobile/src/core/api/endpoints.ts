@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: '/auth/change-password', 
     DELETE_ACCOUNT: '/users/me',
     NOTIFICATIONS_SETTINGS: '/users/me/notifications',
+    QUIET_HOURS: '/users/me/quiet-hours', // Sprint 1
     PUBLIC_PROFILE: (id: string) => `/users/${id}`,
     USER_LISTINGS: (id: string) => `/users/${id}/listings`,
   },

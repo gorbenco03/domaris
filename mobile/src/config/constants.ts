@@ -7,7 +7,7 @@
 // ============================================
 
 export const API_CONFIG = {
-  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api',
+  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://172.20.10.6:4000/api',
   TIMEOUT: 30000,
   RETRY_ATTEMPTS: 3,
 } as const;
