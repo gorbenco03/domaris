@@ -8,7 +8,7 @@
 // SUBSCRIPTION TYPES
 // ============================================================================
 
-export type SubscriptionPlanCode = 'free' | 'standard' | 'premium' | 'business';
+export type SubscriptionPlanCode = 'free' | 'standard' | 'premium';
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired';
 export type BillingCycle = 'monthly' | 'yearly';
 

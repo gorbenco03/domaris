@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Animated,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -46,6 +47,7 @@ import { ProfileStackParamList } from '@/app/navigation/types';
 import { useUserProfile } from '@/features/profile/services';
 import { useOwnerAnalyticsSummary } from '@/features/analytics/services';
 import { useUnreadCount } from '@/shared/services';
+import { useMonetizationStatus } from '@/features/monetization/hooks/usePayments';
 // useRequireVerification removed - KYC no longer required
 import {
   Avatar,
@@ -68,6 +70,7 @@ const ProfileScreen: React.FC = () => {
   const { data: apiUser, isLoading, refetch: refetchUser } = useUserProfile();
   const { data: unreadData, refetch: refetchUnread } = useUnreadCount();
   const { summary, refetch: refetchSummary, isFetching: isFetchingSummary } = useOwnerAnalyticsSummary();
+  const { canCreateListing, status: monetizationStatus } = useMonetizationStatus();
   const unreadCount = unreadData?.count || 0;
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -348,7 +351,20 @@ const ProfileScreen: React.FC = () => {
         {/* Add Property Action Card */}
         <View style={{ marginHorizontal: theme.spacing[4], marginTop: theme.spacing[4] }}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('CreateProperty')}
+            onPress={() => {
+              if (!canCreateListing) {
+                Alert.alert(
+                  'Limită atinsă',
+                  `Ai atins limita de ${monetizationStatus?.capabilities?.maxActiveListings || 1} anunțuri active pentru planul tău. Fă upgrade pentru a publica mai multe.`,
+                  [
+                    { text: 'Anulează', style: 'cancel' },
+                    { text: 'Vezi planurile', onPress: () => navigation.navigate('Pricing') },
+                  ],
+                );
+                return;
+              }
+              navigation.navigate('CreateProperty');
+            }}
             activeOpacity={0.85}
           >
             <LinearGradient

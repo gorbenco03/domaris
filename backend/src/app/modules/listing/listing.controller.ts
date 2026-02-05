@@ -314,7 +314,7 @@ export class ListingController {
   @UseGuards(AuthGuard)
   @Post(':id/photos')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'photos', maxCount: 20 }]),
+    FileFieldsInterceptor([{ name: 'photos', maxCount: 50 }]),
   )
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
@@ -329,7 +329,7 @@ export class ListingController {
         photos: {
           type: 'array',
           items: { type: 'string', format: 'binary' },
-          maxItems: 20,
+          maxItems: 50,
         },
       },
     },

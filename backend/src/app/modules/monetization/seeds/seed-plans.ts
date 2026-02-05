@@ -52,13 +52,12 @@ function price(eurAmount: number): number {
 
 /**
  * Datele pentru planurile de abonament
- * Conform 11-MONETIZATION.md
  *
  * PREȚURI MOLDOVA (MDL):
- * - Free: 0 MDL
- * - Standard: ~195 MDL/lună (~155 MDL anual)
- * - Premium: ~390 MDL/lună (~310 MDL anual)
- * - Business: ~975 MDL/lună (~780 MDL anual)
+ * - Gratuit: 0 MDL
+ * - Standard: 149 MDL/lună (119 MDL/lună anual)
+ * - Premium: 299 MDL/lună (239 MDL/lună anual)
+ * - Business: 599 MDL/lună (479 MDL/lună anual)
  */
 export const SUBSCRIPTION_PLANS_DATA = [
   {
@@ -77,6 +76,8 @@ export const SUBSCRIPTION_PLANS_DATA = [
     hasPrioritySearch: false,
     hasAIFeatures: false,
     hasVideoTour: false,
+    hasEarlyAccess: false,
+    hasPersonalizedAI: false,
     trialDays: 0,
     displayOrder: 0,
     isActive: true,
@@ -84,6 +85,7 @@ export const SUBSCRIPTION_PLANS_DATA = [
     features: [
       '1 anunț activ',
       '5 fotografii',
+      'Chat AI general',
       'Statistici de bază',
     ],
   },
@@ -91,18 +93,20 @@ export const SUBSCRIPTION_PLANS_DATA = [
     code: 'standard',
     name: 'Standard',
     description: 'Pentru proprietari activi care vor mai multă vizibilitate',
-    priceMonthly: price(9.99),  // ~195 MDL
-    priceYearly: price(7.99),   // ~155 MDL/lună
+    priceMonthly: 149,
+    priceYearly: 119,
     currency: CURRENCY,
     maxActiveListings: 5,
     maxPhotosPerListing: 15,
     freeMonthlyBoosts: 1,
     hasAdvancedAnalytics: true,
-    hasPrioritySupport: true,
+    hasPrioritySupport: false,
     hasBadge: false,
-    hasPrioritySearch: false,
+    hasPrioritySearch: true,
     hasAIFeatures: true,
     hasVideoTour: false,
+    hasEarlyAccess: true,
+    hasPersonalizedAI: false,
     trialDays: 14,
     displayOrder: 1,
     isActive: true,
@@ -111,27 +115,30 @@ export const SUBSCRIPTION_PLANS_DATA = [
       '5 anunțuri active',
       '15 fotografii/anunț',
       'Statistici avansate',
-      'Suport prioritar',
-      'AI Analysis',
+      'AI generare descriere',
+      'Early access anunțuri noi',
+      'Prioritate în căutări',
       '1 boost gratuit/lună',
     ],
   },
   {
     code: 'premium',
     name: 'Premium',
-    description: 'Cel mai popular plan pentru proprietari profesioniști',
-    priceMonthly: price(19.99),  // ~390 MDL
-    priceYearly: price(15.99),   // ~310 MDL/lună
+    description: 'Experiența completă pentru proprietari profesioniști',
+    priceMonthly: 299,
+    priceYearly: 239,
     currency: CURRENCY,
     maxActiveListings: 15,
     maxPhotosPerListing: 30,
-    freeMonthlyBoosts: 2,
+    freeMonthlyBoosts: 3,
     hasAdvancedAnalytics: true,
     hasPrioritySupport: true,
     hasBadge: true,
     hasPrioritySearch: true,
     hasAIFeatures: true,
     hasVideoTour: true,
+    hasEarlyAccess: true,
+    hasPersonalizedAI: true,
     trialDays: 14,
     displayOrder: 2,
     isActive: true,
@@ -139,21 +146,23 @@ export const SUBSCRIPTION_PLANS_DATA = [
     features: [
       '15 anunțuri active',
       '30 fotografii/anunț',
+      'Asistent AI personalizat',
+      'Early access la anunțuri noi',
       'Video tour',
       'Badge Premium',
       'Prioritate în căutări',
-      'AI generare descrieri',
-      '2 boosturi gratuite/lună',
+      '3 boosturi gratuite/lună',
     ],
   },
   {
+    // Dezactivat — nu avem agenții imobiliare
     code: 'business',
     name: 'Business',
     description: 'Pentru agenții și investitori imobiliari',
-    priceMonthly: price(49.99),  // ~975 MDL
-    priceYearly: price(39.99),   // ~780 MDL/lună
+    priceMonthly: 0,
+    priceYearly: 0,
     currency: CURRENCY,
-    maxActiveListings: 999, // Practically unlimited
+    maxActiveListings: 999,
     maxPhotosPerListing: 50,
     freeMonthlyBoosts: 5,
     hasAdvancedAnalytics: true,
@@ -162,18 +171,13 @@ export const SUBSCRIPTION_PLANS_DATA = [
     hasPrioritySearch: true,
     hasAIFeatures: true,
     hasVideoTour: true,
-    trialDays: 7,
+    hasEarlyAccess: true,
+    hasPersonalizedAI: true,
+    trialDays: 0,
     displayOrder: 3,
-    isActive: true,
+    isActive: false, // Dezactivat
     isPopular: false,
-    features: [
-      'Anunțuri nelimitate',
-      '50 fotografii/anunț',
-      'Toate funcțiile Premium',
-      '5 boosturi gratuite/lună',
-      'API access',
-      'White-label options',
-    ],
+    features: [],
   },
 ];
 

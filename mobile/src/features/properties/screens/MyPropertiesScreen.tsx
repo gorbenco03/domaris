@@ -42,11 +42,12 @@ import { ProfileStackParamList } from '@/app/navigation/types';
 import Button from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { AuthRequiredScreen, ScreenHeader } from '@/shared/components';
-import { 
-  useMyProperties, 
-  useDeleteProperty, 
-  useUpdatePropertyStatus 
+import {
+  useMyProperties,
+  useDeleteProperty,
+  useUpdatePropertyStatus
 } from '@/features/properties/services';
+import { useMonetizationStatus } from '@/features/monetization/hooks/usePayments';
 import { ActivityIndicator } from 'react-native';
 import { IPropertyListItem } from '@/core/api/types';
 
@@ -304,6 +305,7 @@ const MyPropertiesScreen: React.FC = () => {
   // Real data fetching - no verification level required
   const { data: properties = [], isLoading, refetch, error } = useMyProperties(isAuthenticated);
   const deleteMutation = useDeleteProperty();
+  const { status: monetizationStatus, canCreateListing } = useMonetizationStatus();
 
   console.log('[MyPropertiesScreen] Properties fetched:', JSON.stringify(properties, null, 2));
   console.log('[MyPropertiesScreen] Is loading:', isLoading);
@@ -375,6 +377,18 @@ const MyPropertiesScreen: React.FC = () => {
   };
 
   const handleAddProperty = () => {
+    if (!canCreateListing) {
+      const maxListings = monetizationStatus?.capabilities?.maxActiveListings || 1;
+      Alert.alert(
+        'Limită atinsă',
+        `Ai atins limita de ${maxListings} anunțuri active. Fă upgrade pentru a publica mai multe.`,
+        [
+          { text: 'Anulează', style: 'cancel' },
+          { text: 'Vezi planurile', onPress: () => (navigation as any).navigate('Pricing') },
+        ],
+      );
+      return;
+    }
     navigation.navigate('CreateProperty');
   };
 
@@ -436,6 +450,52 @@ const MyPropertiesScreen: React.FC = () => {
             </View>
           </LinearGradient>
         </View>
+
+        {/* Quota Banner */}
+        {monetizationStatus && (
+          <View style={styles.quotaBannerContainer}>
+            <View
+              style={[
+                styles.quotaBanner,
+                {
+                  backgroundColor: canCreateListing
+                    ? theme.colors.primary.main + '10'
+                    : theme.colors.secondary.warning + '15',
+                  borderColor: canCreateListing
+                    ? theme.colors.primary.main + '30'
+                    : theme.colors.secondary.warning + '40',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.quotaText,
+                  {
+                    color: canCreateListing
+                      ? theme.colors.textSecondary
+                      : theme.colors.secondary.warning,
+                  },
+                ]}
+              >
+                {properties.length}/{monetizationStatus.capabilities?.maxActiveListings === 999 ? '∞' : monetizationStatus.capabilities?.maxActiveListings || 1} anunțuri active
+              </Text>
+              {!canCreateListing && (
+                <TouchableOpacity
+                  onPress={() => (navigation as any).navigate('Pricing')}
+                >
+                  <Text
+                    style={[
+                      styles.quotaUpgradeLink,
+                      { color: theme.colors.primary.main },
+                    ]}
+                  >
+                    Upgrade
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Filter Tabs */}
         <View style={styles.filterContainer}>
@@ -729,6 +789,28 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Quota banner
+  quotaBannerContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  quotaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  quotaText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+  },
+  quotaUpgradeLink: {
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
   },
 });
 

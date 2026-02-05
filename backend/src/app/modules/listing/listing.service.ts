@@ -11,6 +11,7 @@ import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { User } from '../../db/entities/user.entity.js';
 import { S3Service } from '../../s3/s3.service.js';
 import { GeocodingService } from '../geocoding/geocoding.service.js';
+import { SubscriptionService } from '../monetization/services/subscription.service.js';
 import { Sequelize } from 'sequelize-typescript';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,6 +24,7 @@ export class ListingService {
   constructor(
     private readonly s3Service: S3Service,
     private readonly geocodingService: GeocodingService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   /**
@@ -33,7 +35,15 @@ export class ListingService {
     dto: CreateListingDto
   ): Promise<Listing> {
     this.logger.log(`Creating listing for ownerId: ${ownerId}, dto: ${JSON.stringify(dto)}`);
-    
+
+    // Enforce subscription listing limit
+    const canCreate = await this.subscriptionService.canCreateListing(Number(ownerId));
+    if (!canCreate.allowed) {
+      throw new ForbiddenException(
+        canCreate.reason || 'Ai atins limita de anunțuri pentru planul tău. Fă upgrade pentru a adăuga mai multe.',
+      );
+    }
+
     // Map DTO fields to Entity fields
     const input = dto as any;
     
@@ -405,10 +415,23 @@ export class ListingService {
       return { uploaded: [], message: 'No files provided' };
     }
 
+    // Enforce subscription photo limit
+    const subscription = await this.subscriptionService.getUserSubscription(Number(ownerId));
+    const capabilities = this.subscriptionService.getUserCapabilities(subscription);
+    const existingImages = await ListingImage.count({ where: { listingId: Number(id) } });
+    const totalAfterUpload = existingImages + files.length;
+
+    if (totalAfterUpload > capabilities.maxPhotos) {
+      const remaining = Math.max(0, capabilities.maxPhotos - existingImages);
+      throw new ForbiddenException(
+        `Limita de fotografii pentru planul tău este ${capabilities.maxPhotos}. ` +
+        `Ai deja ${existingImages} fotografii, mai poți adăuga ${remaining}. ` +
+        `Fă upgrade pentru a încărca mai multe.`,
+      );
+    }
+
     const uploadedImages: { id: number; url: string; isPrimary: boolean }[] = [];
 
-    // Check if listing already has images
-    const existingImages = await ListingImage.count({ where: { listingId: Number(id) } });
     const isFirstImage = existingImages === 0;
 
     for (let i = 0; i < files.length; i++) {

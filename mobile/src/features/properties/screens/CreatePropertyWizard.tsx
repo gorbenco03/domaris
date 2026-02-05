@@ -13,10 +13,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft, X, CheckCircle, ShieldCheck, Upload } from 'lucide-react-native';
+import { ArrowLeft, X, CheckCircle, ShieldCheck, Upload, Lock } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
@@ -29,6 +30,7 @@ import {
   useUploadOwnershipDoc,
   ICreatePropertyRequest,
 } from '@/features/properties/services';
+import { useMonetizationStatus } from '@/features/monetization/hooks/usePayments';
 
 // Import Steps
 import PropertyTypeStep from './steps/PropertyTypeStep';
@@ -156,12 +158,21 @@ const CreatePropertyWizard: React.FC = () => {
   const navigation = useNavigation();
   const { isAuthenticated, user } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
-  
+
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<PropertyFormData>(INITIAL_FORM_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const totalSteps = 7;
+
+  // Monetization: check listing limit and get photo limit
+  const {
+    canCreateListing,
+    status: monetizationStatus,
+    isLoading: monetizationLoading,
+  } = useMonetizationStatus();
+
+  const maxPhotos = monetizationStatus?.capabilities?.maxPhotosPerListing || 5;
 
   const handleBack = () => {
     if (currentStep > 1) {
@@ -201,6 +212,80 @@ const CreatePropertyWizard: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <AuthRequiredScreen message="Autentifică-te pentru a putea posta anunțuri." />
+    );
+  }
+
+  // Wait for monetization data before showing the wizard
+  if (monetizationLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+            <ArrowLeft size={22} color={theme.colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+              Se verifică...
+            </Text>
+          </View>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={styles.limitBlockedContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show upgrade prompt if listing limit reached
+  if (!canCreateListing) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+            <ArrowLeft size={22} color={theme.colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+              Limită atinsă
+            </Text>
+          </View>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={styles.limitBlockedContainer}>
+          <View style={[styles.limitBlockedIcon, { backgroundColor: theme.colors.secondary.warning + '20' }]}>
+            <Lock size={40} color={theme.colors.secondary.warning} />
+          </View>
+          <Text style={[styles.limitBlockedTitle, { color: theme.colors.textPrimary }]}>
+            Ai atins limita de anunțuri
+          </Text>
+          <Text style={[styles.limitBlockedDesc, { color: theme.colors.textSecondary }]}>
+            Planul tău actual permite maxim{' '}
+            {monetizationStatus?.capabilities?.maxActiveListings || 1} anunțuri active.
+            Fă upgrade pentru a publica mai multe.
+          </Text>
+          <Button
+            title="Vezi planurile"
+            onPress={() => {
+              navigation.goBack();
+              (navigation as any).navigate('Pricing');
+            }}
+            style={{ marginTop: 24, width: '100%' }}
+          />
+          <Button
+            title="Înapoi"
+            variant="secondary"
+            onPress={() => navigation.goBack()}
+            style={{ marginTop: 12, width: '100%' }}
+          />
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -378,6 +463,7 @@ const CreatePropertyWizard: React.FC = () => {
           <PhotosStep
             formData={formData}
             updateFormData={updateFormData}
+            maxPhotos={maxPhotos}
           />
         );
       case 5:
@@ -792,6 +878,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
+  },
+  // Limit blocked styles
+  limitBlockedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  limitBlockedIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  limitBlockedTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  limitBlockedDesc: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
 

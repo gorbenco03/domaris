@@ -16,6 +16,7 @@ import type { PropertyFormData } from '../CreatePropertyWizard';
 interface PhotosStepProps {
   formData: PropertyFormData;
   updateFormData: (updates: Partial<PropertyFormData>) => void;
+  maxPhotos?: number;
 }
 
 // ============================================
@@ -25,6 +26,7 @@ interface PhotosStepProps {
 const PhotosStep: React.FC<PhotosStepProps> = ({
   formData,
   updateFormData,
+  maxPhotos = 5,
 }) => {
   const { theme } = useTheme();
 
@@ -34,14 +36,14 @@ const PhotosStep: React.FC<PhotosStepProps> = ({
         Adaugă fotografii
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-        Fotografiile de calitate atrag cu 60% mai mulți cumpărători
+        Fotografiile de calitate atrag cu 60% mai mulți cumpărători (max. {maxPhotos})
       </Text>
 
       <PhotoUploader
         photos={formData.photos}
         onPhotosChange={(photos) => updateFormData({ photos })}
         minPhotos={3}
-        maxPhotos={30}
+        maxPhotos={maxPhotos}
       />
     </View>
   );

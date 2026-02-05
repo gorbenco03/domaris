@@ -147,13 +147,37 @@ export class SubscriptionService {
       remainingBoosts = Math.max(0, maxBoosts - (subscription.boostsUsedThisMonth || 0));
     }
 
+    // Count boosts used this month
+    const boostsUsedThisMonth = subscription?.boostsUsedThisMonth || 0;
+
+    // Count promotions this month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const totalPromotionsThisMonth = await ListingPromotion.count({
+      where: {
+        userId,
+        createdAt: { [Op.gte]: startOfMonth },
+      },
+    });
+
     return {
       subscription: subscription ? this.mapSubscriptionToDto(subscription, remainingListings, remainingBoosts) : null,
       capabilities: {
-        ...capabilities,
-        remainingBoosts,
+        maxActiveListings: capabilities.maxListings,
+        maxPhotosPerListing: capabilities.maxPhotos,
+        canUseVideoTour: subscription?.plan ? (subscription.plan as any).hasVideoTour || false : false,
+        canUsePrioritySearch: subscription?.plan ? (subscription.plan as any).hasPrioritySearch || false : false,
+        canUseAdvancedStats: capabilities.hasAdvancedAnalytics,
+        canUseAiFeatures: capabilities.canUseAI,
+        freeBoostsRemaining: remainingBoosts,
       },
       activePromotionsCount,
+      usage: {
+        activeListingsCount,
+        totalPromotionsThisMonth,
+        boostsUsedThisMonth,
+      },
       transactionsSummary: {
         totalSpent: totalSpentResult || 0,
         lastTransactionDate: lastTransaction?.completedAt,
