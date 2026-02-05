@@ -13,7 +13,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -107,6 +106,14 @@ export interface PropertyFormData {
   } | null;
   title: string;
   description: string;
+
+  // Step 6: Ownership document (optional)
+  ownershipDoc: {
+    uri: string;
+    name: string;
+    mimeType: string;
+  } | null;
+  ownershipDocType: 'PROPERTY_DEED' | 'UTILITY_BILL' | 'RENTAL_CONTRACT' | 'POWER_OF_ATTORNEY' | 'OTHER' | null;
 }
 
 const INITIAL_FORM_DATA: PropertyFormData = {
@@ -118,6 +125,16 @@ const INITIAL_FORM_DATA: PropertyFormData = {
   pricing: null,
   title: '',
   description: '',
+  ownershipDoc: null,
+  ownershipDocType: null,
+};
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  PROPERTY_DEED: 'Act de proprietate',
+  UTILITY_BILL: 'Factură utilități',
+  RENTAL_CONTRACT: 'Contract de închiriere',
+  POWER_OF_ATTORNEY: 'Procură',
+  OTHER: 'Alt document',
 };
 
 const STEP_TITLES = [
@@ -126,6 +143,7 @@ const STEP_TITLES = [
   'Caracteristici',
   'Fotografii',
   'Preț și descriere',
+  'Verificare proprietate',
   'Previzualizare',
 ];
 
@@ -142,11 +160,8 @@ const CreatePropertyWizard: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<PropertyFormData>(INITIAL_FORM_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createdPropertyId, setCreatedPropertyId] = useState<number | null>(null);
-  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
-  const [docUploaded, setDocUploaded] = useState(false);
 
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   const handleBack = () => {
     if (currentStep > 1) {
@@ -249,9 +264,28 @@ const CreatePropertyWizard: React.FC = () => {
         });
       }
 
-      // Transition to success/ownership doc step
-      setCreatedPropertyId(newProperty.id);
-      setCurrentStep(7);
+      // 4. Upload ownership document if provided
+      if (formData.ownershipDoc && formData.ownershipDocType) {
+        try {
+          const docFormData = new FormData();
+          docFormData.append('document', {
+            uri: formData.ownershipDoc.uri,
+            name: formData.ownershipDoc.name,
+            type: formData.ownershipDoc.mimeType,
+          } as any);
+          docFormData.append('docType', formData.ownershipDocType);
+
+          await uploadOwnershipDocMutation.mutateAsync({
+            propertyId: newProperty.id,
+            formData: docFormData,
+          });
+        } catch (docError) {
+          console.warn('Ownership doc upload failed, property still created:', docError);
+        }
+      }
+
+      // Transition to success screen
+      setCurrentStep(8);
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     } catch (error) {
       console.error('Create property error:', error);
@@ -261,9 +295,7 @@ const CreatePropertyWizard: React.FC = () => {
     }
   };
 
-  const handleUploadOwnershipDoc = async () => {
-    if (!createdPropertyId) return;
-
+  const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
@@ -275,28 +307,21 @@ const CreatePropertyWizard: React.FC = () => {
       const file = result.assets[0];
       if (!file) return;
 
-      setIsUploadingDoc(true);
-
-      const docFormData = new FormData();
-      docFormData.append('document', {
-        uri: file.uri,
-        name: file.name || 'document.pdf',
-        type: file.mimeType || 'application/pdf',
-      } as any);
-      docFormData.append('docType', 'PROPERTY_DEED');
-
-      await uploadOwnershipDocMutation.mutateAsync({
-        propertyId: createdPropertyId,
-        formData: docFormData,
+      updateFormData({
+        ownershipDoc: {
+          uri: file.uri,
+          name: file.name || 'document.pdf',
+          mimeType: file.mimeType || 'application/pdf',
+        },
       });
-
-      setDocUploaded(true);
     } catch (error) {
-      console.error('Upload ownership doc error:', error);
-      Alert.alert('Eroare', 'Nu am putut încărca documentul. Poți încerca din nou mai târziu din pagina anunțului.');
-    } finally {
-      setIsUploadingDoc(false);
+      console.error('Document picker error:', error);
+      Alert.alert('Eroare', 'Nu am putut selecta documentul.');
     }
+  };
+
+  const handleRemoveDocument = () => {
+    updateFormData({ ownershipDoc: null, ownershipDocType: null });
   };
 
   const updateFormData = (updates: Partial<PropertyFormData>) => {
@@ -316,6 +341,9 @@ const CreatePropertyWizard: React.FC = () => {
       case 5:
         return !!formData.pricing?.price && formData.title.length > 10;
       case 6:
+        // Ownership doc is optional; if doc is selected, docType must also be set
+        return !formData.ownershipDoc || !!formData.ownershipDocType;
+      case 7:
         return true;
       default:
         return false;
@@ -361,12 +389,92 @@ const CreatePropertyWizard: React.FC = () => {
         );
       case 6:
         return (
+          <View style={styles.ownershipStepContainer}>
+            <View style={styles.ownershipHeader}>
+              <ShieldCheck size={24} color={theme.colors.primary.main} />
+              <Text style={[styles.ownershipTitle, { color: theme.colors.textPrimary }]}>
+                Verificare proprietate
+              </Text>
+            </View>
+            <Text style={[styles.ownershipDesc, { color: theme.colors.textSecondary }]}>
+              Încarcă un document care dovedește că ești proprietarul. Anunțul tău va primi un badge de „Proprietate verificată" după aprobarea echipei noastre.
+            </Text>
+
+            <Text style={[styles.ownershipNote, { color: theme.colors.textTertiary, marginBottom: 16 }]}>
+              Acest pas este opțional — poți sări peste el.
+            </Text>
+
+            {/* Document type selector */}
+            <Text style={[styles.fieldLabel, { color: theme.colors.textPrimary }]}>
+              Tip document
+            </Text>
+            <View style={styles.docTypeGrid}>
+              {Object.entries(DOC_TYPE_LABELS).map(([key, label]) => {
+                const isSelected = formData.ownershipDocType === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.docTypeChip,
+                      {
+                        borderColor: isSelected ? theme.colors.primary.main : theme.colors.border,
+                        backgroundColor: isSelected ? theme.colors.primary.main + '15' : theme.colors.surface,
+                      },
+                    ]}
+                    onPress={() => updateFormData({ ownershipDocType: key as any })}
+                  >
+                    <Text
+                      style={[
+                        styles.docTypeChipText,
+                        { color: isSelected ? theme.colors.primary.main : theme.colors.textSecondary },
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Upload area */}
+            <Text style={[styles.fieldLabel, { color: theme.colors.textPrimary, marginTop: 20 }]}>
+              Document
+            </Text>
+            {formData.ownershipDoc ? (
+              <View style={[styles.docSelectedBanner, { backgroundColor: theme.colors.accent.main + '10', borderColor: theme.colors.accent.main + '40' }]}>
+                <CheckCircle size={20} color={theme.colors.accent.main} />
+                <Text style={[styles.docSelectedText, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                  {formData.ownershipDoc.name}
+                </Text>
+                <TouchableOpacity onPress={handleRemoveDocument}>
+                  <X size={18} color={theme.colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.uploadDocButton, { borderColor: theme.colors.primary.main }]}
+                onPress={handlePickDocument}
+              >
+                <Upload size={20} color={theme.colors.primary.main} />
+                <Text style={[styles.uploadDocText, { color: theme.colors.primary.main }]}>
+                  Selectează document
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={[styles.uploadHint, { color: theme.colors.textTertiary }]}>
+              Formate acceptate: PDF, JPG, PNG. Max 10 MB.
+            </Text>
+          </View>
+        );
+      case 7:
+        return (
           <PreviewStep
             formData={formData}
             onEditStep={(step) => setCurrentStep(step)}
           />
         );
-      case 7:
+      case 8:
         return (
           <View style={styles.successContainer}>
             <View style={[styles.successIcon, { backgroundColor: theme.colors.accent.main + '20' }]}>
@@ -376,52 +484,10 @@ const CreatePropertyWizard: React.FC = () => {
               Anunțul a fost publicat!
             </Text>
             <Text style={[styles.successSubtitle, { color: theme.colors.textSecondary }]}>
-              Anunțul tău este acum vizibil pentru toți utilizatorii.
+              {formData.ownershipDoc
+                ? 'Anunțul tău este vizibil. Documentul de proprietate va fi verificat de echipa noastră.'
+                : 'Anunțul tău este acum vizibil pentru toți utilizatorii.'}
             </Text>
-
-            {/* Ownership doc section */}
-            <View style={[styles.ownershipSection, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-              <View style={styles.ownershipHeader}>
-                <ShieldCheck size={22} color={theme.colors.primary.main} />
-                <Text style={[styles.ownershipTitle, { color: theme.colors.textPrimary }]}>
-                  Verifică proprietatea
-                </Text>
-              </View>
-              <Text style={[styles.ownershipDesc, { color: theme.colors.textSecondary }]}>
-                Încarcă un document care dovedește că ești proprietarul (act de proprietate, factură utilități, contract de închiriere).
-                Anunțul tău va primi un badge de „Proprietate verificată" după aprobarea de către echipa noastră.
-              </Text>
-
-              {docUploaded ? (
-                <View style={[styles.docUploadedBanner, { backgroundColor: theme.colors.accent.main + '15' }]}>
-                  <CheckCircle size={20} color={theme.colors.accent.main} />
-                  <Text style={[styles.docUploadedText, { color: theme.colors.accent.main }]}>
-                    Document încărcat! Vom verifica și te vom notifica.
-                  </Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.uploadDocButton, { borderColor: theme.colors.primary.main }]}
-                  onPress={handleUploadOwnershipDoc}
-                  disabled={isUploadingDoc}
-                >
-                  {isUploadingDoc ? (
-                    <ActivityIndicator size="small" color={theme.colors.primary.main} />
-                  ) : (
-                    <>
-                      <Upload size={20} color={theme.colors.primary.main} />
-                      <Text style={[styles.uploadDocText, { color: theme.colors.primary.main }]}>
-                        Încarcă document
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-
-              <Text style={[styles.ownershipNote, { color: theme.colors.textTertiary }]}>
-                Opțional — poți face asta oricând din pagina anunțului.
-              </Text>
-            </View>
           </View>
         );
       default:
@@ -429,8 +495,8 @@ const CreatePropertyWizard: React.FC = () => {
     }
   };
 
-  // Success screen (step 7) has its own layout
-  if (currentStep === 7) {
+  // Success screen (step 8) has its own layout
+  if (currentStep === 8) {
     return (
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.colors.background }]}
@@ -623,6 +689,48 @@ const styles = StyleSheet.create({
   footerButtonPrimary: {
     flex: 2,
   },
+  // Ownership step styles
+  ownershipStepContainer: {
+    flex: 1,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 10,
+  },
+  docTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  docTypeChip: {
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  docTypeChipText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+  },
+  docSelectedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+  },
+  docSelectedText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    flex: 1,
+  },
+  uploadHint: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    marginTop: 8,
+  },
   // Success screen styles
   successContainer: {
     alignItems: 'center',
@@ -648,12 +756,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 32,
     paddingHorizontal: 20,
-  },
-  ownershipSection: {
-    width: '100%',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 20,
   },
   ownershipHeader: {
     flexDirection: 'row',
@@ -685,19 +787,6 @@ const styles = StyleSheet.create({
   uploadDocText: {
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
-  },
-  docUploadedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-  },
-  docUploadedText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    flex: 1,
   },
   ownershipNote: {
     fontSize: 12,
