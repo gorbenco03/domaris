@@ -247,6 +247,26 @@ export const getPropertyAnalytics = async (
   return response.data;
 };
 
+/**
+ * Upload ownership proof document for a listing
+ * Uses multipart/form-data with FormData
+ */
+export const uploadOwnershipDoc = async (
+  propertyId: string | number,
+  formData: FormData
+): Promise<{ success: boolean; ownershipStatus: string; message: string }> => {
+  const response = await apiClient.post(
+    `${API_ENDPOINTS.PROPERTIES.DETAIL(String(propertyId))}/ownership-doc`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
+};
+
 // ============================================================================
 // EXPORT ALL
 // ============================================================================
@@ -265,6 +285,7 @@ export const propertiesApi = {
   uploadPropertyPhotos,
   updatePropertyStatus,
   getPropertyAnalytics,
+  uploadOwnershipDoc,
 };
 
 export default propertiesApi;

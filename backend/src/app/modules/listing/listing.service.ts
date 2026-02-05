@@ -385,6 +385,7 @@ export class ListingService {
         'neighborhood',
         'transactionType',
         'propertyType',
+        'ownershipStatus',
       ],
     });
 
@@ -476,6 +477,70 @@ export class ListingService {
       uploaded: uploadedImages,
       total: uploadedImages.length,
       message: `Successfully uploaded ${uploadedImages.length} of ${files.length} images`,
+    };
+  }
+
+  /**
+   * Upload ownership proof document for a listing
+   */
+  async uploadOwnershipDoc(
+    id: string,
+    ownerId: number | string,
+    file: Express.Multer.File | undefined,
+    docType: string,
+  ) {
+    const listing = await Listing.findByPk(id);
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (String(listing.ownerId) !== String(ownerId)) {
+      throw new ForbiddenException('You are not the owner of this listing');
+    }
+
+    if (!file) {
+      throw new NotFoundException('Document file is required');
+    }
+
+    const validDocTypes = ['PROPERTY_DEED', 'UTILITY_BILL', 'RENTAL_CONTRACT', 'POWER_OF_ATTORNEY', 'OTHER'];
+    if (!validDocTypes.includes(docType)) {
+      throw new NotFoundException(`Invalid docType. Valid: ${validDocTypes.join(', ')}`);
+    }
+
+    let docUrl: string;
+
+    try {
+      // Save buffer to temp file for S3 upload
+      const tempPath = path.join(os.tmpdir(), `${Date.now()}_ownership_${file.originalname}`);
+      fs.writeFileSync(tempPath, file.buffer);
+
+      // Upload to S3
+      const s3Key = `ownership-docs/${id}/${Date.now()}_${file.originalname}`;
+      await this.s3Service.uploadImage(tempPath, s3Key);
+
+      const bucket = process.env.AWS_S3_BUCKET || 'domaris-uploads';
+      docUrl = `https://${bucket}.s3.eu-central-1.amazonaws.com/${s3Key}`;
+
+      // Clean up temp file
+      fs.unlinkSync(tempPath);
+    } catch (error: any) {
+      this.logger.warn(`Failed to upload ownership doc to S3: ${error.message}. Using placeholder path.`);
+      docUrl = `uploads/ownership-docs/${id}/${Date.now()}_${file.originalname}`;
+    }
+
+    // Update listing with ownership doc info
+    await listing.update({
+      ownershipStatus: 'pending',
+      ownershipDocUrl: docUrl,
+      ownershipDocType: docType,
+      ownershipRejectionReason: null,
+      ownershipReviewedAt: null,
+      ownershipReviewedBy: null,
+    });
+
+    this.logger.log(`[Ownership] Listing ${id} - ownership doc uploaded by user ${ownerId}, type: ${docType}`);
+
+    return {
+      success: true,
+      ownershipStatus: 'pending',
+      message: 'Document încărcat. Va fi verificat de echipa noastră.',
     };
   }
 

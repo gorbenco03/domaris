@@ -1,19 +1,20 @@
 /**
- * 🏠 LISTING CONTROLLER - Conform ADR-001: Model de Cont Unificat
+ * 🏠 LISTING CONTROLLER
  *
- * Folosește VerificationGuard pentru a controla accesul:
- * - Căutare/vizualizare: Public (level 0)
- * - Creare/editare/ștergere: Necesită level 3+ (proprietar verificat)
+ * All listing operations require only authentication.
+ * Ownership verification is per-listing (document upload + admin review).
+ * Listings are visible publicly but get a "verified" badge only after admin approval.
  *
  * Endpoints:
  * - GET /properties - List/search properties (public)
  * - GET /properties/:id - Get property details (public)
- * - POST /properties - Create property (requires level 3)
- * - PATCH /properties/:id - Update property (requires level 3 + owner)
- * - DELETE /properties/:id - Delete property (requires level 3 + owner)
- * - GET /properties/me/all - Get my properties (requires level 3)
- * - POST /properties/:id/photos - Upload photos (requires level 3 + owner)
- * - PATCH /properties/:id/status - Update status (requires level 3 + owner)
+ * - POST /properties - Create property (requires auth)
+ * - PATCH /properties/:id - Update property (requires auth + owner)
+ * - DELETE /properties/:id - Delete property (requires auth + owner)
+ * - GET /properties/my - Get my properties (requires auth)
+ * - POST /properties/:id/photos - Upload photos (requires auth + owner)
+ * - PATCH /properties/:id/status - Update status (requires auth + owner)
+ * - POST /properties/:id/ownership-doc - Upload ownership document (requires auth + owner)
  */
 
 import {
@@ -49,10 +50,8 @@ import {
   Public,
   CurrentUser,
   CurrentUserId,
-  MinVerificationLevel,
 } from '../../core/decorators.js';
 import { AuthGuard } from '../../auth/auth.guard';
-import { VerificationGuard } from '../../core/verification.guard';
 
 @ApiTags('properties')
 @Controller('properties')
@@ -68,18 +67,14 @@ export class ListingController {
 
   /**
    * Get my properties
-   * ADR-001: Requires level 3+ to see "my listings"
-   * (Users without level 3 can't post, so they have no listings)
    */
-  @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(3)
+  @UseGuards(AuthGuard)
   @Get('my')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get my properties',
-    description: 'Requires ownership verification (level 3)',
+    description: 'Requires authentication',
   })
-  @ApiForbiddenResponse({ description: 'Identity verification required' })
   async findMyProperties(@CurrentUserId() userId: number) {
     return this.listingService.findMyListings(userId);
   }
@@ -90,7 +85,6 @@ export class ListingController {
 
   /**
    * Map search - get properties in bounding box
-   * Public endpoint for map view
    */
   @Public()
   @Get('map-search')
@@ -221,7 +215,7 @@ export class ListingController {
   @ApiResponse({ status: 404, description: 'Property not found' })
   async findOne(@Param('id') id: string, @CurrentUser() user?: any) {
     const numericId = parseInt(id, 10);
-    
+
     if (isNaN(numericId)) {
       throw new NotFoundException('Invalid property ID');
     }
@@ -259,43 +253,36 @@ export class ListingController {
   }
 
   // ============================================================================
-  // AUTHENTICATED ENDPOINTS - Require Level 2 (Identity Verified)
+  // AUTHENTICATED ENDPOINTS (auth only, no verification level required)
   // ============================================================================
 
   /**
    * Create new property
-   * ADR-001: Requires level 3+ (ownership verified)
    */
-  @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(3)
+  @UseGuards(AuthGuard)
   @Post()
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create new property',
-    description: 'Requires ownership verification (level 3).',
+    description: 'Requires authentication. Listings are public but get a "verified" badge only after admin reviews ownership document.',
   })
   @ApiResponse({ status: 201, description: 'Property created' })
-  @ApiForbiddenResponse({
-    description: 'Ownership verification required to post listings',
-  })
   async create(@CurrentUserId() userId: number, @Body() dto: CreateListingDto) {
     return this.listingService.create(userId, dto);
   }
 
   /**
-   * Update property
-   * ADR-001: Requires level 3+ and must be owner
+   * Update property (must be owner)
    */
-  @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(3)
+  @UseGuards(AuthGuard)
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update property',
-    description: 'Requires ownership verification and ownership',
+    description: 'Requires authentication and ownership',
   })
   @ApiResponse({ status: 200, description: 'Property updated' })
-  @ApiForbiddenResponse({ description: 'Not owner or not verified' })
+  @ApiForbiddenResponse({ description: 'Not owner' })
   async update(
     @Param('id') id: string,
     @CurrentUserId() userId: number,
@@ -305,30 +292,26 @@ export class ListingController {
   }
 
   /**
-   * Delete property
-   * ADR-001: Requires level 3+ and must be owner
+   * Delete property (must be owner)
    */
-  @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(3)
+  @UseGuards(AuthGuard)
   @Delete(':id')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Delete property',
-    description: 'Requires ownership verification and ownership',
+    description: 'Requires authentication and ownership',
   })
   @ApiResponse({ status: 200, description: 'Property deleted' })
-  @ApiForbiddenResponse({ description: 'Not owner or not verified' })
+  @ApiForbiddenResponse({ description: 'Not owner' })
   async remove(@Param('id') id: string, @CurrentUserId() userId: number) {
     await this.listingService.remove(id, userId);
     return { success: true, message: 'Proprietate ștearsă' };
   }
 
   /**
-   * Upload property photos
-   * ADR-001: Requires level 3+ and must be owner
+   * Upload property photos (must be owner)
    */
-  @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(3)
+  @UseGuards(AuthGuard)
   @Post(':id/photos')
   @UseInterceptors(
     FileFieldsInterceptor([{ name: 'photos', maxCount: 20 }]),
@@ -337,7 +320,7 @@ export class ListingController {
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Upload property photos',
-    description: 'Requires ownership verification and ownership',
+    description: 'Requires authentication and ownership',
   })
   @ApiBody({
     schema: {
@@ -361,16 +344,58 @@ export class ListingController {
   }
 
   /**
-   * Update property status
-   * ADR-001: Requires level 3+ and must be owner
+   * Upload ownership document for a listing (must be owner)
+   * After upload, status becomes 'pending' and admin must review.
    */
-  @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(3)
+  @UseGuards(AuthGuard)
+  @Post(':id/ownership-doc')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'document', maxCount: 1 }]),
+  )
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Upload ownership proof document for listing',
+    description: 'Upload a document proving property ownership (deed, utility bill, etc). Admin will review and mark the listing as verified.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['docType', 'document'],
+      properties: {
+        docType: {
+          type: 'string',
+          enum: ['PROPERTY_DEED', 'UTILITY_BILL', 'RENTAL_CONTRACT', 'POWER_OF_ATTORNEY', 'OTHER'],
+          description: 'Type of ownership document',
+        },
+        document: {
+          type: 'string',
+          format: 'binary',
+          description: 'Document file (PDF or image)',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Document uploaded, pending review' })
+  @ApiForbiddenResponse({ description: 'Not owner' })
+  async uploadOwnershipDoc(
+    @Param('id') id: string,
+    @CurrentUserId() userId: number,
+    @UploadedFiles() files: { document?: Express.Multer.File[] },
+    @Body('docType') docType: string,
+  ) {
+    return this.listingService.uploadOwnershipDoc(id, userId, files.document?.[0], docType);
+  }
+
+  /**
+   * Update property status (must be owner)
+   */
+  @UseGuards(AuthGuard)
   @Patch(':id/status')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update property status',
-    description: 'Requires ownership verification and ownership',
+    description: 'Requires authentication and ownership',
   })
   @ApiBody({
     schema: {
@@ -398,11 +423,9 @@ export class ListingController {
   // ============================================================================
 
   /**
-   * Get property analytics
-   * ADR-001: Requires level 3+ and must be owner
+   * Get property analytics (must be owner)
    */
-  @UseGuards(AuthGuard, VerificationGuard)
-  @MinVerificationLevel(3)
+  @UseGuards(AuthGuard)
   @Get(':id/analytics')
   @ApiBearerAuth()
   @ApiOperation({

@@ -12,6 +12,7 @@ export {
   useUploadPropertyPhotos,
   useUpdatePropertyStatus,
   usePropertyAnalytics,
+  useUploadOwnershipDoc,
 } from '../hooks/useProperties';
 
 export type {

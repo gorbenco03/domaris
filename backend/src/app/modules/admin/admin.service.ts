@@ -182,6 +182,109 @@ export class AdminService {
         return listing;
     }
 
+    // ============================================================================
+    // OWNERSHIP VERIFICATION REVIEW
+    // ============================================================================
+
+    async getPendingOwnershipReviews(page: number, limit: number) {
+        const offset = (page - 1) * limit;
+        return Listing.findAndCountAll({
+            where: { ownershipStatus: 'pending' },
+            limit,
+            offset,
+            include: [{ model: User, as: 'owner', attributes: ['id', 'email', 'firstName', 'lastName'] }],
+            order: [['updatedAt', 'ASC']],
+        });
+    }
+
+    async approveListingOwnership(
+        listingId: number,
+        adminId: number,
+        adminEmail: string,
+        ipAddress?: string,
+        userAgent?: string,
+    ) {
+        const listing = await Listing.findByPk(listingId);
+        if (!listing) throw new NotFoundException('Listing not found');
+
+        if (listing.ownershipStatus !== 'pending') {
+            throw new BadRequestException('Listing does not have a pending ownership review');
+        }
+
+        await listing.update({
+            ownershipStatus: 'verified',
+            ownershipReviewedAt: new Date(),
+            ownershipReviewedBy: adminId,
+            ownershipRejectionReason: null,
+        });
+
+        // Audit log
+        await this.auditService.logListingStatusChange(
+            adminId,
+            adminEmail,
+            listingId,
+            'ownership:pending',
+            'ownership:verified',
+            ipAddress,
+            userAgent,
+            'Ownership document approved',
+        );
+
+        return {
+            success: true,
+            message: 'Proprietatea a fost verificată cu succes',
+            ownershipStatus: 'verified',
+        };
+    }
+
+    async rejectListingOwnership(
+        listingId: number,
+        reason: string,
+        adminId: number,
+        adminEmail: string,
+        ipAddress?: string,
+        userAgent?: string,
+    ) {
+        if (!reason || reason.trim().length === 0) {
+            throw new BadRequestException({
+                code: 'REASON_REQUIRED',
+                message: 'Reason is required for ownership rejection',
+            });
+        }
+
+        const listing = await Listing.findByPk(listingId);
+        if (!listing) throw new NotFoundException('Listing not found');
+
+        if (listing.ownershipStatus !== 'pending') {
+            throw new BadRequestException('Listing does not have a pending ownership review');
+        }
+
+        await listing.update({
+            ownershipStatus: 'rejected',
+            ownershipReviewedAt: new Date(),
+            ownershipReviewedBy: adminId,
+            ownershipRejectionReason: reason,
+        });
+
+        // Audit log
+        await this.auditService.logListingStatusChange(
+            adminId,
+            adminEmail,
+            listingId,
+            'ownership:pending',
+            'ownership:rejected',
+            ipAddress,
+            userAgent,
+            reason,
+        );
+
+        return {
+            success: true,
+            message: 'Verificarea proprietății a fost respinsă',
+            reason,
+        };
+    }
+
     async getSystemStats() {
         const totalUsers = await User.count();
         const totalListings = await Listing.count();

@@ -1,9 +1,7 @@
 /**
  * 📅 VIEWING CONTROLLER - Viewing Requests & Scheduling
  *
- * Conform ADR-001: Model de Cont Unificat
- * - Cerere vizionare necesită Level 2 (identitate verificată)
- * - Accept/Reject necesită Level 3 pentru owner (are proprietate deci e verificat)
+ * All viewing operations require only authentication (no KYC verification).
  */
 
 import {
@@ -23,15 +21,12 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
-  ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import { ViewingService } from './viewing.service.js';
 import {
   CurrentUserId,
-  MinVerificationLevel,
 } from '../../core/decorators.js';
 import { AuthGuard } from '../../auth/auth.guard';
-import { VerificationGuard } from '../../core/verification.guard';
 
 @ApiTags('viewings')
 @Controller('viewings')
@@ -73,15 +68,12 @@ export class ViewingController {
   // AVAILABILITY
   // ============================================================================
 
-  @UseGuards(VerificationGuard)
-  @MinVerificationLevel(1)
   @Get('availability/:propertyId')
   @ApiOperation({
     summary: 'Get available viewing slots for a property',
-    description: 'Returns available dates and time slots for the next 30 days. Requires email verification (Level 1).',
+    description: 'Returns available dates and time slots for the next 30 days.',
   })
   @ApiResponse({ status: 200, description: 'Available dates and slots' })
-  @ApiForbiddenResponse({ description: 'Email verification required' })
   async getAvailability(
     @Param('propertyId', ParseIntPipe) propertyId: number,
     @Query('startDate') startDate?: string,
@@ -105,15 +97,13 @@ export class ViewingController {
   }
 
   // ============================================================================
-  // REQUEST VIEWING (requires Level 2)
+  // REQUEST VIEWING
   // ============================================================================
 
-  @UseGuards(VerificationGuard)
-  @MinVerificationLevel(2)
   @Post()
   @ApiOperation({
     summary: 'Request a viewing',
-    description: 'Requires identity verification (Level 2)',
+    description: 'Requires authentication',
   })
   @ApiBody({
     schema: {
@@ -127,7 +117,6 @@ export class ViewingController {
     },
   })
   @ApiResponse({ status: 201, description: 'Viewing request created' })
-  @ApiForbiddenResponse({ description: 'Identity verification required' })
   async requestViewing(
     @CurrentUserId() userId: number,
     @Body('propertyId') propertyId: number,

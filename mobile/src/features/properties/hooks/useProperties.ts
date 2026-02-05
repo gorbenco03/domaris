@@ -160,3 +160,26 @@ export const usePropertyAnalytics = (
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
+
+/**
+ * Upload ownership document for a listing
+ */
+export const useUploadOwnershipDoc = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      propertyId,
+      formData,
+    }: {
+      propertyId: string | number;
+      formData: FormData;
+    }) => propertiesApi.uploadOwnershipDoc(propertyId, formData),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROPERTY_DETAIL, variables.propertyId],
+      });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MY_PROPERTIES] });
+    },
+  });
+};

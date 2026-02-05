@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Param, Body, UseGuards, Query, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { AuthOnly, CurrentUser } from '../../core/decorators.js';
@@ -106,6 +106,53 @@ export class AdminController {
             req.ip,
             req.headers['user-agent'],
             reason
+        );
+    }
+
+    // ============================================================================
+    // OWNERSHIP VERIFICATION REVIEW
+    // ============================================================================
+
+    @Get('ownership-reviews')
+    @ApiOperation({ summary: 'List listings pending ownership review (Admin)' })
+    async getPendingOwnershipReviews(
+        @Query('page') page: number = 1,
+        @Query('limit') limit: number = 20,
+    ) {
+        return this.adminService.getPendingOwnershipReviews(page, limit);
+    }
+
+    @Post('listings/:id/ownership-approve')
+    @ApiOperation({ summary: 'Approve listing ownership (Admin)' })
+    async approveOwnership(
+        @Param('id') id: number,
+        @CurrentUser() admin: any,
+        @Req() req: any,
+    ) {
+        return this.adminService.approveListingOwnership(
+            id,
+            admin.id,
+            admin.email,
+            req.ip,
+            req.headers['user-agent'],
+        );
+    }
+
+    @Post('listings/:id/ownership-reject')
+    @ApiOperation({ summary: 'Reject listing ownership (Admin)' })
+    async rejectOwnership(
+        @Param('id') id: number,
+        @Body('reason') reason: string,
+        @CurrentUser() admin: any,
+        @Req() req: any,
+    ) {
+        return this.adminService.rejectListingOwnership(
+            id,
+            reason,
+            admin.id,
+            admin.email,
+            req.ip,
+            req.headers['user-agent'],
         );
     }
 

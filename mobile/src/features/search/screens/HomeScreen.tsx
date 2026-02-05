@@ -381,6 +381,7 @@ const HomeScreen: React.FC = () => {
                     'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
                   }
                   onPress={() => handlePropertyPress(String(property.id))}
+                  isVerified={(property as any).ownershipStatus === 'verified'}
                   isFavorite={favoriteIds.has(String(property.id))}
                   onFavoritePress={() =>
                     handleToggleFavorite(

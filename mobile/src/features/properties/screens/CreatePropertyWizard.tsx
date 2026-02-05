@@ -13,18 +13,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft, X } from 'lucide-react-native';
+import { ArrowLeft, X, CheckCircle, ShieldCheck, Upload } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import ProgressBar from '@/shared/components/ProgressBar';
 import Button from '@/shared/components/Button';
-import { AuthRequiredScreen, VerificationRequiredScreen, IconButton } from '@/shared/components';
+import { AuthRequiredScreen, IconButton } from '@/shared/components';
 import {
   useCreateProperty,
   useUploadPropertyPhotos,
+  useUploadOwnershipDoc,
   ICreatePropertyRequest,
 } from '@/features/properties/services';
 
@@ -139,6 +142,9 @@ const CreatePropertyWizard: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<PropertyFormData>(INITIAL_FORM_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdPropertyId, setCreatedPropertyId] = useState<number | null>(null);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [docUploaded, setDocUploaded] = useState(false);
 
   const totalSteps = 6;
 
@@ -175,20 +181,11 @@ const CreatePropertyWizard: React.FC = () => {
   /* API Hooks */
   const createPropertyMutation = useCreateProperty();
   const uploadPhotosMutation = useUploadPropertyPhotos();
+  const uploadOwnershipDocMutation = useUploadOwnershipDoc();
 
   if (!isAuthenticated) {
     return (
       <AuthRequiredScreen message="Autentifică-te pentru a putea posta anunțuri." />
-    );
-  }
-
-  if ((user?.verificationLevel ?? 0) < 3) {
-    return (
-      <VerificationRequiredScreen
-        title="Proprietar verificat necesar"
-        message="Finalizează verificarea nivel 3 pentru a posta un anunț."
-        ctaLabel="Începe verificarea"
-      />
     );
   }
 
@@ -252,21 +249,53 @@ const CreatePropertyWizard: React.FC = () => {
         });
       }
 
-      Alert.alert(
-        'Succes',
-        'Anunțul tău a fost publicat cu succes!',
-        [
-          {
-            text: 'Super!',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      // Transition to success/ownership doc step
+      setCreatedPropertyId(newProperty.id);
+      setCurrentStep(7);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     } catch (error) {
       console.error('Create property error:', error);
       Alert.alert('Eroare', 'Nu am putut publica anunțul. Verifică conexiunea și încearcă din nou.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUploadOwnershipDoc = async () => {
+    if (!createdPropertyId) return;
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const file = result.assets[0];
+      if (!file) return;
+
+      setIsUploadingDoc(true);
+
+      const docFormData = new FormData();
+      docFormData.append('document', {
+        uri: file.uri,
+        name: file.name || 'document.pdf',
+        type: file.mimeType || 'application/pdf',
+      } as any);
+      docFormData.append('docType', 'PROPERTY_DEED');
+
+      await uploadOwnershipDocMutation.mutateAsync({
+        propertyId: createdPropertyId,
+        formData: docFormData,
+      });
+
+      setDocUploaded(true);
+    } catch (error) {
+      console.error('Upload ownership doc error:', error);
+      Alert.alert('Eroare', 'Nu am putut încărca documentul. Poți încerca din nou mai târziu din pagina anunțului.');
+    } finally {
+      setIsUploadingDoc(false);
     }
   };
 
@@ -337,13 +366,107 @@ const CreatePropertyWizard: React.FC = () => {
             onEditStep={(step) => setCurrentStep(step)}
           />
         );
+      case 7:
+        return (
+          <View style={styles.successContainer}>
+            <View style={[styles.successIcon, { backgroundColor: theme.colors.accent.main + '20' }]}>
+              <CheckCircle size={48} color={theme.colors.accent.main} />
+            </View>
+            <Text style={[styles.successTitle, { color: theme.colors.textPrimary }]}>
+              Anunțul a fost publicat!
+            </Text>
+            <Text style={[styles.successSubtitle, { color: theme.colors.textSecondary }]}>
+              Anunțul tău este acum vizibil pentru toți utilizatorii.
+            </Text>
+
+            {/* Ownership doc section */}
+            <View style={[styles.ownershipSection, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <View style={styles.ownershipHeader}>
+                <ShieldCheck size={22} color={theme.colors.primary.main} />
+                <Text style={[styles.ownershipTitle, { color: theme.colors.textPrimary }]}>
+                  Verifică proprietatea
+                </Text>
+              </View>
+              <Text style={[styles.ownershipDesc, { color: theme.colors.textSecondary }]}>
+                Încarcă un document care dovedește că ești proprietarul (act de proprietate, factură utilități, contract de închiriere).
+                Anunțul tău va primi un badge de „Proprietate verificată" după aprobarea de către echipa noastră.
+              </Text>
+
+              {docUploaded ? (
+                <View style={[styles.docUploadedBanner, { backgroundColor: theme.colors.accent.main + '15' }]}>
+                  <CheckCircle size={20} color={theme.colors.accent.main} />
+                  <Text style={[styles.docUploadedText, { color: theme.colors.accent.main }]}>
+                    Document încărcat! Vom verifica și te vom notifica.
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.uploadDocButton, { borderColor: theme.colors.primary.main }]}
+                  onPress={handleUploadOwnershipDoc}
+                  disabled={isUploadingDoc}
+                >
+                  {isUploadingDoc ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary.main} />
+                  ) : (
+                    <>
+                      <Upload size={20} color={theme.colors.primary.main} />
+                      <Text style={[styles.uploadDocText, { color: theme.colors.primary.main }]}>
+                        Încarcă document
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              <Text style={[styles.ownershipNote, { color: theme.colors.textTertiary }]}>
+                Opțional — poți face asta oricând din pagina anunțului.
+              </Text>
+            </View>
+          </View>
+        );
       default:
         return null;
     }
   };
 
+  // Success screen (step 7) has its own layout
+  if (currentStep === 7) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {renderStep()}
+        </ScrollView>
+
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderTopColor: theme.colors.border,
+            },
+          ]}
+        >
+          <Button
+            title="Gata"
+            onPress={() => navigation.goBack()}
+            style={styles.footerButtonPrimary}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView 
+    <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top']}
     >
@@ -356,7 +479,7 @@ const CreatePropertyWizard: React.FC = () => {
           size="md"
           style={[styles.headerButton, { borderWidth: 1, borderColor: theme.colors.border }]}
         />
-        
+
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
             {STEP_TITLES[currentStep - 1]}
@@ -499,6 +622,87 @@ const styles = StyleSheet.create({
   },
   footerButtonPrimary: {
     flex: 2,
+  },
+  // Success screen styles
+  successContainer: {
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  successIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontFamily: 'Inter-Bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successSubtitle: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 20,
+  },
+  ownershipSection: {
+    width: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 20,
+  },
+  ownershipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  ownershipTitle: {
+    fontSize: 17,
+    fontFamily: 'Inter-SemiBold',
+  },
+  ownershipDesc: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  uploadDocButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  uploadDocText: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+  },
+  docUploadedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+  },
+  docUploadedText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    flex: 1,
+  },
+  ownershipNote: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
   },
 });
 

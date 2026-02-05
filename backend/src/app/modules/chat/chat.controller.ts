@@ -1,9 +1,7 @@
 /**
  * 💬 CHAT CONTROLLER - Messaging/Conversations
  *
- * Conform ADR-001: Model de Cont Unificat
- * - Trimiterea mesajelor necesită Level 2 (identitate verificată)
- * - Vizualizare conversații necesită doar autentificare
+ * All messaging requires only authentication (no KYC verification).
  */
 
 import {
@@ -22,16 +20,13 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
-  ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import {
   CurrentUser,
   CurrentUserId,
-  MinVerificationLevel,
 } from '../../core/decorators.js';
 import { AuthGuard } from '../../auth/auth.guard';
-import { VerificationGuard } from '../../core/verification.guard';
 
 @ApiTags('conversations')
 @Controller('conversations')
@@ -97,15 +92,13 @@ export class ChatController {
   }
 
   // ============================================================================
-  // START CONVERSATION (requires Level 2)
+  // START CONVERSATION
   // ============================================================================
 
-  @UseGuards(VerificationGuard)
-  @MinVerificationLevel(2)
   @Post()
   @ApiOperation({
     summary: 'Start or get existing conversation',
-    description: 'Requires identity verification (Level 2)',
+    description: 'Requires authentication',
   })
   @ApiBody({
     schema: {
@@ -118,7 +111,6 @@ export class ChatController {
     },
   })
   @ApiResponse({ status: 200, description: 'Conversation created/retrieved' })
-  @ApiForbiddenResponse({ description: 'Identity verification required' })
   async startConversation(
     @CurrentUserId() userId: number,
     @Body('propertyId') propertyId: number,
@@ -128,15 +120,13 @@ export class ChatController {
   }
 
   // ============================================================================
-  // SEND MESSAGE (requires Level 2)
+  // SEND MESSAGE
   // ============================================================================
 
-  @UseGuards(VerificationGuard)
-  @MinVerificationLevel(2)
   @Post(':id/messages')
   @ApiOperation({
     summary: 'Send message',
-    description: 'Requires identity verification (Level 2)',
+    description: 'Requires authentication',
   })
   @ApiBody({
     schema: {
@@ -153,7 +143,6 @@ export class ChatController {
     },
   })
   @ApiResponse({ status: 200, description: 'Message sent' })
-  @ApiForbiddenResponse({ description: 'Identity verification required' })
   async sendMessage(
     @CurrentUserId() userId: number,
     @Param('id', ParseIntPipe) conversationId: number,

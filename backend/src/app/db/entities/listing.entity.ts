@@ -221,6 +221,36 @@ export class Listing extends ExtModel {
 
 
 
+  // ----------------- OWNERSHIP VERIFICATION -----------------
+
+  @ApiProperty({ description: 'Whether ownership has been verified by admin' })
+  @Column({
+    type: DataType.ENUM('none', 'pending', 'verified', 'rejected'),
+    allowNull: false,
+    defaultValue: 'none',
+  })
+  ownershipStatus!: 'none' | 'pending' | 'verified' | 'rejected';
+
+  @ApiProperty({ required: false, description: 'S3 URL of ownership proof document' })
+  @Column(DataType.STRING)
+  ownershipDocUrl?: string | null;
+
+  @ApiProperty({ required: false, description: 'Type of ownership document' })
+  @Column(DataType.STRING)
+  ownershipDocType?: string | null;
+
+  @ApiProperty({ required: false, description: 'Admin rejection reason' })
+  @Column(DataType.TEXT)
+  ownershipRejectionReason?: string | null;
+
+  @ApiProperty({ required: false, description: 'When ownership doc was reviewed' })
+  @Column(DataType.DATE)
+  ownershipReviewedAt?: Date | null;
+
+  @ApiProperty({ required: false, description: 'Admin who reviewed ownership' })
+  @Column(DataType.BIGINT)
+  ownershipReviewedBy?: number | null;
+
   // ----------------- RELATIONS -----------------
 
   @ApiProperty({ type: () => [ListingImage] })

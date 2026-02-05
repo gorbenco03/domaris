@@ -40,7 +40,7 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { ProfileStackParamList } from '@/app/navigation/types';
 import Button from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { AuthRequiredScreen, VerificationRequiredScreen, ScreenHeader } from '@/shared/components';
+import { AuthRequiredScreen, ScreenHeader } from '@/shared/components';
 import { 
   useMyProperties, 
   useDeleteProperty, 
@@ -259,9 +259,8 @@ const MyPropertiesScreen: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Real data fetching
-  const canAccess = isAuthenticated && (user?.verificationLevel ?? 0) >= 3;
-  const { data: properties = [], isLoading, refetch, error } = useMyProperties(canAccess);
+  // Real data fetching - no verification level required
+  const { data: properties = [], isLoading, refetch, error } = useMyProperties(isAuthenticated);
   const deleteMutation = useDeleteProperty();
 
   console.log('[MyPropertiesScreen] Properties fetched:', JSON.stringify(properties, null, 2));
@@ -271,16 +270,6 @@ const MyPropertiesScreen: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <AuthRequiredScreen message="Autentifică-te pentru a vedea anunțurile tale." />
-    );
-  }
-
-  if (!canAccess) {
-    return (
-      <VerificationRequiredScreen
-        title="Proprietar verificat necesar"
-        message="Finalizează verificarea nivel 3 pentru a gestiona anunțurile."
-        ctaLabel="Începe verificarea"
-      />
     );
   }
 

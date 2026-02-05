@@ -383,16 +383,18 @@ const PropertyDetailScreen: React.FC = () => {
                 <View>
                   <View style={styles.ownerNameRow}>
                     <Text style={[styles.ownerName, { color: theme.colors.textPrimary }]}>
-                      {owner?.firstName 
+                      {owner?.firstName
                         ? `${owner.firstName} ${owner.lastName || ''}`
                         : 'Utilizator Riva'}
                     </Text>
-                    {owner?.verificationLevel >= 2 && <ShieldCheck size={16} color={theme.colors.accent.main} />}
+                    {property.ownershipStatus === 'verified' && <ShieldCheck size={16} color={theme.colors.accent.main} />}
                   </View>
                   <Text style={[styles.ownerMeta, { color: theme.colors.textTertiary }]}>Proprietar · Vezi profil</Text>
                 </View>
               </View>
-              <Badge label="Verificat" variant="info" size="sm" />
+              {property.ownershipStatus === 'verified' && (
+                <Badge label="Verificat" variant="info" size="sm" />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -424,15 +426,8 @@ const PropertyDetailScreen: React.FC = () => {
                   });
                 })
                 .catch((error) => {
-                  const status = error?.response?.status;
-                  if (status === 403) {
-                    Alert.alert(
-                      'Verificare necesară',
-                      'Trebuie să confirmi emailul sau telefonul înainte să trimiți mesaje.'
-                    );
-                    return;
-                  }
                   console.warn('Failed to start conversation', error);
+                  Alert.alert('Eroare', 'Nu s-a putut începe conversația. Încearcă din nou.');
                 })
                 .finally(() => {
                   setIsStartingChat(false);

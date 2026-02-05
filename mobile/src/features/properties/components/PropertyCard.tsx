@@ -239,7 +239,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             <View style={styles.verifiedRow}>
               <CheckCircle size={14} color={theme.colors.accent.main} />
               <Text style={[styles.verifiedText, { color: theme.colors.accent.main }]}>
-                Proprietar verificat
+                Proprietate verificată
               </Text>
             </View>
           )}
