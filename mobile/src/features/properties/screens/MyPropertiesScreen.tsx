@@ -31,6 +31,7 @@ import {
   Zap,
   MoreHorizontal,
   Filter,
+  ShieldCheck,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -191,6 +192,47 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
         <Text style={[styles.cardLocation, { color: theme.colors.textSecondary }]}>
           {property.neighborhood ? `${property.neighborhood}, ${property.city}` : property.city}
         </Text>
+
+        {/* Ownership verification badge */}
+        {(property as any).ownershipStatus && (property as any).ownershipStatus !== 'none' && (
+          <View style={[
+            styles.ownershipBadge,
+            {
+              backgroundColor: (property as any).ownershipStatus === 'verified'
+                ? theme.colors.accent.main + '15'
+                : (property as any).ownershipStatus === 'pending'
+                ? theme.colors.secondary.warning + '15'
+                : theme.colors.secondary.error + '15',
+            },
+          ]}>
+            <ShieldCheck
+              size={14}
+              color={
+                (property as any).ownershipStatus === 'verified'
+                  ? theme.colors.accent.main
+                  : (property as any).ownershipStatus === 'pending'
+                  ? theme.colors.secondary.warning
+                  : theme.colors.secondary.error
+              }
+            />
+            <Text style={[
+              styles.ownershipBadgeText,
+              {
+                color: (property as any).ownershipStatus === 'verified'
+                  ? theme.colors.accent.main
+                  : (property as any).ownershipStatus === 'pending'
+                  ? theme.colors.secondary.warning
+                  : theme.colors.secondary.error,
+              },
+            ]}>
+              {(property as any).ownershipStatus === 'verified'
+                ? 'Proprietate verificată'
+                : (property as any).ownershipStatus === 'pending'
+                ? 'Verificare în curs'
+                : 'Verificare respinsă'}
+            </Text>
+          </View>
+        )}
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
@@ -627,6 +669,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     marginBottom: 12,
+  },
+  ownershipBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  ownershipBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
   },
   statsRow: {
     flexDirection: 'row',

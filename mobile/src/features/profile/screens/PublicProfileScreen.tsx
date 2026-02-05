@@ -108,6 +108,7 @@ interface PropertyListing {
     totalArea: number;
   };
   image: string;
+  ownershipStatus?: string;
 }
 
 // ============================================
@@ -228,6 +229,7 @@ const mapListing = (backendListing: IUserListing): PropertyListing => {
       totalArea: backendListing.surfaceSqm || 0,
     },
     image: primaryImage?.url || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400',
+    ownershipStatus: (backendListing as any).ownershipStatus,
   };
 };
 
@@ -739,6 +741,7 @@ const PublicProfileScreen: React.FC = () => {
                   location={listing.location}
                   characteristics={listing.characteristics}
                   image={listing.image}
+                  isVerified={listing.ownershipStatus === 'verified'}
                   onPress={() => handlePropertyPress(listing.id)}
                   variant="list"
                 />
