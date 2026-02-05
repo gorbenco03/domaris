@@ -2,180 +2,104 @@
 @tailwind components;
 @tailwind utilities;
 
-html {
-  -webkit-text-size-adjust: 100%;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif,
-    Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
-  line-height: 1.5;
-  tab-size: 4;
-  scroll-behavior: smooth;
-}
-body {
-  font-family: inherit;
-  line-height: inherit;
-  margin: 0;
-}
-h1,
-h2,
-p,
-pre {
-  margin: 0;
-}
-*,
-::before,
-::after {
-  box-sizing: border-box;
-  border-width: 0;
-  border-style: solid;
-  border-color: currentColor;
-}
-h1,
-h2 {
-  font-size: inherit;
-  font-weight: inherit;
-}
-a {
-  color: inherit;
-  text-decoration: inherit;
-}
-pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    Liberation Mono, Courier New, monospace;
-}
-svg {
-  display: block;
-  vertical-align: middle;
-  shape-rendering: auto;
-  text-rendering: optimizeLegibility;
-}
-pre {
-  background-color: rgba(55, 65, 81, 1);
-  border-radius: 0.25rem;
-  color: rgba(229, 231, 235, 1);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    Liberation Mono, Courier New, monospace;
-  overflow: scroll;
-  padding: 0.5rem 0.75rem;
-}
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    /* IMOBI Design System - Light Mode */
-    --background: 210 40% 98%; /* #f8fafc */
-    --foreground: 215 48% 11%; /* #0f172a */
+    /* RIVA Design System - Light Theme */
+    --background: 220 14% 96%;
+    --foreground: 213 50% 12%;
 
-    --card: 0 0% 100%; /* #ffffff */
-    --card-foreground: 215 48% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 213 50% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 48% 11%;
+    --popover-foreground: 213 50% 12%;
 
-    --primary: 214 52% 25%; /* #1e3a5f */
+    /* Navy Blue - Brand Primary */
+    --primary: 213 50% 20%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 239 84% 67%; /* #6366f1 - Indigo */
-    --secondary-foreground: 0 0% 100%;
+    /* Light Gray - Secondary surfaces */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 213 50% 20%;
 
-    --muted: 210 40% 96%; /* #f1f5f9 */
-    --muted-foreground: 215 16% 47%; /* #64748b */
+    --muted: 220 14% 92%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 160 84% 39%; /* #10b981 - Emerald */
+    /* Teal/Green Accent - CTAs */
+    --accent: 158 64% 52%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%; /* #ef4444 */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%; /* #e2e8f0 */
-    --input: 214 32% 91%;
-    --ring: 239 84% 67%; /* Indigo for focus ring */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 158 64% 52%;
 
     --radius: 0.75rem;
 
-    /* Custom Gradients */
-    --gradient-primary: linear-gradient(
-      135deg,
-      hsl(214 52% 25%) 0%,
-      hsl(211 50% 35%) 100%
-    );
-    --gradient-accent: linear-gradient(
-      135deg,
-      hsl(160 84% 39%) 0%,
-      hsl(163 94% 24%) 100%
-    );
-    --gradient-ai: linear-gradient(
-      135deg,
-      hsl(239 84% 67%) 0%,
-      hsl(263 90% 66%) 50%,
-      hsl(160 84% 39%) 100%
-    );
-    --gradient-gold: linear-gradient(
-      135deg,
-      hsl(38 92% 50%) 0%,
-      hsl(32 95% 44%) 100%
-    );
+    /* Category card backgrounds */
+    --category-apartments: 250 90% 95%;
+    --category-apartments-icon: 250 70% 60%;
+    --category-houses: 158 70% 92%;
+    --category-houses-icon: 158 64% 45%;
+    --category-commercial: 30 90% 92%;
+    --category-commercial-icon: 30 80% 55%;
 
-    /* Shadows - Soft Diffusion */
-    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.04),
-      0 2px 4px rgba(15, 23, 42, 0.02);
-    --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.04),
-      0 4px 6px rgba(15, 23, 42, 0.02);
-    --shadow-xl: 0 20px 25px rgba(15, 23, 42, 0.06),
-      0 8px 10px rgba(15, 23, 42, 0.03);
-    --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.04),
-      0 4px 12px rgba(15, 23, 42, 0.03);
+    /* AI Banner Gradient */
+    --ai-gradient-from: 158 64% 45%;
+    --ai-gradient-to: 158 64% 52%;
 
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-
-    /* Animations */
-    --animation-duration: 0.3s;
-    --animation-easing: cubic-bezier(0.16, 1, 0.3, 1);
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(213 50% 12% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(213 50% 12% / 0.07),
+      0 2px 4px -1px hsl(213 50% 12% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(213 50% 12% / 0.08),
+      0 4px 6px -2px hsl(213 50% 12% / 0.04);
   }
 
   .dark {
-    /* IMOBI Design System - Dark Mode */
-    --background: 215 48% 11%; /* #0f172a */
-    --foreground: 210 40% 98%; /* #f8fafc */
+    --background: 213 50% 8%;
+    --foreground: 220 14% 96%;
 
-    --card: 215 32% 17%; /* #1e293b */
-    --card-foreground: 210 40% 98%;
+    --card: 213 50% 12%;
+    --card-foreground: 220 14% 96%;
 
-    --popover: 215 32% 17%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 213 50% 12%;
+    --popover-foreground: 220 14% 96%;
 
-    --primary: 214 52% 25%; /* #1e3a5f - keeping brand */
-    --primary-foreground: 0 0% 100%;
+    --primary: 158 64% 52%;
+    --primary-foreground: 213 50% 8%;
 
-    --secondary: 226 70% 55%; /* Adjusted Indigo for dark mode visibility? Or keep same. */
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 213 50% 15%;
+    --secondary-foreground: 220 14% 96%;
 
-    --muted: 215 32% 17%; /* #1e293b */
-    --muted-foreground: 215 14% 65%; /* #94a3b8 */
+    --muted: 213 50% 18%;
+    --muted-foreground: 215 16% 65%;
 
-    --accent: 160 84% 39%; /* Emerald */
-    --accent-foreground: 0 0% 100%;
+    --accent: 158 64% 52%;
+    --accent-foreground: 213 50% 8%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 215 32% 17%; /* #1e293b or slightly lighter for definition? Using design system border-dark #334155 */
-    --border: 215 25% 27%; /* #334155 */
-    --input: 215 25% 27%;
-    --ring: 239 84% 67%;
+    --border: 213 50% 20%;
+    --input: 213 50% 20%;
+    --ring: 158 64% 52%;
 
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --category-apartments: 250 50% 25%;
+    --category-apartments-icon: 250 70% 70%;
+    --category-houses: 158 50% 20%;
+    --category-houses-icon: 158 64% 60%;
+    --category-commercial: 30 50% 20%;
+    --category-commercial-icon: 30 80% 65%;
+
+    --ai-gradient-from: 158 64% 35%;
+    --ai-gradient-to: 158 64% 45%;
   }
 }
 
@@ -185,63 +109,6 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/10 selection:text-primary;
-    font-feature-settings: 'cv11', 'ss01';
-  }
-}
-
-@layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
-  }
-
-  /* Custom Animations */
-  .animate-fade-in-up {
-    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
-  .animate-scale-hover {
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .animate-scale-hover:hover {
-    transform: scale(1.02);
-  }
-  .animate-scale-hover:active {
-    transform: scale(0.98);
-  }
-
-  .animate-shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 2s infinite linear;
-  }
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
+    @apply bg-background text-foreground;
   }
 }

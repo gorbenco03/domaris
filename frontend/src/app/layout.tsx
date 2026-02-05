@@ -1,18 +1,14 @@
-import { Inter } from 'next/font/google';
-import './global.css';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./global.css";
 import { Providers } from "./providers";
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: 'Riva - Premium Real Estate',
-  description: 'Încredere prin Simplitate',
+export const metadata: Metadata = {
+  title: "Domaris - Find Your Perfect Home",
+  description: "Discover apartments, houses, and commercial properties in Moldova",
 };
-
 
 export default function RootLayout({
   children,
@@ -20,14 +16,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ro">
-      <head>
-        <link href='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css' rel='stylesheet' />
-      </head>
-      <body className={inter.variable}>
-        <Providers>
-          {children}
-        </Providers>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

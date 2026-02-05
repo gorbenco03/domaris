@@ -1,35 +1,29 @@
 "use client";
 
-import Link, { LinkProps } from "next/link";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-interface NavLinkCompatProps extends Omit<LinkProps, "className"> {
-  className?: string | ((props: { isActive: boolean; isPending: boolean }) => string);
+interface NavLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+  href: string;
   activeClassName?: string;
-  pendingClassName?: string;
-  to: string;
-  children?: React.ReactNode;
 }
 
-const NavLink = forwardRef<HTMLAnchorElement, NavLinkCompatProps>(
-  ({ className, activeClassName, pendingClassName, to, href, ...props }, ref) => {
+const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(
+  ({ className, activeClassName, href, children, ...props }, ref) => {
     const pathname = usePathname();
-    const isActive = pathname === to;
-
-    // Evaluate className if it's a function, otherwise use it directly
-    const computedClassName = typeof className === "function"
-      ? className({ isActive, isPending: false })
-      : className;
+    const isActive = pathname === href || pathname.startsWith(href + "/");
 
     return (
       <Link
         ref={ref}
-        href={to}
-        className={cn(computedClassName, isActive && activeClassName)}
+        href={href}
+        className={cn(className, isActive && activeClassName)}
         {...props}
-      />
+      >
+        {children}
+      </Link>
     );
   },
 );

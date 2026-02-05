@@ -1,92 +1,69 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { authApi } from "@/features/auth/api";
-import { useRouter } from "next/navigation";
-import type { IUser } from "@domaris/types";
+"use client";
+
+import { createContext, useContext, useState, ReactNode } from "react";
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  avatar?: string;
+  createdAt: Date;
+}
 
 interface AuthContextType {
-  user: IUser | null;
-  login: (email: string, password: string) => Promise<void>;
-  // loginWithPhone: (phone: string, password: string) => Promise<void>; // Add later
-  register: (data: any) => Promise<void>;
-  logout: () => void;
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  accessToken: string | null;
-  updateUser: (user: IUser) => void;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Mock user for testing
+const mockUser: User = {
+  id: "1",
+  email: "ion.popescu@email.com",
+  name: "Ion Popescu",
+  phone: "+373 69 123 456",
+  createdAt: new Date(2026, 1, 1),
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<IUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem("accessToken");
-      if (token) {
-        try {
-          const userData = await authApi.getCurrentUser();
-          setUser(userData);
-        } catch (error) {
-          console.error("Failed to fetch user", error);
-          localStorage.removeItem("accessToken");
-        }
-      }
-      setIsLoading(false);
-    };
-
-    initAuth();
-  }, []);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await authApi.loginWithEmail({ email, password });
-      
-      if (response.accessToken) {
-        localStorage.setItem("accessToken", response.accessToken);
-        if (response.refreshToken) {
-            localStorage.setItem("refreshToken", response.refreshToken);
-        }
-        // Fetch full user profile
-        const userProfile = await authApi.getCurrentUser();
-        setUser(userProfile);
-      }
-    } catch (error) {
-       console.error("Login failed", error);
-       throw error;
-    }
+    setIsLoading(true);
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setUser({ ...mockUser, email });
+    setIsLoading(false);
   };
 
-  const register = async (data: any) => {
-       // Implement register logic
-       await authApi.registerWithEmail(data);
-       // Handle OTP flow etc. For now basic.
+  const signup = async (email: string, password: string, name: string) => {
+    setIsLoading(true);
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setUser({ ...mockUser, email, name });
+    setIsLoading(false);
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    router.push("/auth/login");
-  };
-
-  const updateUser = (userData: IUser) => {
-    setUser(userData);
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        login,
-        register,
-        logout,
         isAuthenticated: !!user,
         isLoading,
-        accessToken: typeof window !== 'undefined' ? localStorage.getItem("accessToken") : null,
-        updateUser
+        login,
+        signup,
+        logout,
       }}
     >
       {children}

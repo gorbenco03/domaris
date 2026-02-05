@@ -73,11 +73,11 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
             ([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
-                .map(([key, itemConfig]) => {
-                  const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-                  return color ? `  --color-${key}: ${color};` : null;
-                })
-                .join("\n")}
+  .map(([key, itemConfig]) => {
+    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
+    return color ? `  --color-${key}: ${color};` : null;
+  })
+  .join("\n")}
 }
 `,
           )
@@ -92,14 +92,17 @@ const ChartTooltip = RechartsPrimitive.Tooltip;
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  React.ComponentProps<"div"> & {
-    hideLabel?: boolean;
-    hideIndicator?: boolean;
-    indicator?: "line" | "dot" | "dashed";
-    nameKey?: string;
-    labelKey?: string;
-    [key: string]: any; // Allow any other props
-  }
+    React.ComponentProps<"div"> & {
+      hideLabel?: boolean;
+      hideIndicator?: boolean;
+      indicator?: "line" | "dot" | "dashed";
+      nameKey?: string;
+      labelKey?: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      payload?: any[];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      label?: any;
+    }
 >(
   (
     {
@@ -161,7 +164,7 @@ const ChartTooltipContent = React.forwardRef<
       >
         {!nestLabel ? tooltipLabel : null}
         <div className="grid gap-1.5">
-          {payload.map((item: any, index: number) => {
+          {payload.map((item, index) => {
             const key = `${nameKey || item.name || item.dataKey || "value"}`;
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
             const indicatorColor = color || item.payload.fill || item.color;
@@ -233,9 +236,9 @@ const ChartLegendContent = React.forwardRef<
   React.ComponentProps<"div"> & {
     hideIcon?: boolean;
     nameKey?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     payload?: any[];
-    verticalAlign?: "top" | "middle" | "bottom";
-    [key: string]: any;
+    verticalAlign?: "top" | "bottom";
   }
 >(({ className, hideIcon = false, payload, verticalAlign = "bottom", nameKey }, ref) => {
   const { config } = useChart();
@@ -249,7 +252,7 @@ const ChartLegendContent = React.forwardRef<
       ref={ref}
       className={cn("flex items-center justify-center gap-4", verticalAlign === "top" ? "pb-3" : "pt-3", className)}
     >
-      {payload.map((item: any) => {
+      {payload.map((item) => {
         const key = `${nameKey || item.dataKey || "value"}`;
         const itemConfig = getPayloadConfigFromPayload(config, item, key);
 

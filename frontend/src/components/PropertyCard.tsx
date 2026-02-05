@@ -1,130 +1,110 @@
+"use client";
+
+import { Heart, MapPin, BedDouble, Bath, Maximize2 } from "lucide-react";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Heart, MapPin, Bed, Maximize2, CheckCircle } from "lucide-react";
-import { useFavorites } from "@/contexts/FavoritesContext"; // Assuming this context exists or will be updated
-import { toast } from "sonner";
-import type { IPropertyListItem } from "@domaris/types";
 import { cn } from "@/lib/utils";
 
 interface PropertyCardProps {
-  property: IPropertyListItem;
-  variant?: 'list' | 'compact';
+  id?: number;
+  image: string;
+  price: string;
+  priceType?: "sale" | "rent";
+  title: string;
+  location: string;
+  rooms: number;
+  baths: number;
+  area: number;
+  floor?: string;
+  isFavorite?: boolean;
+  tags?: string[];
 }
 
-export const PropertyCard = ({ property, variant = 'list' }: PropertyCardProps) => {
-  // Favorites logic - mock for now if context is not fully ready for IPropertyListItem
-  const { isFavorite, toggleFavorite } = useFavorites(); 
-  const favorited = isFavorite(property.id);
-
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    toggleFavorite({
-        id: property.id,
-        image: property.mainImage || '/placeholder.svg',
-        title: property.title,
-        location: `${property.neighborhood ? property.neighborhood + ', ' : ''}${property.city}`,
-        price: property.displayPrice,
-        bedrooms: property.rooms, // Mapping rooms to bedrooms for compatibility if needed
-        bathrooms: 0, // Not in list item
-        area: property.totalArea,
-        type: property.propertyType
-    });
-    toast.success(favorited ? "Removed from favorites" : "Added to favorites");
-  };
-
-  const isCompact = variant === 'compact';
-
+export const PropertyCard = ({
+  id = 1,
+  image,
+  price,
+  priceType = "sale",
+  title,
+  location,
+  rooms,
+  baths,
+  area,
+  floor,
+  isFavorite = false,
+  tags = [],
+}: PropertyCardProps) => {
   return (
-    <Link href={`/property/${property.slug || property.id}`}>
-        <Card className={cn(
-            "overflow-hidden hover:shadow-lg transition-all duration-300 group h-full flex flex-col border-border/50",
-            isCompact ? "w-[280px]" : "w-full"
-        )}>
-            {/* Image Section */}
-            <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                <img
-                    src={property.mainImage || '/placeholder.svg'}
-                    alt={property.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                />
-                
-                {/* Gradient Overlay */}
-                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-foreground/80 to-transparent pointer-events-none" />
+    <article className="group overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:shadow-lg">
+      {/* Image */}
+      <Link href={`/property/${id}`} className="relative block aspect-[16/10] overflow-hidden">
+        <img
+          src={image}
+          alt={title}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className={cn(
+            "absolute right-3 top-3 rounded-full bg-card/90 p-2.5 backdrop-blur-sm transition-all hover:scale-110",
+            isFavorite ? "text-destructive" : "text-muted-foreground hover:text-destructive"
+          )}
+        >
+          <Heart className={cn("h-5 w-5", isFavorite && "fill-current")} />
+        </button>
+        
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="absolute left-3 top-3 flex gap-2">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-md bg-primary/90 px-2.5 py-1 text-xs font-medium text-primary-foreground backdrop-blur-sm"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </Link>
 
-                {/* Badges */}
-                <div className="absolute top-3 left-3 flex gap-2">
-                    {property.isPromoted && (
-                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none shadow-sm">Promoted</Badge>
-                    )}
-                    {property.isNew && (
-                         <Badge className="bg-accent hover:bg-accent/90 text-accent-foreground border-none shadow-sm">New</Badge>
-                    )}
-                </div>
+      {/* Content */}
+      <Link href={`/property/${id}`} className="block p-5">
+        {/* Price */}
+        <div className="mb-2">
+          <span className="text-2xl font-bold text-primary">{price}</span>
+          {priceType === "rent" && (
+            <span className="text-base text-muted-foreground"> /lună</span>
+          )}
+        </div>
 
-                {/* Favorite Button */}
-                <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute top-3 right-3 h-9 w-9 rounded-full bg-white/90 hover:bg-white text-muted-foreground hover:text-destructive shadow-sm backdrop-blur-sm"
-                    onClick={handleFavoriteClick}
-                >
-                    <Heart className={cn("h-5 w-5 transition-colors", favorited && "fill-destructive text-destructive")} />
-                </Button>
+        <h3 className="mb-2 text-lg font-semibold text-foreground line-clamp-1 group-hover:text-accent transition-colors">
+          {title}
+        </h3>
+        
+        <div className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <MapPin className="h-4 w-4 shrink-0" />
+          <span className="line-clamp-1">{location}</span>
+        </div>
 
-                {/* Price */}
-                <div className="absolute bottom-3 left-3 text-white">
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-bold">{property.displayPrice}</span>
-                        {property.transactionType === 'RENT' && (
-                             <span className="text-sm font-medium opacity-90">/mo</span>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Content */}
-            <CardContent className="p-4 flex-1 flex flex-col">
-                <h3 className="font-semibold text-lg leading-tight mb-2 line-clamp-1 group-hover:text-primary transition-colors">
-                    {property.title}
-                </h3>
-                
-                <div className="flex items-center gap-1 text-muted-foreground text-sm mb-4">
-                    <MapPin className="h-3.5 w-3.5" />
-                    <span className="line-clamp-1">
-                        {property.neighborhood ? `${property.neighborhood}, ` : ''}{property.city}
-                    </span>
-                </div>
-
-                {/* Characteristics */}
-                <div className="flex items-center gap-4 text-sm text-slate-600 mb-4 mt-auto">
-                    <div className="flex items-center gap-1.5" title="Rooms">
-                        <Bed className="h-4 w-4" />
-                        <span className="font-medium">{property.rooms}</span>
-                    </div>
-                    {/* Bathrooms not in IPropertyListItem, maybe add if API supports it later */}
-                     <div className="flex items-center gap-1.5" title="Total Area">
-                        <Maximize2 className="h-3.5 w-3.5" />
-                        <span className="font-medium">{property.totalArea} m²</span>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
-                    {property.owner?.isVerified && (
-                        <div className="flex items-center gap-1 text-accent font-medium">
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            <span>Verified Owner</span>
-                        </div>
-                    )}
-                    
-                    {/* Stats placeholder if needed, listing item doesn't usually have stats unless detailed */}
-                     <div className="ml-auto" /> 
-                </div>
-            </CardContent>
-        </Card>
-    </Link>
+        {/* Details */}
+        <div className="flex items-center gap-5 border-t border-border pt-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <BedDouble className="h-4 w-4" />
+            <span>{rooms} camere</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Bath className="h-4 w-4" />
+            <span>{baths} băi</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Maximize2 className="h-4 w-4" />
+            <span>{area} m²</span>
+          </div>
+        </div>
+      </Link>
+    </article>
   );
 };

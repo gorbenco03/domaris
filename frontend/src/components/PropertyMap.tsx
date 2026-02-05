@@ -1,118 +1,215 @@
-"use client";
+import { useEffect, useRef } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 
-import { useState, useMemo } from "react";
-import Map, { Marker, Popup, NavigationControl, FullscreenControl, ScaleControl } from "react-map-gl/mapbox";
-import Link from "next/link";
-
-// Use environment variable for token
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbRxc...placeholder..."; // User needs to provide this
-
-interface PropertyLocation {
+interface Property {
   id: number;
   title: string;
-  price: string | number;
+  price: string;
+  location: string;
   lat: number;
   lng: number;
-  image?: string;
-  type?: string;
+  image: string;
+  rooms: number;
+  baths: number;
+  area: number;
+  priceType: "rent" | "sale";
 }
 
 interface PropertyMapProps {
-  properties: PropertyLocation[];
-  center?: [number, number];
-  zoom?: number;
-  height?: string;
+  properties: Property[];
+  onViewDetails?: (propertyId: number) => void;
 }
 
-export default function PropertyMap({
-  properties,
-  center = [44.4268, 26.1025], // Default to Bucharest
-  zoom = 12,
-  height = "400px"
-}: PropertyMapProps) {
-  const [popupInfo, setPopupInfo] = useState<PropertyLocation | null>(null);
+export const PropertyMap = ({ properties, onViewDetails }: PropertyMapProps) => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const activePopupRef = useRef<mapboxgl.Popup | null>(null);
 
-  // Filter valid coordinates
-  const validProperties = useMemo(() =>
-    properties.filter(p => p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)),
-    [properties]);
+  useEffect(() => {
+    if (!mapContainer.current) return;
 
-  const markers = useMemo(() => validProperties.map((property) => (
-    <Marker
-      key={property.id}
-      longitude={property.lng}
-      latitude={property.lat}
-      anchor="bottom"
-      onClick={(e: any) => {
-        // If we let the click propagate, we might close the popup
-        e.originalEvent.stopPropagation();
-        setPopupInfo(property);
-      }}
-    >
-      <div className="cursor-pointer transition-transform hover:scale-110">
-        <div className="flex items-center justify-center p-1 bg-white rounded-full shadow-md border border-gray-200">
-          {/* Custom marker pin or price badge */}
-          <div className="px-2 py-1 text-xs font-bold text-white bg-primary rounded-md whitespace-nowrap">
-            {typeof property.price === 'number'
-              ? `€${property.price.toLocaleString()}`
-              : property.price}
+    mapboxgl.accessToken = "pk.eyJ1IjoicmFkdWM0IiwiYSI6ImNtamhjaGd0bzFiamozZXF4c2dxaWx6N3cifQ.91u_TJ3Zv2qkw8d5LW53vg";
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/light-v11",
+      center: [26.1025, 44.4268],
+      zoom: 11,
+    });
+
+    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+    // Wait for map to load before adding markers
+    map.current.on('load', () => {
+      addMarkers();
+    });
+
+    return () => {
+      markersRef.current.forEach((marker) => marker.remove());
+      map.current?.remove();
+    };
+  }, []);
+
+  const addMarkers = () => {
+    if (!map.current) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    // Add new markers
+    properties.forEach((property) => {
+      const el = document.createElement("div");
+      el.className = "property-marker";
+      el.style.cssText = "cursor: pointer; pointer-events: auto;";
+      
+      const markerContent = document.createElement("div");
+      markerContent.style.cssText = `
+        background: hsl(var(--primary));
+        color: white;
+        padding: 4px 8px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: transform 0.2s;
+        pointer-events: auto;
+      `;
+      markerContent.textContent = property.price;
+      markerContent.onmouseover = () => { markerContent.style.transform = 'scale(1.1)'; };
+      markerContent.onmouseout = () => { markerContent.style.transform = 'scale(1)'; };
+      el.appendChild(markerContent);
+
+      const popupContent = `
+        <div id="popup-card-${property.id}" class="property-popup" style="width: 280px; padding: 0; margin: 0; cursor: pointer;">
+          <div style="position: relative;">
+            <img 
+              src="${property.image}" 
+              alt="${property.title}" 
+              style="width: 100%; height: 160px; object-fit: cover; border-radius: 8px 8px 0 0;"
+            />
+            <span style="
+              position: absolute; 
+              top: 8px; 
+              left: 8px; 
+              background: ${property.priceType === 'rent' ? 'hsl(var(--primary))' : 'hsl(var(--accent))'};
+              color: white;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 11px;
+              font-weight: 600;
+            ">
+              ${property.priceType === 'rent' ? 'De închiriat' : 'De vânzare'}
+            </span>
           </div>
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary rotate-45"></div>
+          <div style="padding: 12px;">
+            <p style="font-weight: 700; font-size: 18px; color: hsl(var(--primary)); margin: 0 0 4px 0;">
+              ${property.price}${property.priceType === 'rent' ? '/lună' : ''}
+            </p>
+            <p style="font-weight: 600; font-size: 14px; margin: 0 0 4px 0; color: hsl(var(--foreground));">
+              ${property.title}
+            </p>
+            <p style="font-size: 12px; color: hsl(var(--muted-foreground)); margin: 0 0 8px 0;">
+              ${property.location}
+            </p>
+            <div style="display: flex; gap: 12px; font-size: 12px; color: hsl(var(--muted-foreground));">
+              <span>${property.rooms} camere</span>
+              <span>•</span>
+              <span>${property.baths} băi</span>
+              <span>•</span>
+              <span>${property.area} m²</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </Marker>
-  )), [validProperties]);
+      `;
+
+      const popup = new mapboxgl.Popup({ 
+        offset: 25, 
+        closeButton: true,
+        closeOnClick: false,
+        maxWidth: "300px",
+        className: "property-card-popup"
+      }).setHTML(popupContent);
+
+      popup.on('open', () => {
+        // Close any other open popup
+        if (activePopupRef.current && activePopupRef.current !== popup) {
+          activePopupRef.current.remove();
+        }
+        activePopupRef.current = popup;
+
+        // Add click handler for the entire card
+        setTimeout(() => {
+          const card = document.getElementById(`popup-card-${property.id}`);
+          if (card) {
+            card.addEventListener('click', () => {
+              onViewDetails?.(property.id);
+            });
+          }
+        }, 10);
+      });
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([property.lng, property.lat])
+        .setPopup(popup)
+        .addTo(map.current!);
+
+      // Use mousedown for more reliable click detection
+      el.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+      });
+      
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        marker.togglePopup();
+      });
+
+      markersRef.current.push(marker);
+    });
+
+    // Fit bounds to show all markers
+    if (properties.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      properties.forEach((property) => {
+        bounds.extend([property.lng, property.lat]);
+      });
+      map.current.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+    }
+  };
+
+  // Re-add markers when properties change
+  useEffect(() => {
+    if (map.current && map.current.loaded()) {
+      addMarkers();
+    }
+  }, [properties, onViewDetails]);
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden border border-border shadow-sm" style={{ height }}>
-      {(!MAPBOX_TOKEN || MAPBOX_TOKEN.includes("placeholder")) && (
-        <div className="absolute top-0 left-0 right-0 z-50 bg-destructive/10 border-b border-destructive p-2 text-xs text-destructive text-center font-medium">
-          Mapbox Token missing. Please add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local
-        </div>
-      )}
-
-      <Map
-        initialViewState={{
-          longitude: center[1],
-          latitude: center[0],
-          zoom: zoom
-        }}
-        style={{ width: "100%", height: "100%" }}
-        mapStyle="mapbox://styles/mapbox/streets-v12"
-        mapboxAccessToken={MAPBOX_TOKEN}
-      >
-        <NavigationControl position="bottom-right" />
-        <FullscreenControl position="top-right" />
-        <ScaleControl />
-
-        {markers}
-
-        {popupInfo && (
-          <Popup
-            anchor="top"
-            longitude={popupInfo.lng}
-            latitude={popupInfo.lat}
-            onClose={() => setPopupInfo(null)}
-            closeOnClick={false}
-            className="min-w-[240px]"
-          >
-            <div className="p-0">
-              <div className="font-semibold text-sm mb-1">{popupInfo.title}</div>
-              <div className="text-primary font-bold mb-2">
-                {typeof popupInfo.price === 'number'
-                  ? `€${popupInfo.price.toLocaleString()}`
-                  : popupInfo.price}
-              </div>
-              <Link
-                href={`/property/${popupInfo.id}`}
-                className="block w-full text-center bg-primary text-primary-foreground text-xs py-1.5 rounded-md hover:bg-primary/90 transition-colors"
-              >
-                View Details
-              </Link>
-            </div>
-          </Popup>
-        )}
-      </Map>
-    </div>
+    <>
+      <style>{`
+        .property-card-popup .mapboxgl-popup-content {
+          padding: 0 !important;
+          border-radius: 12px !important;
+          overflow: hidden;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.15) !important;
+        }
+        .property-card-popup .mapboxgl-popup-close-button {
+          font-size: 20px;
+          padding: 8px 12px;
+          color: white;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+          z-index: 10;
+        }
+        .property-card-popup .mapboxgl-popup-close-button:hover {
+          background: transparent;
+          color: white;
+        }
+      `}</style>
+      <div ref={mapContainer} className="h-full w-full rounded-2xl overflow-hidden" />
+    </>
   );
-}
+};
