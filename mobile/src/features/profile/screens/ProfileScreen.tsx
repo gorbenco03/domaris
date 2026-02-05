@@ -387,12 +387,6 @@ const ProfileScreen: React.FC = () => {
         {/* Core Features Section */}
         <ProfileSection title="Activitate">
           <ProfileMenuItem
-            icon={<Settings />}
-            label="Setări Notificări"
-            description="Personalizează alertele și orele de liniște"
-            onPress={() => navigation.navigate('NotificationSettings')}
-          />
-          <ProfileMenuItem
             icon={<Home />}
             label="Proprietățile mele"
             description="Anunțuri postate și salvate"
