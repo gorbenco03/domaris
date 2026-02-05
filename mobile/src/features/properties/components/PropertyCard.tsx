@@ -53,6 +53,7 @@ interface PropertyCardProps {
   isFavorite?: boolean;
   isNew?: boolean;
   isVerified?: boolean;
+  ownershipStatus?: 'none' | 'pending' | 'verified' | 'rejected';
   priceReduced?: boolean;
   stats?: {
     views: number;
@@ -81,6 +82,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   isFavorite = false,
   isNew = false,
   isVerified = false,
+  ownershipStatus,
   priceReduced = false,
   stats,
   onPress,
@@ -235,14 +237,37 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Footer with stats and verified badge */}
         <View style={[styles.footer, { borderTopColor: theme.colors.divider }]}>
-          {isVerified && (
-            <View style={styles.verifiedRow}>
-              <CheckCircle size={14} color={theme.colors.accent.main} />
-              <Text style={[styles.verifiedText, { color: theme.colors.accent.main }]}>
-                Proprietate verificată
-              </Text>
-            </View>
-          )}
+          {(() => {
+            const status = ownershipStatus || (isVerified ? 'verified' : 'none');
+            if (status === 'verified') {
+              return (
+                <View style={styles.verifiedRow}>
+                  <CheckCircle size={14} color={theme.colors.accent.main} />
+                  <Text style={[styles.verifiedText, { color: theme.colors.accent.main }]}>
+                    Proprietate verificată
+                  </Text>
+                </View>
+              );
+            }
+            if (status === 'pending') {
+              return (
+                <View style={styles.verifiedRow}>
+                  <CheckCircle size={14} color={theme.colors.secondary.warning} />
+                  <Text style={[styles.verifiedText, { color: theme.colors.secondary.warning }]}>
+                    Verificare în curs
+                  </Text>
+                </View>
+              );
+            }
+            return (
+              <View style={styles.verifiedRow}>
+                <CheckCircle size={14} color={theme.colors.textTertiary} />
+                <Text style={[styles.verifiedText, { color: theme.colors.textTertiary }]}>
+                  Neverificată
+                </Text>
+              </View>
+            );
+          })()}
           {stats && (
             <View style={styles.statsRow}>
               <Eye size={12} color={theme.colors.textTertiary} />

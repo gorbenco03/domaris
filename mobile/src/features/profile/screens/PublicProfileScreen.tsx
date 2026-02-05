@@ -741,7 +741,7 @@ const PublicProfileScreen: React.FC = () => {
                   location={listing.location}
                   characteristics={listing.characteristics}
                   image={listing.image}
-                  isVerified={listing.ownershipStatus === 'verified'}
+                  ownershipStatus={(listing.ownershipStatus as any) || 'none'}
                   onPress={() => handlePropertyPress(listing.id)}
                   variant="list"
                 />
