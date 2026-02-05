@@ -31,7 +31,6 @@ import {
   LogOut,
   ChevronRight,
   MapPin,
-  BadgeCheck,
   Sparkles,
   CreditCard,
   Zap,
@@ -47,7 +46,7 @@ import { ProfileStackParamList } from '@/app/navigation/types';
 import { useUserProfile } from '@/features/profile/services';
 import { useOwnerAnalyticsSummary } from '@/features/analytics/services';
 import { useUnreadCount } from '@/shared/services';
-import { useRequireVerification } from '@/shared/hooks';
+// useRequireVerification removed - KYC no longer required
 import {
   Avatar,
   ProfileMenuItem,
@@ -62,8 +61,6 @@ const ProfileScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { user: storeUser, logout: authLogout } = useAuth();
-  const { requireVerification } = useRequireVerification();
-  
   // If user is null (shouldn't happen on this screen theoretically), use a fallback or return null
   if (!storeUser) return null;
 
@@ -140,21 +137,6 @@ const ProfileScreen: React.FC = () => {
     rating: apiUser?.rating || 5.0,
     memberSince: apiUser?.createdAt ? new Date(apiUser.createdAt).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' }) : 'Recent',
   };
-
-  const getVerificationBadge = () => {
-    switch (user.verificationLevel) {
-      case 1:
-        return { text: 'Email Verificat', color: theme.colors.secondary.info };
-      case 2:
-        return { text: 'Identitate Verificată', color: theme.colors.accent.main };
-      case 3:
-        return { text: 'Verificat Complet', color: theme.colors.secondary.warning };
-      default:
-        return null;
-    }
-  };
-
-  const verificationBadge = getVerificationBadge();
 
   const handleLogout = async () => {
     try {
@@ -252,7 +234,7 @@ const ProfileScreen: React.FC = () => {
                 lastName={user.lastName}
                 source={user.avatar ?? undefined}
                 size="lg"
-                verified={user.verificationLevel >= 2}
+                verified={false}
                 showEditButton
                 onEditPress={() => navigation.navigate('ProfileEdit')}
               />
@@ -277,25 +259,6 @@ const ProfileScreen: React.FC = () => {
               <Text style={styles.userName}>
                 {user.firstName} {user.lastName || ''}
               </Text>
-
-              {verificationBadge && (
-                <View
-                  style={[
-                    styles.verificationBadge,
-                    {
-                      backgroundColor: `${verificationBadge.color}25`,
-                      borderRadius: theme.borderRadius.full,
-                      paddingHorizontal: theme.spacing[3],
-                      paddingVertical: theme.spacing[1],
-                    },
-                  ]}
-                >
-                  <BadgeCheck size={14} color={verificationBadge.color} />
-                  <Text style={[styles.verificationText, { color: verificationBadge.color }]}>
-                    {verificationBadge.text}
-                  </Text>
-                </View>
-              )}
 
               {user.location && (
                 <View style={styles.locationRow}>
@@ -385,16 +348,7 @@ const ProfileScreen: React.FC = () => {
         {/* Add Property Action Card */}
         <View style={{ marginHorizontal: theme.spacing[4], marginTop: theme.spacing[4] }}>
           <TouchableOpacity
-            onPress={() => {
-              if (
-                requireVerification(3, {
-                  title: 'Proprietar verificat necesar',
-                  message: 'Pentru a posta un anunț trebuie verificarea nivel 3.',
-                })
-              ) {
-                navigation.navigate('CreateProperty');
-              }
-            }}
+            onPress={() => navigation.navigate('CreateProperty')}
             activeOpacity={0.85}
           >
             <LinearGradient
@@ -442,16 +396,7 @@ const ProfileScreen: React.FC = () => {
             icon={<Home />}
             label="Proprietățile mele"
             description="Anunțuri postate și salvate"
-            onPress={() => {
-              if (
-                requireVerification(3, {
-                  title: 'Proprietar verificat necesar',
-                  message: 'Finalizează nivelul 3 pentru a gestiona anunțuri.',
-                })
-              ) {
-                navigation.navigate('MyProperties');
-              }
-            }}
+            onPress={() => navigation.navigate('MyProperties')}
           />
           <ProfileMenuItem
             icon={<Calendar />}
@@ -468,19 +413,6 @@ const ProfileScreen: React.FC = () => {
             label="Setări"
             description="Notificări, securitate, cont"
             onPress={() => navigation.navigate('Settings')}
-          />
-        </ProfileSection>
-
-        <ProfileSection title="Verificare">
-          <ProfileMenuItem
-            icon={<BadgeCheck />}
-            label="Verificare identitate"
-            description={
-              user.verificationLevel >= 2
-                ? 'Verificat complet'
-                : 'Finalizează verificarea'
-            }
-            onPress={() => navigation.navigate('VerificationHub')}
           />
         </ProfileSection>
 
