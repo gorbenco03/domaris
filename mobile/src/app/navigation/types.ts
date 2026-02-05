@@ -61,7 +61,8 @@ export type MainTabScreenProps<T extends keyof MainTabParamList> =
 export type HomeStackParamList = {
   Home: undefined;
   PropertyDetail: { propertyId: string };
-  AIChat: undefined;
+  AIChat: { conversationId?: number };
+  AiConversationsList: undefined;
   PropertyInsights: { propertyId: string };
 };
 
@@ -76,7 +77,8 @@ export type SearchStackParamList = {
   SearchFilters: undefined;
   MapSearch: undefined;
   SavedSearches: undefined;
-  AIChat: undefined;
+  AIChat: { conversationId?: number };
+  AiConversationsList: undefined;
   PropertyInsights: { propertyId: string };
 };
 
@@ -135,7 +137,8 @@ export type ProfileStackParamList = {
   // Monetization and AI features
   Pricing: undefined;
   BoostPurchase: { propertyId?: string };
-  AIChat: { propertyId?: string };
+  AIChat: { conversationId?: number; propertyId?: string };
+  AiConversationsList: undefined;
   ListingAnalysis: { propertyId: string };
   // Reviews and Public Profile
   Reviews: { userId?: string; isOwnProfile?: boolean };

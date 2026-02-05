@@ -29,7 +29,7 @@ import { ViewingsListScreen, ViewingDetailScreen, RequestViewingScreen, Availabi
 import { NotificationsCenterScreen, NotificationPreferencesScreen } from '@/features/notifications';
 import { PropertyAnalyticsScreen } from '@/features/analytics';
 import { PricingScreen, BoostPurchaseScreen } from '@/features/monetization';
-import { AIChatScreen, ListingAnalysisScreen } from '@/features/ai';
+import { AIChatScreen, ListingAnalysisScreen, AiConversationsListScreen } from '@/features/ai';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
@@ -79,6 +79,7 @@ const ProfileNavigator: React.FC = () => {
       />
       {/* AI Assistant */}
       <Stack.Screen name="AIChat" component={AIChatScreen} />
+      <Stack.Screen name="AiConversationsList" component={AiConversationsListScreen} />
       <Stack.Screen name="ListingAnalysis" component={ListingAnalysisScreen} />
       {/* Reviews and Public Profile */}
       <Stack.Screen name="Reviews" component={ReviewsScreen} />

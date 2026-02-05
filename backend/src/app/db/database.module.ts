@@ -25,6 +25,8 @@ import { Transaction } from './entities/transaction.entity.js';
 import { Review } from './entities/review.entity.js';
 import { AdminAuditLog } from './entities/admin-audit-log.entity.js';
 import { UserConsent } from './entities/user-consent.entity.js';
+import { AiConversation } from './entities/ai-conversation.entity.js';
+import { AiMessage } from './entities/ai-message.entity.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
@@ -73,6 +75,9 @@ pg.defaults.parseInt8 = true;
             AdminAuditLog,
             // GDPR consent tracking
             UserConsent,
+            // AI conversations
+            AiConversation,
+            AiMessage,
           ],
           synchronize: true,
           sync: { alter: true }, // Force alter to add missing columns

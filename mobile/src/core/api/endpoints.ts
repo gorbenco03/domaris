@@ -118,11 +118,17 @@ export const API_ENDPOINTS = {
     GENERATE_DESCRIPTION: '/ai/generate-description',
     IMPROVE_LISTING: '/ai/improve-listing',
     PROPERTY_SUMMARY: (propertyId: string) => `/ai/property-summary/${propertyId}`,
-    // NEW: Conversational Agent & AVM
+    // Conversational Agent & AVM
     AGENT_CHAT: '/ai/agent/chat',
     AGENT_STATS: '/ai/agent/stats',
     AGENT_VALUATION: '/ai/agent/valuation',
     AGENT_VALUATION_LISTING: (listingId: string) => `/ai/agent/valuation/${listingId}`,
+    // Persistent AI Conversations
+    CONVERSATIONS: '/ai/conversations',
+    CONVERSATION_DETAIL: (id: string) => `/ai/conversations/${id}`,
+    CONVERSATION_MESSAGES: (id: string) => `/ai/conversations/${id}/messages`,
+    CONVERSATION_ARCHIVE: (id: string) => `/ai/conversations/${id}/archive`,
+    CONVERSATION_ACTIVE: '/ai/conversations/active',
   },
 
   // App

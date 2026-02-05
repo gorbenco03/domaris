@@ -19,6 +19,8 @@ export { PromotionPlan } from './promotion-plan.entity.js';
 export { ListingPromotion } from './listing-promotion.entity.js';
 export { UserOnboarding } from './userOnboarding.entity.js';
 export { AdminAuditLog } from './admin-audit-log.entity.js';
+export { AiConversation } from './ai-conversation.entity.js';
+export { AiMessage } from './ai-message.entity.js';
 
 // Export types
 export type { AdminActionType, AuditTargetType } from './admin-audit-log.entity.js';

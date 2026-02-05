@@ -310,6 +310,142 @@ export const getListingValuation = async (
 };
 
 // ============================================================================
+// PERSISTENT AI CONVERSATIONS
+// ============================================================================
+
+export interface IAiConversationSummary {
+  id: number;
+  title: string;
+  status: 'active' | 'archived' | 'closed';
+  clientProfile: {
+    classificationComplete: boolean;
+    classificationScore: number;
+    transactionType?: string;
+    budget?: { min?: number; max?: number };
+  };
+  lastMessageAt: string;
+  messageCount: number;
+  lastMessage: { content: string; role: string } | null;
+  createdAt: string;
+}
+
+export interface IAiMessageResponse {
+  id: number;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  metadata: {
+    intent?: string;
+    tier?: number;
+    toolsUsed?: string[];
+    propertiesShown?: number[];
+    suggestedActions?: Array<{
+      type: string;
+      label: string;
+      payload?: Record<string, any>;
+    }>;
+    latencyMs?: number;
+  };
+  createdAt: string;
+}
+
+export interface IAiConversationDetail {
+  id: number;
+  title: string;
+  status: string;
+  clientProfile: any;
+  lastMessageAt: string;
+  messageCount: number;
+  messages: IAiMessageResponse[];
+  createdAt: string;
+}
+
+export interface IAiSendMessageResponse {
+  userMessage: IAiMessageResponse;
+  assistantMessage: IAiMessageResponse;
+  properties?: Array<{
+    id: number;
+    title: string;
+    city: string;
+    neighborhood?: string;
+    priceEur: number;
+    transactionType: string;
+    rooms: number;
+    surfaceSqm: number;
+    imageUrl?: string;
+  }>;
+  clientProfile: any;
+  suggestedActions?: Array<{
+    type: string;
+    label: string;
+    payload?: Record<string, any>;
+  }>;
+  debug?: { tier: number; latencyMs: number; cached: boolean };
+}
+
+/**
+ * Get list of AI conversations for authenticated user
+ */
+export const getConversations = async (): Promise<{
+  data: IAiConversationSummary[];
+  meta: { page: number; limit: number; total: number; hasMore: boolean };
+}> => {
+  const response = await apiClient.get(API_ENDPOINTS.AI.CONVERSATIONS);
+  return response.data;
+};
+
+/**
+ * Get a specific AI conversation with all messages
+ */
+export const getConversation = async (
+  id: number
+): Promise<IAiConversationDetail> => {
+  const response = await apiClient.get(
+    API_ENDPOINTS.AI.CONVERSATION_DETAIL(String(id))
+  );
+  return response.data;
+};
+
+/**
+ * Create a new AI conversation
+ */
+export const createConversation = async (
+  anonymousId?: string
+): Promise<IAiConversationDetail> => {
+  const response = await apiClient.post(
+    API_ENDPOINTS.AI.CONVERSATIONS,
+    { anonymousId }
+  );
+  return response.data;
+};
+
+/**
+ * Send a message in an AI conversation
+ * Returns both user message and AI response with properties
+ */
+export const sendConversationMessage = async (
+  conversationId: number,
+  message: string
+): Promise<IAiSendMessageResponse> => {
+  const response = await apiClient.post(
+    API_ENDPOINTS.AI.CONVERSATION_MESSAGES(String(conversationId)),
+    { message }
+  );
+  return response.data;
+};
+
+/**
+ * Archive an AI conversation
+ */
+export const archiveConversation = async (
+  id: number
+): Promise<{ success: boolean }> => {
+  const response = await apiClient.post(
+    API_ENDPOINTS.AI.CONVERSATION_ARCHIVE(String(id))
+  );
+  return response.data;
+};
+
+// ============================================================================
 // EXPORT ALL
 // ============================================================================
 
@@ -319,13 +455,20 @@ export const aiApi = {
   sendMessage,
   sendMessageWithHistory,
 
-  // NEW: Conversational Agent (multi-tier)
+  // Conversational Agent (multi-tier)
   agentChat,
   getAgentStats,
 
-  // NEW: AVM (Automated Valuation Model)
+  // AVM (Automated Valuation Model)
   getValuation,
   getListingValuation,
+
+  // Persistent AI Conversations
+  getConversations,
+  getConversation,
+  createConversation,
+  sendConversationMessage,
+  archiveConversation,
 
   // Description Generation (Level 2+)
   generatePropertyDescription,

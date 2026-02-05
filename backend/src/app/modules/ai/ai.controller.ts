@@ -28,6 +28,7 @@ import {
 } from '@nestjs/swagger';
 import { AIService } from './ai.service.js';
 import { AIGatewayService } from './gateway/ai-gateway.service.js';
+import { AiConversationService } from './conversation/ai-conversation.service.js';
 import { Public, MinVerificationLevel, CurrentUser } from '../../core/decorators.js';
 import { AVMInput } from './types/index.js';
 
@@ -148,6 +149,7 @@ export class AIController {
   constructor(
     private readonly aiService: AIService,
     private readonly aiGateway: AIGatewayService,
+    private readonly aiConversationService: AiConversationService,
   ) {}
 
   // ========================================================================
@@ -323,6 +325,100 @@ export class AIController {
   })
   async estimatePrice(@Body() body: EstimatePriceBody) {
     return this.aiService.estimatePrice(body);
+  }
+
+  // ========================================================================
+  // 💬 PERSISTENT AI CONVERSATIONS
+  // ========================================================================
+
+  @Get('conversations')
+  @Public()
+  @ApiOperation({
+    summary: 'List AI conversations',
+    description: 'Returns user AI conversations with last message preview.',
+  })
+  async getConversations(
+    @CurrentUser() user?: { id: number },
+  ) {
+    if (!user?.id) {
+      return { data: [], meta: { page: 1, limit: 20, total: 0, hasMore: false } };
+    }
+    return this.aiConversationService.getConversations(user.id);
+  }
+
+  @Get('conversations/:id')
+  @Public()
+  @ApiOperation({
+    summary: 'Get AI conversation with messages',
+    description: 'Returns full conversation with message history.',
+  })
+  async getConversation(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user?: { id: number },
+  ) {
+    return this.aiConversationService.getConversation(id, user?.id || 0);
+  }
+
+  @Post('conversations')
+  @Public()
+  @ApiOperation({
+    summary: 'Create new AI conversation',
+    description: 'Creates a new conversation with a welcome message.',
+  })
+  async createConversation(
+    @CurrentUser() user?: { id: number },
+    @Body() body?: { anonymousId?: string },
+  ) {
+    return this.aiConversationService.createConversation(user?.id, body?.anonymousId);
+  }
+
+  @Post('conversations/:id/messages')
+  @Public()
+  @ApiOperation({
+    summary: 'Send message in AI conversation',
+    description: 'Sends a message, gets AI response with client classification.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: 'User message' },
+      },
+      required: ['message'],
+    },
+  })
+  async sendMessage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { message: string },
+    @CurrentUser() user?: { id: number },
+  ) {
+    return this.aiConversationService.sendMessage(id, body.message, user?.id);
+  }
+
+  @Post('conversations/:id/archive')
+  @Public()
+  @ApiOperation({
+    summary: 'Archive AI conversation',
+  })
+  async archiveConversation(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user?: { id: number },
+  ) {
+    if (!user?.id) return { error: 'Not authenticated' };
+    return this.aiConversationService.archiveConversation(id, user.id);
+  }
+
+  @Get('conversations/active')
+  @Public()
+  @ApiOperation({
+    summary: 'Get or create active conversation',
+    description: 'Returns the most recent active conversation or creates a new one.',
+  })
+  async getActiveConversation(
+    @CurrentUser() user?: { id: number },
+    @Body() body?: { anonymousId?: string },
+  ) {
+    return this.aiConversationService.getOrCreateActive(user?.id, body?.anonymousId);
   }
 
   // ========================================================================

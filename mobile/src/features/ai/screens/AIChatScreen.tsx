@@ -1,9 +1,9 @@
 /**
  * RIVA - AI Chat Screen
- * Conversational AI assistant for property search
+ * Persistent conversational AI assistant with client classification
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,162 +13,137 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft,
   Send,
   Sparkles,
-  Home,
-  MessageCircle,
+  Plus,
+  MessageSquare,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Button, IconButton } from '@/shared/components';
-import { aiApi, IAgentChatResponse } from '../api/aiApi';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  properties?: PropertySuggestion[];
-}
-
-interface PropertySuggestion {
-  id: string;
-  title: string;
-  location: string;
-  price: string;
-  area: string;
-  matchScore?: number; // Optional - only show if we have real data
-  raw?: any;
-}
+import { IconButton } from '@/shared/components';
+import { useAiChat } from '../hooks/useAiChat';
+import AiPropertyCard from '../components/AiPropertyCard';
 
 /**
  * Remove markdown formatting from text
- * Converts **bold** to plain text, removes other markdown symbols
  */
 const cleanMarkdown = (text: string): string => {
   return text
-    .replace(/\*\*(.*?)\*\*/g, '$1') // Remove **bold**
-    .replace(/\*(.*?)\*/g, '$1')     // Remove *italic*
-    .replace(/__(.*?)__/g, '$1')     // Remove __bold__
-    .replace(/_(.*?)_/g, '$1')       // Remove _italic_
-    .replace(/`(.*?)`/g, '$1')       // Remove `code`
-    .replace(/#{1,6}\s/g, '')        // Remove # headers
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/#{1,6}\s/g, '')
     .trim();
 };
 
 const AIChatScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
+  const route = useRoute();
   const scrollViewRef = useRef<ScrollView>(null);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content:
-        'Bună! Sunt RIVA AI, asistentul tău imobiliar.\n\nSpune-mi ce cauți și îți găsesc cele mai potrivite opțiuni!\n\nPoți să-mi spui, de exemplu:\n• "Caut apartament 2 camere..."\n• "Vreau casă cu grădină..."\n• "Ceva aproape de centru..."',
-      timestamp: new Date(),
-    },
-  ]);
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [conversationId, setConversationId] = useState<string | undefined>();
+
+  const {
+    messages,
+    isLoading,
+    isSending,
+    clientProfile,
+    loadConversation,
+    sendMessage,
+    startNewConversation,
+  } = useAiChat();
+
+  // Get conversationId from route params if navigating from list
+  const routeConversationId = (route.params as any)?.conversationId;
+
+  useEffect(() => {
+    loadConversation(routeConversationId);
+  }, [routeConversationId]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 150);
+  }, [messages]);
+
+  const handleSend = useCallback(async () => {
+    const text = inputText.trim();
+    if (!text) return;
+    setInputText('');
+    await sendMessage(text);
+  }, [inputText, sendMessage]);
+
+  const handleQuickReply = useCallback((text: string) => {
+    setInputText('');
+    sendMessage(text);
+  }, [sendMessage]);
+
+  const handleViewProperty = useCallback((propertyId: number) => {
+    // @ts-ignore
+    navigation.navigate('PropertyDetail', { propertyId: String(propertyId) });
+  }, [navigation]);
+
+  const handleScheduleViewing = useCallback((propertyId: number, title: string) => {
+    sendMessage(`Vreau sa vizionez proprietatea "${title}" (ID: ${propertyId}). Ce date si ore sunt disponibile?`);
+  }, [sendMessage]);
+
+  const handleOpenConversationsList = useCallback(() => {
+    // @ts-ignore
+    navigation.navigate('AiConversationsList');
+  }, [navigation]);
 
   // Quick suggestions for first-time users
   const quickSuggestions = [
-    'Apartament în Botanica',
-    '2 camere sub 400€',
-    'Cu parcare',
-    'Mobilat complet',
+    'Vreau sa inchiriez',
+    'Vreau sa cumpar',
+    'Apartament in Botanica',
+    '2 camere sub 400\u20AC',
   ];
 
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
+  const classificationScore = clientProfile?.classificationScore || 0;
+  const showClassificationBar = !clientProfile?.classificationComplete && classificationScore > 0;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputText,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText('');
-    setIsTyping(true);
-
-    try {
-      // Use the new multi-tier agent endpoint
-      const response = await aiApi.agentChat({
-        message: userMessage.content,
-        conversationId,
-        context: {
-          tone: 'friendly',
-          language: 'ro',
-          maxResults: 5,
-        },
-      });
-
-      // Store conversationId for session continuity
-      if (response.conversationId) {
-        setConversationId(response.conversationId);
-      }
-
-      const mappedProperties: PropertySuggestion[] =
-        (response.properties || []).map((property: any) => ({
-          id: String(property.id),
-          title: property.title || 'Proprietate',
-          location: [property.neighborhood, property.city].filter(Boolean).join(', '),
-          price: property.priceEur
-            ? `${Number(property.priceEur).toLocaleString('ro-RO')} €`
-            : property.price
-              ? `${Number(property.price).toLocaleString('ro-RO')} €`
-              : '-',
-          area: property.surfaceSqm
-            ? `${property.surfaceSqm} mp`
-            : property.surface
-              ? `${property.surface} mp`
-              : property.area
-                ? `${property.area} mp`
-                : '-',
-          raw: property,
-        })) || [];
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.message || 'Am procesat cererea ta.',
-        timestamp: new Date(),
-        properties: mappedProperties,
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-    } catch (error) {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Îmi pare rău, nu am putut procesa cererea acum. Încearcă din nou.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const handleQuickSuggestion = (suggestion: string) => {
-    setInputText(suggestion);
-  };
-
-  useEffect(() => {
-    // Scroll to bottom when new messages arrive
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  }, [messages]);
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <View style={styles.loadingContainer}>
+          <LinearGradient
+            colors={['#6366f1', '#8b5cf6', '#10b981']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.loadingIcon}
+          >
+            <Sparkles size={28} color="#ffffff" />
+          </LinearGradient>
+          <ActivityIndicator
+            size="small"
+            color={theme.colors.primary.main}
+            style={{ marginTop: 16 }}
+          />
+          <Text
+            style={[
+              styles.loadingText,
+              { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm },
+            ]}
+          >
+            Se incarca conversatia...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -222,14 +197,56 @@ const AIChatScreen: React.FC = () => {
                 },
               ]}
             >
-              Asistent imobiliar
+              {clientProfile?.classificationComplete
+                ? 'Consultant imobiliar'
+                : 'Te cunosc mai bine...'}
             </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.menuButton}>
-          <MessageCircle size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={handleOpenConversationsList}
+          >
+            <MessageSquare size={20} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={startNewConversation}
+          >
+            <Plus size={20} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Classification Progress Bar */}
+      {showClassificationBar && (
+        <View
+          style={[
+            styles.classificationBar,
+            { backgroundColor: theme.colors.surface, borderBottomColor: theme.colors.border },
+          ]}
+        >
+          <Text
+            style={[
+              styles.classificationLabel,
+              { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.xs },
+            ]}
+          >
+            Clasificare client: {classificationScore}%
+          </Text>
+          <View
+            style={[styles.progressTrack, { backgroundColor: theme.colors.border }]}
+          >
+            <LinearGradient
+              colors={['#6366f1', '#10b981']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.progressFill, { width: `${classificationScore}%` }]}
+            />
+          </View>
+        </View>
+      )}
 
       {/* Chat Messages */}
       <KeyboardAvoidingView
@@ -276,91 +293,51 @@ const AIChatScreen: React.FC = () => {
                           fontSize: theme.typography.fontSize.sm,
                         },
                       ]}
+                      selectable
                     >
                       {cleanMarkdown(message.content)}
                     </Text>
 
-                    {/* Property Suggestions */}
+                    {/* Property Cards */}
                     {message.properties && message.properties.length > 0 && (
-                      <View
-                        style={[
-                          styles.propertiesContainer,
-                          { marginTop: theme.spacing[3] },
-                        ]}
-                      >
-                        {message.properties.map((property) => (
-                          <TouchableOpacity
+                      <View style={{ marginTop: 12, gap: 10 }}>
+                        {message.properties.map((property: any) => (
+                          <AiPropertyCard
                             key={property.id}
+                            property={property}
+                            onView={handleViewProperty}
+                            onSchedule={handleScheduleViewing}
+                          />
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Suggested Actions / Quick Replies */}
+                    {message.suggestedActions && message.suggestedActions.length > 0 && (
+                      <View style={styles.suggestedActionsContainer}>
+                        {message.suggestedActions.map((action, idx) => (
+                          <TouchableOpacity
+                            key={idx}
                             style={[
-                              styles.propertyCard,
+                              styles.actionChip,
                               {
-                                backgroundColor: theme.colors.background,
-                                borderColor: theme.colors.border,
-                                borderRadius: theme.borderRadius.lg,
-                                ...theme.shadows.sm,
+                                backgroundColor: theme.colors.primary.main + '12',
+                                borderColor: theme.colors.primary.main + '30',
                               },
                             ]}
+                            onPress={() => handleQuickReply(action.label)}
                           >
                             <Text
                               style={[
-                                styles.propertyTitle,
+                                styles.actionChipText,
                                 {
-                                  color: theme.colors.textPrimary,
-                                  fontSize: theme.typography.fontSize.base,
+                                  color: theme.colors.primary.main,
+                                  fontSize: theme.typography.fontSize.xs,
                                 },
                               ]}
                             >
-                              {property.title}
+                              {action.label}
                             </Text>
-                            <Text
-                              style={[
-                                styles.propertyLocation,
-                                {
-                                  color: theme.colors.textSecondary,
-                                  fontSize: theme.typography.fontSize.sm,
-                                  marginTop: theme.spacing[1],
-                                },
-                              ]}
-                            >
-                              {property.location || 'Locație'} • {property.area}
-                            </Text>
-                            <View
-                              style={[
-                                styles.propertyFooter,
-                                { marginTop: theme.spacing[2] },
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.propertyPrice,
-                                  {
-                                    color: theme.colors.accent.main,
-                                    fontSize: theme.typography.fontSize.lg,
-                                  },
-                                ]}
-                              >
-                                {property.price}
-                              </Text>
-                              <View style={styles.propertyActions}>
-                                <Button
-                                  title="Vezi"
-                                  onPress={() =>
-                                    // @ts-ignore - route exists in discovery stack
-                                    navigation.navigate('PropertyDetail', {
-                                      propertyId: property.id,
-                                    })
-                                  }
-                                  variant="secondary"
-                                  size="sm"
-                                />
-                                <Button
-                                  title="Contact"
-                                  onPress={() => {}}
-                                  variant="primary"
-                                  size="sm"
-                                />
-                              </View>
-                            </View>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -395,7 +372,7 @@ const AIChatScreen: React.FC = () => {
           ))}
 
           {/* Typing Indicator */}
-          {isTyping && (
+          {isSending && (
             <View style={styles.assistantMessageContainer}>
               <LinearGradient
                 colors={['#6366f1', '#8b5cf6', '#10b981']}
@@ -440,12 +417,12 @@ const AIChatScreen: React.FC = () => {
             },
           ]}
         >
-          {/* Quick Suggestions */}
+          {/* Quick Suggestions - only on first messages */}
           {messages.length <= 2 && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.suggestionsContainer}
+              style={styles.suggestionsScroll}
               contentContainerStyle={[
                 styles.suggestionsContent,
                 { paddingHorizontal: theme.spacing[4] },
@@ -474,7 +451,7 @@ const AIChatScreen: React.FC = () => {
                       borderRadius: theme.borderRadius.full,
                     },
                   ]}
-                  onPress={() => handleQuickSuggestion(suggestion)}
+                  onPress={() => handleQuickReply(suggestion)}
                 >
                   <Text
                     style={[
@@ -517,12 +494,13 @@ const AIChatScreen: React.FC = () => {
                     fontSize: theme.typography.fontSize.base,
                   },
                 ]}
-                placeholder="Scrie mesajul tău..."
+                placeholder="Scrie mesajul tau..."
                 placeholderTextColor={theme.colors.textTertiary}
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
                 maxLength={500}
+                onSubmitEditing={handleSend}
               />
               <TouchableOpacity
                 style={[
@@ -534,7 +512,7 @@ const AIChatScreen: React.FC = () => {
                   },
                 ]}
                 onPress={handleSend}
-                disabled={!inputText.trim()}
+                disabled={!inputText.trim() || isSending}
               >
                 <Send
                   size={18}
@@ -552,6 +530,21 @@ const AIChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
   },
   header: {
     flexDirection: 'row',
@@ -585,11 +578,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerSubtitle: {},
-  menuButton: {
-    width: 44,
-    height: 44,
+  headerActions: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  headerBtn: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  classificationBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    gap: 4,
+  },
+  classificationLabel: {
+    fontWeight: '500',
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
   },
   chatContainer: {
     flex: 1,
@@ -632,28 +647,20 @@ const styles = StyleSheet.create({
   messageText: {
     lineHeight: 20,
   },
-  propertiesContainer: {
-    gap: 12,
+  suggestedActionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
   },
-  propertyCard: {
-    padding: 12,
+  actionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1,
   },
-  propertyTitle: {
-    fontWeight: '600',
-  },
-  propertyLocation: {},
-  propertyFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  propertyPrice: {
-    fontWeight: '700',
-  },
-  propertyActions: {
-    flexDirection: 'row',
-    gap: 8,
+  actionChipText: {
+    fontWeight: '500',
   },
   typingIndicator: {
     padding: 12,
@@ -674,7 +681,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingBottom: 8,
   },
-  suggestionsContainer: {
+  suggestionsScroll: {
     minHeight: 56,
   },
   suggestionsContent: {

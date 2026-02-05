@@ -3,8 +3,9 @@
  * Handles validation, rate limiting, and permission checks
  */
 
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, Inject, Optional } from '@nestjs/common';
 import { SearchService, SearchFilters } from '../../search/search.service.js';
+import { ViewingService } from '../../viewing/viewing.service.js';
 import { ToolCall, ToolResult, UserPreferences } from '../types/index.js';
 import { TOOL_MAP } from './definitions.js';
 import { Listing } from '../../../db/entities/listing.entity.js';
@@ -21,7 +22,10 @@ interface ExecutionContext {
 export class ToolExecutor {
   private readonly logger = new Logger(ToolExecutor.name);
 
-  constructor(private readonly searchService: SearchService) {}
+  constructor(
+    private readonly searchService: SearchService,
+    @Optional() @Inject(ViewingService) private readonly viewingService?: ViewingService,
+  ) {}
 
   async execute(
     toolCall: ToolCall,
@@ -107,30 +111,43 @@ export class ToolExecutor {
     args: Record<string, any>,
     context: ExecutionContext,
   ): Promise<any> {
-    // Merge with user preferences (preferences as defaults)
+    // Only merge MINIMAL defaults from preferences (transactionType, city)
+    // Everything else comes ONLY from GPT args (which should reflect user's current request)
+    // This prevents over-filtering when user says "show all" but profile has many preferences
+
+    // Handle rooms: exact match vs range (mutually exclusive)
+    let roomsFilter: { rooms?: number; roomsMin?: number; roomsMax?: number } = {};
+    if (args.rooms != null && args.roomsMin == null && args.roomsMax == null) {
+      roomsFilter = { roomsMin: args.rooms }; // Convert exact to range for flexibility
+    } else {
+      if (args.roomsMin != null) roomsFilter.roomsMin = args.roomsMin;
+      if (args.roomsMax != null) roomsFilter.roomsMax = args.roomsMax;
+    }
+
     const filters: SearchFilters = {
+      // Only transactionType and city get fallback from preferences
       transactionType: args.transactionType || context.preferences.transactionType,
       city: args.city || context.preferences.cities?.[0],
-      neighborhood: args.neighborhood || context.preferences.neighborhoods?.[0],
-      priceMin: args.priceMin ?? context.preferences.priceMin,
-      priceMax: args.priceMax ?? context.preferences.priceMax,
-      rooms: args.rooms,
-      roomsMin: args.roomsMin ?? context.preferences.roomsMin,
-      roomsMax: args.roomsMax ?? context.preferences.roomsMax,
-      surfaceMin: args.surfaceMin ?? context.preferences.surfaceMin,
-      surfaceMax: args.surfaceMax ?? context.preferences.surfaceMax,
+      // Everything else: ONLY from GPT args, NO preference fallback
+      neighborhood: args.neighborhood,
+      priceMin: args.priceMin,
+      priceMax: args.priceMax ?? context.preferences.priceMax, // keep priceMax as it's usually essential
+      ...roomsFilter,
+      surfaceMin: args.surfaceMin,
+      surfaceMax: args.surfaceMax,
       propertyType: args.propertyType,
-      isFurnished: args.isFurnished ?? context.preferences.isFurnished,
-      petFriendly: args.petFriendly ?? context.preferences.petFriendly,
+      isFurnished: args.isFurnished,
+      petFriendly: args.petFriendly,
       amenities: args.amenities,
       sortBy: args.sortBy || 'relevance',
-      limit: Math.min(args.limit || 5, 20),
+      limit: Math.min(args.limit || 10, 20),
       page: 1,
     };
 
-    // Clean undefined values
+    // Clean undefined/null values
     Object.keys(filters).forEach(key => {
-      if (filters[key as keyof SearchFilters] === undefined) {
+      const val = filters[key as keyof SearchFilters];
+      if (val === undefined || val === null) {
         delete filters[key as keyof SearchFilters];
       }
     });
@@ -139,16 +156,9 @@ export class ToolExecutor {
 
     const searchResult = await this.searchService.search(filters);
 
-    // Filter out already shown listings if we have alternatives
+    // Show all results - don't filter out already shown listings
+    // Users often want to see the same properties again for details/comparison
     let properties = searchResult.data;
-    if (context.shownListingIds.length > 0 && properties.length > 3) {
-      const newProperties = properties.filter(
-        p => !context.shownListingIds.includes(p.id),
-      );
-      if (newProperties.length >= 3) {
-        properties = newProperties;
-      }
-    }
 
     // Format for LLM consumption
     const formattedProperties = properties.slice(0, args.limit || 5).map(p => ({
@@ -506,19 +516,96 @@ export class ToolExecutor {
 
     const { listingId, preferredDates, preferredTimeSlot, message } = args;
 
-    // Verify listing exists
-    const listing = await Listing.findByPk(listingId);
+    // SAFEGUARD: Don't schedule without explicit date/time from user
+    if (!preferredDates || preferredDates.length === 0 || !preferredTimeSlot) {
+      return {
+        success: false,
+        needsUserInput: true,
+        message: 'Nu am programat vizionarea - trebuie să întrebi clientul ce dată și ce interval orar preferă (dimineață 9-12, după-amiază 12-17, sau seara 17-20). Întreabă-l acum.',
+        missingFields: {
+          preferredDates: !preferredDates || preferredDates.length === 0,
+          preferredTimeSlot: !preferredTimeSlot,
+        },
+      };
+    }
+
+    // Always fetch the listing to include in the result for correct property card display
+    const listing = await Listing.findByPk(listingId, {
+      include: [
+        {
+          model: ListingImage,
+          as: 'images',
+          limit: 1,
+          order: [['order', 'ASC']],
+        },
+      ],
+    });
     if (!listing) {
       throw new Error('Proprietatea nu a fost găsită');
     }
 
-    // In production, this would create a viewing request
-    // For now, return a success response
+    const scheduledListing = {
+      id: listing.id,
+      title: listing.title,
+      city: listing.city,
+      neighborhood: listing.neighborhood,
+      priceEur: listing.priceEur,
+      transactionType: listing.transactionType,
+      rooms: listing.rooms,
+      surfaceSqm: listing.surfaceSqm,
+      floor: listing.floor,
+      totalFloors: listing.totalFloors,
+      yearBuilt: listing.yearBuilt,
+      isFurnished: listing.isFurnished,
+      amenities: listing.amenities || [],
+      imageUrl: listing.images?.[0]?.url,
+      isPromoted: false,
+    };
+
+    // Use real ViewingService if available
+    if (this.viewingService) {
+      try {
+        // Pick the first preferred date, default to tomorrow at the preferred time slot
+        const timeMap: Record<string, string> = {
+          morning: '10:00',
+          afternoon: '14:00',
+          evening: '17:00',
+        };
+        const time = timeMap[preferredTimeSlot] || '14:00';
+        const slotDate = `${preferredDates[0]}T${time}:00`;
+
+        const viewing = await this.viewingService.requestViewing(
+          context.userId,
+          listingId,
+          slotDate,
+          message || 'Programare din chat AI RIVA',
+        );
+
+        return {
+          success: true,
+          message: 'Cererea de vizionare a fost trimisă proprietarului!',
+          viewing,
+          scheduledListing,
+          status: 'pending',
+          note: 'Vei primi o notificare când proprietarul confirmă.',
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          message: error.message || 'Nu am putut programa vizionarea',
+          error: error.message,
+          scheduledListing,
+        };
+      }
+    }
+
+    // Fallback if ViewingService not injected
     return {
       success: true,
       message: 'Cererea de vizionare a fost trimisă proprietarului',
       listingId,
       listingTitle: listing.title,
+      scheduledListing,
       preferredDates,
       preferredTimeSlot,
       status: 'pending',

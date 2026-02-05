@@ -8,7 +8,7 @@ import { ToolDefinition } from '../types/index.js';
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'search_properties',
-    description: 'Search for properties based on user criteria. Use this when the user wants to find apartments, houses, or other real estate.',
+    description: 'Search for properties based on user criteria. IMPORTANT: Only include filters that the user explicitly mentioned in their CURRENT message. Do NOT add filters from the client profile automatically - the system handles profile defaults. If user says "show all" or "all properties", use minimal filters (just transactionType and city). More filters = fewer results.',
     requiresAuth: false,
     parameters: {
       type: 'object',
@@ -167,7 +167,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'schedule_viewing',
-    description: 'Request to schedule a property viewing. Requires authentication.',
+    description: 'Request to schedule a property viewing. Requires authentication. IMPORTANT: Do NOT call this tool until you have confirmed with the user: 1) which property they want to visit, 2) their preferred date, 3) their preferred time slot (morning/afternoon/evening). Ask the user these details first in conversation before calling this tool.',
     requiresAuth: true,
     rateLimit: 10,
     parameters: {
@@ -180,12 +180,13 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
         preferredDates: {
           type: 'array',
           items: { type: 'string', format: 'date' },
-          description: 'Preferred dates for viewing (ISO format)',
+          description: 'Preferred dates for viewing (ISO format YYYY-MM-DD). Must be explicitly provided by the user.',
           maxItems: 3,
         },
         preferredTimeSlot: {
           type: 'string',
           enum: ['morning', 'afternoon', 'evening'],
+          description: 'Time of day preferred by the user: morning (9-12), afternoon (12-17), evening (17-20)',
         },
         message: {
           type: 'string',
@@ -193,7 +194,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
           maxLength: 500,
         },
       },
-      required: ['listingId'],
+      required: ['listingId', 'preferredDates', 'preferredTimeSlot'],
     },
   },
   {
