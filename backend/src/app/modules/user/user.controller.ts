@@ -116,7 +116,7 @@ export class UserController {
     @CurrentUserId() userId: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    // TODO: Upload to S3 in production
+    // TODO: Upload to DigitalOcean Spaces in production
     const mockUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}&timestamp=${Date.now()}`;
     return this.userService.updateAvatar(userId, mockUrl);
   }

@@ -126,7 +126,7 @@ export class KycService {
         userId,
         type: docType.toUpperCase() as any,
         status: 'PENDING',
-        // In production: upload to S3 and store URL
+        // In production: upload to DigitalOcean Spaces and store URL
         fileUrl: `uploads/kyc/${userId}/${Date.now()}_front.jpg`,
         uploadedAt: now,
       });

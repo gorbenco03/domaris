@@ -231,7 +231,7 @@ export class Listing extends ExtModel {
   })
   ownershipStatus!: 'none' | 'pending' | 'verified' | 'rejected';
 
-  @ApiProperty({ required: false, description: 'S3 URL of ownership proof document' })
+  @ApiProperty({ required: false, description: 'URL of ownership proof document (Spaces)' })
   @Column(DataType.STRING)
   ownershipDocUrl?: string | null;
 

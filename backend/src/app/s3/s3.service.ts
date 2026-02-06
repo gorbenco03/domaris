@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import AWS from 'aws-sdk';
 import * as fs from 'fs';
 import axios from 'axios';
@@ -10,19 +10,60 @@ interface UploadFromUrlOptions {
 }
 
 @Injectable()
-export class S3Service {
+export class S3Service implements OnModuleInit {
   private readonly logger = new Logger(S3Service.name);
   private readonly s3: AWS.S3;
   private readonly bucket: string;
+  private readonly region: string;
 
   constructor() {
-    this.s3 = new AWS.S3({ region: 'eu-central-1' });
-    this.bucket = process.env.AWS_S3_BUCKET || '';
+    // Actual DO region (ams3, nyc3, sfo3…) – used for endpoint and public URLs
+    this.region = process.env.DO_SPACES_REGION || 'ams3';
+    this.bucket = process.env.DO_SPACES_BUCKET || '';
+    const endpoint = `https://${this.region}.digitaloceanspaces.com`;
+
+    // DigitalOcean docs: use region 'us-east-1' in SDK config; real region comes from endpoint
+    this.s3 = new AWS.S3({
+      endpoint,
+      region: 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY!,
+      },
+      s3ForcePathStyle: false,
+    });
 
     if (!this.bucket) {
-      this.logger.error('AWS_S3_BUCKET nu este setat în environment variables');
-      throw new Error('AWS_S3_BUCKET is required');
+      this.logger.error('DO_SPACES_BUCKET nu este setat în environment variables');
+      throw new Error('DO_SPACES_BUCKET is required');
     }
+  }
+
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.s3.headBucket({ Bucket: this.bucket }).promise();
+      this.logger.log(
+        `Spaces OK: bucket "${this.bucket}" (${this.region}) – conexiune verificată`,
+      );
+    } catch (err: any) {
+      const code = err?.code ?? err?.statusCode ?? 'unknown';
+      const msg = err?.message ?? String(err);
+      const hint =
+        code === 'Forbidden' || err?.statusCode === 403
+          ? ' Folosești chei Spaces (API → Spaces Keys), nu API Token. Verifică DO_SPACES_ACCESS_KEY_ID și DO_SPACES_SECRET_ACCESS_KEY.'
+          : '';
+      this.logger.warn(
+        `Spaces: nu s-a putut verifica bucket-ul "${this.bucket}" (${this.region}). ` +
+          `Eroare: ${code} – ${msg}${hint}`,
+      );
+    }
+  }
+
+  /**
+   * Returnează URL-ul public pentru un key din DigitalOcean Spaces.
+   */
+  getPublicUrl(key: string): string {
+    return `https://${this.bucket}.${this.region}.digitaloceanspaces.com/${key}`;
   }
 
   /**
@@ -44,8 +85,8 @@ export class S3Service {
   }
 
   /**
-   * Upload direct dintr-un URL (ex: link imagine Facebook) către S3.
-   * Îți întoarce URL-ul S3 (sau CloudFront, dacă schimbi domain-ul).
+   * Upload direct dintr-un URL (ex: link imagine Facebook) către DigitalOcean Spaces.
+   * Îți întoarce URL-ul public Spaces.
    */
   async uploadFromUrl(
     imageUrl: string,
@@ -71,20 +112,18 @@ export class S3Service {
       const fileName = `${uuidv4()}.${ext}`;
       const key = `${prefix.replace(/\/+$/, '')}/${fileName}`;
 
-      // 3. Upload în S3
+      // 3. Upload în Spaces
       await this.s3
         .putObject({
           Bucket: this.bucket,
           Key: key,
           Body: buffer,
           ContentType: detectedContentType,
-          ACL: 'public-read', // doar dacă vrei să fie accesibile public
+          ACL: 'public-read',
         })
         .promise();
 
-      // 4. Construiește URL-ul public (simplu, poți schimba cu CloudFront)
-      const url = `https://${this.bucket}.s3.eu-central-1.amazonaws.com/${key}`;
-      return url;
+      return this.getPublicUrl(key);
     } catch (error: any) {
       this.logger.error(
         `Failed to upload image from URL (${imageUrl}): ${error.message}`,

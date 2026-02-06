@@ -21,6 +21,8 @@ node_modules
 ./mobile/android
 ./mobile/.env.local
 
+
+./backend/.env
 # IDE - VSCode
 .vscode/*
 !.vscode/settings.json

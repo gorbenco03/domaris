@@ -404,7 +404,7 @@ export class ListingService {
   }
 
   /**
-   * Upload photos to S3 and save to ListingImage
+   * Upload photos to DigitalOcean Spaces and save to ListingImage
    */
   async uploadPhotos(id: string, ownerId: number | string, files: Express.Multer.File[]) {
     const listing = await Listing.findByPk(id);
@@ -438,17 +438,15 @@ export class ListingService {
       const file = files[i];
 
       try {
-        // Save buffer to temp file for S3 upload
+        // Save buffer to temp file for Spaces upload
         const tempPath = path.join(os.tmpdir(), `${Date.now()}_${file.originalname}`);
         fs.writeFileSync(tempPath, file.buffer);
 
-        // Upload to S3
+        // Upload to DigitalOcean Spaces
         const s3Key = `listings/${id}/${Date.now()}_${i}_${file.originalname}`;
         await this.s3Service.uploadImage(tempPath, s3Key);
 
-        // Construct S3 URL
-        const bucket = process.env.AWS_S3_BUCKET || 'domaris-uploads';
-        const url = `https://${bucket}.s3.eu-central-1.amazonaws.com/${s3Key}`;
+        const url = this.s3Service.getPublicUrl(s3Key);
 
         // Clean up temp file
         fs.unlinkSync(tempPath);
@@ -469,7 +467,7 @@ export class ListingService {
 
         this.logger.log(`Uploaded image ${i + 1}/${files.length} for listing ${id}`);
       } catch (error: any) {
-        this.logger.warn(`Failed to upload image ${i + 1} to S3: ${error.message}. Falling back to placeholder.`);
+        this.logger.warn(`Failed to upload image ${i + 1} to Spaces: ${error.message}. Falling back to placeholder.`);
         
         // Fallback flow for development/missing keys
         const mockUrl = `https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80&random=${Date.now()}_${i}`;
@@ -530,21 +528,20 @@ export class ListingService {
     let docUrl: string;
 
     try {
-      // Save buffer to temp file for S3 upload
+      // Save buffer to temp file for Spaces upload
       const tempPath = path.join(os.tmpdir(), `${Date.now()}_ownership_${file.originalname}`);
       fs.writeFileSync(tempPath, file.buffer);
 
-      // Upload to S3
+      // Upload to DigitalOcean Spaces
       const s3Key = `ownership-docs/${id}/${Date.now()}_${file.originalname}`;
       await this.s3Service.uploadImage(tempPath, s3Key);
 
-      const bucket = process.env.AWS_S3_BUCKET || 'domaris-uploads';
-      docUrl = `https://${bucket}.s3.eu-central-1.amazonaws.com/${s3Key}`;
+      docUrl = this.s3Service.getPublicUrl(s3Key);
 
       // Clean up temp file
       fs.unlinkSync(tempPath);
     } catch (error: any) {
-      this.logger.warn(`Failed to upload ownership doc to S3: ${error.message}. Using placeholder path.`);
+      this.logger.warn(`Failed to upload ownership doc to Spaces: ${error.message}. Using placeholder path.`);
       docUrl = `uploads/ownership-docs/${id}/${Date.now()}_${file.originalname}`;
     }
 
@@ -593,7 +590,7 @@ export class ListingService {
       throw new ForbiddenException('You are not the owner of this listing');
     }
 
-    // Delete associated images from DB (S3 cleanup could be added separately)
+    // Delete associated images from DB (Spaces object cleanup could be added separately)
     await ListingImage.destroy({ where: { listingId: Number(id) } });
 
     await listing.destroy();

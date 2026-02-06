@@ -22,11 +22,11 @@ const schema = Joi.object({
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().required(),
 
-  //AWS CONFIG
-  AWS_ACCESS_KEY_ID: Joi.string().required(),
-  AWS_SECRET_ACCESS_KEY: Joi.string().required(),
-  AWS_REGION: Joi.string().required(),
-  AWS_S3_BUCKET: Joi.string().required(),
+  // DIGITALOCEAN SPACES (S3-compatible object storage)
+  DO_SPACES_ACCESS_KEY_ID: Joi.string().required(),
+  DO_SPACES_SECRET_ACCESS_KEY: Joi.string().required(),
+  DO_SPACES_REGION: Joi.string().required(),
+  DO_SPACES_BUCKET: Joi.string().required(),
 
   //OPENAI CONFIG
   OPENAI_API_KEY: Joi.string().required(),
