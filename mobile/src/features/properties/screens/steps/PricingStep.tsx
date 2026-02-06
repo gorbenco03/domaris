@@ -1,16 +1,19 @@
 /**
  * RIVA - Pricing Step
  * Step 5 of property creation wizard
+ * Includes AI price suggestion based on comparable properties
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
-import { DollarSign, FileText, Sparkles } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { DollarSign, FileText, Sparkles, TrendingUp, TrendingDown, Minus } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import Input from '@/shared/components/Input';
 import Checkbox from '@/shared/components/Checkbox';
 import Chip from '@/shared/components/Chip';
 import Button from '@/shared/components/Button';
+import { formatPrice } from '@/shared/utils/formatters';
+import { useValuation } from '../../hooks/useValuation';
 import type { PropertyFormData } from '../CreatePropertyWizard';
 
 // ============================================
@@ -45,12 +48,47 @@ const PricingStep: React.FC<PricingStepProps> = ({
     });
   };
 
+  // AI Price Suggestion
+  const valuation = useValuation({
+    city: formData.location?.city,
+    neighborhood: formData.location?.neighborhood,
+    propertyType: formData.propertyType,
+    transactionType: formData.transactionType,
+    rooms: formData.characteristics?.rooms,
+    surfaceSqm: formData.characteristics?.totalArea,
+    floor: formData.characteristics?.floor,
+    totalFloors: formData.characteristics?.totalFloors,
+    yearBuilt: formData.characteristics?.yearBuilt,
+    amenities: formData.characteristics?.amenities,
+  });
+
+  const userPrice = formData.pricing?.price || 0;
+  const recommendedPrice = valuation.data?.valuation?.recommendedPrice || 0;
+  const priceRange = valuation.data?.valuation?.priceRange;
+  const confidence = valuation.data?.valuation?.confidence || 0;
+  const comparablesCount = valuation.data?.valuation?.comparables?.count || 0;
+
+  const priceDiff = userPrice > 0 && recommendedPrice > 0
+    ? ((userPrice - recommendedPrice) / recommendedPrice) * 100
+    : null;
+
+  const getPriceAnalysis = () => {
+    if (priceDiff === null) return null;
+    if (Math.abs(priceDiff) < 5) {
+      return { label: 'Pret corect', color: theme.colors.accent.main, Icon: Minus };
+    }
+    if (priceDiff > 0) {
+      return { label: `Cu ${Math.round(priceDiff)}% peste piata`, color: theme.colors.secondary.warning, Icon: TrendingUp };
+    }
+    return { label: `Cu ${Math.round(Math.abs(priceDiff))}% sub piata`, color: theme.colors.secondary.info, Icon: TrendingDown };
+  };
+
   const handleGenerateDescription = async () => {
     setIsGeneratingDescription(true);
     // Simulate AI generation
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    const generatedDescription = `Apartament modern și spațios, situat într-o zonă liniștită cu acces facil la transport public și facilitități. 
+
+    const generatedDescription = `Apartament modern și spațios, situat într-o zonă liniștită cu acces facil la transport public și facilitități.
 
 Proprietatea dispune de finisaje de calitate, bucătărie modernă complet utilată și băi cu instalații sanitare premium.
 
@@ -60,7 +98,7 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
 ✓ Parchet premium în toate camerele
 ✓ Centrală termică proprie
 ✓ Loc de parcare inclus`;
-    
+
     updateFormData({ description: generatedDescription });
     setIsGeneratingDescription(false);
   };
@@ -81,7 +119,7 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
         <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
           💰 Preț
         </Text>
-        
+
         <View style={styles.priceRow}>
           <View style={styles.priceInputContainer}>
             <Input
@@ -106,6 +144,62 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
           </View>
         </View>
 
+        {/* AI Price Suggestion */}
+        {valuation.isLoading && (
+          <View style={[styles.aiSuggestionCard, { backgroundColor: `${theme.colors.secondary.main}08`, borderColor: `${theme.colors.secondary.main}30` }]}>
+            <ActivityIndicator size="small" color={theme.colors.secondary.main} />
+            <Text style={[styles.aiSuggestionLoading, { color: theme.colors.textSecondary }]}>
+              Se analizeaza piata...
+            </Text>
+          </View>
+        )}
+
+        {valuation.data && recommendedPrice > 0 && (
+          <View style={[styles.aiSuggestionCard, { backgroundColor: `${theme.colors.secondary.main}08`, borderColor: `${theme.colors.secondary.main}30` }]}>
+            <View style={styles.aiSuggestionHeader}>
+              <Sparkles size={16} color={theme.colors.secondary.main} />
+              <Text style={[styles.aiSuggestionTitle, { color: theme.colors.secondary.main }]}>
+                Sugestie AI
+              </Text>
+              <Text style={[styles.aiSuggestionConfidence, { color: theme.colors.textTertiary }]}>
+                {Math.round(confidence * 100)}% acuratete  ·  {comparablesCount} comparabile
+              </Text>
+            </View>
+
+            <View style={styles.aiPriceRow}>
+              <Text style={[styles.aiRecommendedPrice, { color: theme.colors.textPrimary }]}>
+                {formatPrice(recommendedPrice, 'EUR')}{isRent ? '/luna' : ''}
+              </Text>
+              <TouchableOpacity
+                style={[styles.useAiPriceButton, { backgroundColor: theme.colors.secondary.main }]}
+                onPress={() => updatePricing({ price: recommendedPrice, currency: 'EUR' })}
+              >
+                <Text style={styles.useAiPriceText}>Foloseste</Text>
+              </TouchableOpacity>
+            </View>
+
+            {priceRange && (
+              <Text style={[styles.aiPriceRange, { color: theme.colors.textTertiary }]}>
+                Interval: {formatPrice(priceRange.min, 'EUR')} - {formatPrice(priceRange.max, 'EUR')}
+              </Text>
+            )}
+
+            {(() => {
+              const analysis = getPriceAnalysis();
+              if (!analysis) return null;
+              const { Icon } = analysis;
+              return (
+                <View style={[styles.priceAnalysisBadge, { backgroundColor: `${analysis.color}15` }]}>
+                  <Icon size={14} color={analysis.color} />
+                  <Text style={[styles.priceAnalysisText, { color: analysis.color }]}>
+                    {analysis.label}
+                  </Text>
+                </View>
+              );
+            })()}
+          </View>
+        )}
+
         <View style={styles.checkboxContainer}>
           <Checkbox
             checked={formData.pricing?.negotiable || false}
@@ -124,12 +218,12 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
                 </Text>
                 <Input
                   value={formData.pricing?.rentDetails?.depositMonths?.toString() || ''}
-                  onChangeText={(val: string) => updatePricing({ 
-                    rentDetails: { 
+                  onChangeText={(val: string) => updatePricing({
+                    rentDetails: {
                       ...formData.pricing?.rentDetails,
                       depositMonths: parseInt(val) || 1,
                       utilitiesIncluded: formData.pricing?.rentDetails?.utilitiesIncluded || false,
-                    } 
+                    }
                   })}
                   placeholder="2"
                   keyboardType="numeric"
@@ -141,13 +235,13 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
                 </Text>
                 <Input
                   value={formData.pricing?.rentDetails?.minimumPeriodMonths?.toString() || ''}
-                  onChangeText={(val: string) => updatePricing({ 
-                    rentDetails: { 
+                  onChangeText={(val: string) => updatePricing({
+                    rentDetails: {
                       ...formData.pricing?.rentDetails,
                       depositMonths: formData.pricing?.rentDetails?.depositMonths || 1,
                       utilitiesIncluded: formData.pricing?.rentDetails?.utilitiesIncluded || false,
                       minimumPeriodMonths: parseInt(val) || undefined,
-                    } 
+                    }
                   })}
                   placeholder="12"
                   keyboardType="numeric"
@@ -156,12 +250,12 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
             </View>
             <Checkbox
               checked={formData.pricing?.rentDetails?.utilitiesIncluded || false}
-              onChange={() => updatePricing({ 
-                rentDetails: { 
+              onChange={() => updatePricing({
+                rentDetails: {
                   ...formData.pricing?.rentDetails,
                   depositMonths: formData.pricing?.rentDetails?.depositMonths || 1,
                   utilitiesIncluded: !formData.pricing?.rentDetails?.utilitiesIncluded,
-                } 
+                }
               })}
               label="Utilități incluse în preț"
             />
@@ -206,11 +300,11 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
             </Text>
           </TouchableOpacity>
         </View>
-        
-        <View 
+
+        <View
           style={[
             styles.descriptionContainer,
-            { 
+            {
               backgroundColor: theme.colors.surface,
               borderColor: theme.colors.border,
             }
@@ -233,9 +327,9 @@ Ideal pentru familii sau tineri profesioniști care caută confort și funcțion
       </View>
 
       {/* Tips */}
-      <View 
+      <View
         style={[
-          styles.tipsContainer, 
+          styles.tipsContainer,
           { backgroundColor: `${theme.colors.secondary.info}10` }
         ]}
       >
@@ -290,6 +384,73 @@ const styles = StyleSheet.create({
   },
   checkboxContainer: {
     marginTop: 12,
+  },
+  // AI Price Suggestion
+  aiSuggestionCard: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  aiSuggestionLoading: {
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  aiSuggestionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  aiSuggestionTitle: {
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+  },
+  aiSuggestionConfidence: {
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    marginLeft: 'auto',
+  },
+  aiPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  aiRecommendedPrice: {
+    fontSize: 22,
+    fontFamily: 'Inter-Bold',
+  },
+  useAiPriceButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  useAiPriceText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+  },
+  aiPriceRange: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    marginBottom: 8,
+  },
+  priceAnalysisBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  priceAnalysisText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
   },
   rentFields: {
     marginTop: 16,
