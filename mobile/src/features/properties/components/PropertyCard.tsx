@@ -1,18 +1,21 @@
 /**
  * RIVA - Property Card Component
- * Premium property card for list and grid views
+ * Premium property card with swipeable image carousel
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   TouchableOpacity,
   Animated,
   Dimensions,
+  FlatList,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Heart,
@@ -30,6 +33,8 @@ import { Badge } from '@/shared/components/Badge';
 // ============================================
 // TYPES
 // ============================================
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800';
 
 interface PropertyCardProps {
   id: string;
@@ -49,7 +54,9 @@ interface PropertyCardProps {
     floor?: number;
     totalFloors?: number;
   };
-  image: string;
+  images?: string[];
+  /** @deprecated Use `images` array instead */
+  image?: string;
   isFavorite?: boolean;
   isNew?: boolean;
   isVerified?: boolean;
@@ -78,7 +85,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   currency,
   location,
   characteristics,
-  image,
+  images: imagesProp,
+  image: singleImage,
   isFavorite = false,
   isNew = false,
   isVerified = false,
@@ -91,6 +99,15 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 }) => {
   const { theme } = useTheme();
   const heartScale = useRef(new Animated.Value(1)).current;
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [imageWidth, setImageWidth] = useState(0);
+
+  // Resolve images: prefer array, fall back to single image, then placeholder
+  const resolvedImages = (imagesProp && imagesProp.length > 0)
+    ? imagesProp
+    : singleImage
+      ? [singleImage]
+      : [FALLBACK_IMAGE];
 
   const handleFavoritePress = () => {
     Animated.sequence([
@@ -106,6 +123,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     ]).start();
     onFavoritePress?.();
   };
+
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (imageWidth <= 0) return;
+    const index = Math.round(e.nativeEvent.contentOffset.x / imageWidth);
+    setActiveImageIndex(index);
+  }, [imageWidth]);
+
+  const handleImageLayout = useCallback((e: any) => {
+    setImageWidth(e.nativeEvent.layout.width);
+  }, []);
 
   const formatPrice = (value: number | undefined, curr: string) => {
     if (typeof value !== 'number') {
@@ -124,6 +151,18 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     return location.city;
   };
 
+  const renderImage = useCallback(({ item }: { item: string }) => (
+    <Image
+      source={{ uri: item }}
+      style={[styles.image, imageWidth > 0 ? { width: imageWidth } : undefined]}
+      contentFit="cover"
+      cachePolicy="disk"
+      transition={200}
+    />
+  ), [imageWidth]);
+
+  const keyExtractor = useCallback((_: string, index: number) => `img-${index}`, []);
+
   return (
     <Card
       onPress={onPress}
@@ -131,18 +170,51 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       testID={`property-card-${id}`}
     >
       {/* Image Section */}
-      <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: image }}
-          style={styles.image}
-          resizeMode="cover"
-        />
-        
+      <View style={styles.imageContainer} onLayout={handleImageLayout}>
+        {resolvedImages.length === 1 ? (
+          <Image
+            source={{ uri: resolvedImages[0] }}
+            style={styles.image}
+            contentFit="cover"
+            cachePolicy="disk"
+            transition={200}
+          />
+        ) : (
+          <FlatList
+            data={resolvedImages}
+            renderItem={renderImage}
+            keyExtractor={keyExtractor}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            bounces={false}
+            nestedScrollEnabled
+          />
+        )}
+
         {/* Gradient overlay for price */}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.6)']}
           style={styles.imageOverlay}
+          pointerEvents="none"
         />
+
+        {/* Dot Indicators */}
+        {resolvedImages.length > 1 && (
+          <View style={styles.dotsContainer} pointerEvents="none">
+            {resolvedImages.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  index === activeImageIndex ? styles.dotActive : styles.dotInactive,
+                ]}
+              />
+            ))}
+          </View>
+        )}
 
         {/* Badges */}
         <View style={styles.badgesContainer}>
@@ -183,8 +255,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
       {/* Content Section */}
       <View style={styles.content}>
-        <Text 
-          style={[styles.title, { color: theme.colors.textPrimary }]} 
+        <Text
+          style={[styles.title, { color: theme.colors.textPrimary }]}
           numberOfLines={2}
         >
           {title}
@@ -192,8 +264,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         <View style={styles.locationRow}>
           <MapPin size={14} color={theme.colors.textSecondary} />
-          <Text 
-            style={[styles.locationText, { color: theme.colors.textSecondary }]} 
+          <Text
+            style={[styles.locationText, { color: theme.colors.textSecondary }]}
             numberOfLines={1}
           >
             {formatLocation()}
@@ -301,10 +373,11 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     height: 180,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
-    height: '100%',
+    height: 180,
   },
   imageOverlay: {
     position: 'absolute',
@@ -312,6 +385,27 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 60,
+  },
+  dotsContainer: {
+    position: 'absolute',
+    bottom: 44,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 5,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dotActive: {
+    backgroundColor: '#ffffff',
+  },
+  dotInactive: {
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
   badgesContainer: {
     position: 'absolute',
@@ -396,7 +490,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    // borderTopColor applied dynamically
   },
   verifiedRow: {
     flexDirection: 'row',

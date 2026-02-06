@@ -45,6 +45,13 @@ PODS:
     - ExpoModulesCore
   - ExpoFont (14.0.11):
     - ExpoModulesCore
+  - ExpoImage (3.0.11):
+    - ExpoModulesCore
+    - libavif/libdav1d
+    - SDWebImage (~> 5.21.0)
+    - SDWebImageAVIFCoder (~> 0.11.0)
+    - SDWebImageSVGCoder (~> 1.7.0)
+    - SDWebImageWebPCoder (~> 0.14.6)
   - ExpoImagePicker (17.0.10):
     - ExpoModulesCore
   - ExpoKeepAwake (15.0.8):
@@ -88,6 +95,23 @@ PODS:
   - hermes-engine (0.81.5):
     - hermes-engine/Pre-built (= 0.81.5)
   - hermes-engine/Pre-built (0.81.5)
+  - libavif/core (0.11.1)
+  - libavif/libdav1d (0.11.1):
+    - libavif/core
+    - libdav1d (>= 0.6.0)
+  - libdav1d (1.2.0)
+  - libwebp (1.5.0):
+    - libwebp/demux (= 1.5.0)
+    - libwebp/mux (= 1.5.0)
+    - libwebp/sharpyuv (= 1.5.0)
+    - libwebp/webp (= 1.5.0)
+  - libwebp/demux (1.5.0):
+    - libwebp/webp
+  - libwebp/mux (1.5.0):
+    - libwebp/demux
+  - libwebp/sharpyuv (1.5.0)
+  - libwebp/webp (1.5.0):
+    - libwebp/sharpyuv
   - MapboxCommon (24.16.6):
     - Turf (= 4.0.0)
   - MapboxCoreMaps (11.16.6):
@@ -2102,6 +2126,17 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - SDWebImage (5.21.5):
+    - SDWebImage/Core (= 5.21.5)
+  - SDWebImage/Core (5.21.5)
+  - SDWebImageAVIFCoder (0.11.1):
+    - libavif/core (>= 0.11.0)
+    - SDWebImage (~> 5.10)
+  - SDWebImageSVGCoder (1.7.0):
+    - SDWebImage/Core (~> 5.6)
+  - SDWebImageWebPCoder (0.14.6):
+    - libwebp (~> 1.0)
+    - SDWebImage/Core (~> 5.17)
   - Turf (4.0.0)
   - Yoga (0.0.0)
 
@@ -2117,6 +2152,7 @@ DEPENDENCIES:
   - "ExpoDocumentPicker (from `../../node_modules/.pnpm/expo-document-picker@14.0.8_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+_f8eee3a64edb6ee98b7f4ef8552a6842/node_modules/expo-document-picker/ios`)"
   - "ExpoFileSystem (from `../../node_modules/.pnpm/expo-file-system@19.0.21_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+cor_e24a408ed465cc9ab72b57e53ceb8c55/node_modules/expo-file-system/ios`)"
   - "ExpoFont (from `../../node_modules/.pnpm/expo-font@14.0.11_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+core@7.28._7d94de1c0121a3cc624270e42ba4de6c/node_modules/expo-font/ios`)"
+  - "ExpoImage (from `../../node_modules/.pnpm/expo-image@3.0.11_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+core@7.28._c129e9cdd984f573bd04994ce76e1041/node_modules/expo-image/ios`)"
   - "ExpoImagePicker (from `../../node_modules/.pnpm/expo-image-picker@17.0.10_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+co_5598d8351633ced538ff951d19b261e2/node_modules/expo-image-picker/ios`)"
   - "ExpoKeepAwake (from `../../node_modules/.pnpm/expo-keep-awake@15.0.8_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+core@_94f93bbc6c39d2fa4fbfe97582e235cb/node_modules/expo-keep-awake/ios`)"
   - "ExpoLinearGradient (from `../../node_modules/.pnpm/expo-linear-gradient@15.0.8_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+_1f848c6e1ce567183e2256617db8029c/node_modules/expo-linear-gradient/ios`)"
@@ -2205,9 +2241,16 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - libavif
+    - libdav1d
+    - libwebp
     - MapboxCommon
     - MapboxCoreMaps
     - MapboxMaps
+    - SDWebImage
+    - SDWebImageAVIFCoder
+    - SDWebImageSVGCoder
+    - SDWebImageWebPCoder
     - Turf
 
 EXTERNAL SOURCES:
@@ -2233,6 +2276,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/.pnpm/expo-file-system@19.0.21_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+cor_e24a408ed465cc9ab72b57e53ceb8c55/node_modules/expo-file-system/ios"
   ExpoFont:
     :path: "../../node_modules/.pnpm/expo-font@14.0.11_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+core@7.28._7d94de1c0121a3cc624270e42ba4de6c/node_modules/expo-font/ios"
+  ExpoImage:
+    :path: "../../node_modules/.pnpm/expo-image@3.0.11_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+core@7.28._c129e9cdd984f573bd04994ce76e1041/node_modules/expo-image/ios"
   ExpoImagePicker:
     :path: "../../node_modules/.pnpm/expo-image-picker@17.0.10_expo@54.0.32_@babel+core@7.28.5_react-native@0.81.5_@babel+co_5598d8351633ced538ff951d19b261e2/node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
@@ -2415,6 +2460,7 @@ SPEC CHECKSUMS:
   ExpoDocumentPicker: 7cd9e71a0f66fb19eb0a586d6f26eee1284692e0
   ExpoFileSystem: 858a44267a3e6e9057e0888ad7c7cfbf55d52063
   ExpoFont: f543ce20a228dd702813668b1a07b46f51878d47
+  ExpoImage: 686f972bff29525733aa13357f6691dc90aa03d8
   ExpoImagePicker: 1af3e4e31512d2f34c95c2a3018a3edc40aee748
   ExpoKeepAwake: 55f75eca6499bb9e4231ebad6f3e9cb8f99c0296
   ExpoLinearGradient: 809102bdb979f590083af49f7fa4805cd931bd58
@@ -2426,6 +2472,9 @@ SPEC CHECKSUMS:
   ExpoWebBrowser: 17b064c621789e41d4816c95c93f429b84971f52
   FBLazyVector: e95a291ad2dadb88e42b06e0c5fb8262de53ec12
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
+  libavif: 84bbb62fb232c3018d6f1bab79beea87e35de7b7
+  libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
+  libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   MapboxCommon: 10cbf74edb23c9abcfe2424899d804f288a47334
   MapboxCoreMaps: f19680d20681797067268284b2292349de861730
   MapboxMaps: 04c7bf46d66265ad0f4b98484a251777a926c423
@@ -2501,6 +2550,10 @@ SPEC CHECKSUMS:
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845
   RNSVG: 31d6639663c249b7d5abc9728dde2041eb2a3c34
   RNWorklets: edaaaa4b86e1328134296013b5b493169e431e1c
+  SDWebImage: e9c98383c7572d713c1a0d7dd2783b10599b9838
+  SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
+  SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
+  SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Turf: c9eb11a65d96af58cac523460fd40fec5061b081
   Yoga: 5934998fbeaef7845dbf698f698518695ab4cd1a
 

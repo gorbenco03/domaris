@@ -453,7 +453,7 @@ const SearchResultsScreen: React.FC = () => {
             floor: anyItem.floor,
             totalFloors: anyItem.totalFloors,
           }}
-          image={anyItem.images?.[0]?.url || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'}
+          images={(anyItem.images || []).map((i: any) => i.url).filter(Boolean)}
           ownershipStatus={anyItem.ownershipStatus || 'none'}
           onPress={() => handlePropertyPress(String(item.id))}
           isFavorite={favoriteIds.has(String(item.id))}

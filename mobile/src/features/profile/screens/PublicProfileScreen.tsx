@@ -107,7 +107,7 @@ interface PropertyListing {
     bathrooms?: number;
     totalArea: number;
   };
-  image: string;
+  images: string[];
   ownershipStatus?: string;
 }
 
@@ -205,8 +205,6 @@ const mapUserProfile = (backendUser: IPublicUserProfile): PublicUser => {
  * Map backend listing to UI format
  */
 const mapListing = (backendListing: IUserListing): PropertyListing => {
-  const primaryImage = backendListing.images?.find(img => img.isPrimary) || backendListing.images?.[0];
-  
   // Handle null/undefined transactionType - default to 'SALE'
   const transactionType = backendListing.transactionType 
     ? (backendListing.transactionType.toUpperCase() as 'SALE' | 'RENT')
@@ -228,7 +226,7 @@ const mapListing = (backendListing: IUserListing): PropertyListing => {
       bathrooms: backendListing.bathrooms,
       totalArea: backendListing.surfaceSqm || 0,
     },
-    image: primaryImage?.url || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400',
+    images: (backendListing.images || []).map((img: any) => img.url).filter(Boolean),
     ownershipStatus: (backendListing as any).ownershipStatus,
   };
 };
@@ -740,7 +738,7 @@ const PublicProfileScreen: React.FC = () => {
                   currency={listing.currency}
                   location={listing.location}
                   characteristics={listing.characteristics}
-                  image={listing.image}
+                  images={listing.images}
                   ownershipStatus={(listing.ownershipStatus as any) || 'none'}
                   onPress={() => handlePropertyPress(listing.id)}
                   variant="list"

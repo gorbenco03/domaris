@@ -3,19 +3,33 @@
  * Comprehensive property information view
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   SafeAreaView,
   Dimensions,
   Share,
   Alert,
+  FlatList,
+  Modal,
+  StatusBar,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import ReAnimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
 import {
   ArrowLeft,
   Heart,
@@ -51,6 +65,7 @@ import {
   Thermometer,
   Dumbbell,
   CalendarCheck,
+  X,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { 
@@ -126,8 +141,75 @@ const PropertyDetailScreen: React.FC = () => {
   const { isAuthenticated, requireAuth } = useRequireAuth();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
   const viewTrackedRef = useRef<string | null>(null);
+  const galleryFlatListRef = useRef<FlatList>(null);
+  const fullscreenFlatListRef = useRef<FlatList>(null);
   const propertyIdNumber = Number(propertyId);
+
+  const onGalleryScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    setActiveImageIndex(idx);
+  }, []);
+
+  const openFullscreen = useCallback((index: number) => {
+    translateY.value = 0;
+    bgOpacity.value = 1;
+    setFullscreenIndex(index);
+    setFullscreenVisible(true);
+  }, []);
+
+  const onFullscreenScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    setFullscreenIndex(idx);
+  }, []);
+
+  // Swipe-to-dismiss with react-native-reanimated + gesture-handler
+  const translateY = useSharedValue(0);
+  const bgOpacity = useSharedValue(1);
+  const DISMISS_THRESHOLD = 100;
+
+  const closeFullscreen = useCallback(() => {
+    setFullscreenVisible(false);
+    // Sync gallery position
+    if (galleryFlatListRef.current && fullscreenIndex !== activeImageIndex) {
+      galleryFlatListRef.current.scrollToOffset({
+        offset: fullscreenIndex * width,
+        animated: false,
+      });
+      setActiveImageIndex(fullscreenIndex);
+    }
+  }, [fullscreenIndex, activeImageIndex]);
+
+  const dismissGesture = Gesture.Pan()
+    .activeOffsetY([-15, 15])
+    .failOffsetX([-10, 10])
+    .onUpdate((e) => {
+      translateY.value = e.translationY;
+      bgOpacity.value = Math.max(0.2, 1 - Math.abs(e.translationY) / 350);
+    })
+    .onEnd((e) => {
+      if (Math.abs(e.translationY) > DISMISS_THRESHOLD || Math.abs(e.velocityY) > 800) {
+        const target = e.translationY > 0 ? 800 : -800;
+        translateY.value = withTiming(target, { duration: 200 });
+        bgOpacity.value = withTiming(0, { duration: 200 }, () => {
+          runOnJS(closeFullscreen)();
+        });
+      } else {
+        translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
+        bgOpacity.value = withTiming(1, { duration: 150 });
+      }
+    });
+
+  const animatedImageStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const animatedBgStyle = useAnimatedStyle(() => ({
+    backgroundColor: `rgba(0,0,0,${bgOpacity.value})`,
+  }));
 
   // Real data fetching
   const { data: property, isLoading, error } = usePropertyDetail(propertyId);
@@ -240,13 +322,32 @@ const PropertyDetailScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Photo Gallery Header */}
+        {/* Photo Gallery Header — Swipeable Carousel */}
         <View style={styles.galleryContainer}>
-          <Image source={{ uri: images[0] }} style={styles.mainImage} />
-          
+          <FlatList
+            ref={galleryFlatListRef}
+            data={images}
+            keyExtractor={(_, i) => `gallery-${i}`}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={onGalleryScroll}
+            scrollEventThrottle={16}
+            renderItem={({ item, index }) => (
+              <TouchableOpacity
+                activeOpacity={0.95}
+                onPress={() => openFullscreen(index)}
+                style={{ width, height: IMAGE_HEIGHT }}
+              >
+                <Image source={{ uri: item }} style={styles.mainImage} contentFit="cover" cachePolicy="disk" transition={200} />
+              </TouchableOpacity>
+            )}
+          />
+
           <LinearGradient
             colors={['rgba(0,0,0,0.5)', 'transparent']}
             style={styles.headerGradient}
+            pointerEvents="none"
           />
 
           {/* Gallery Overlay Actions */}
@@ -273,10 +374,81 @@ const PropertyDetailScreen: React.FC = () => {
             </View>
           </SafeAreaView>
 
+          {/* Image counter badge */}
           <View style={styles.imageCountBadge}>
-            <Text style={styles.imageCountText}>1 / {images.length}</Text>
+            <Text style={styles.imageCountText}>{activeImageIndex + 1} / {images.length}</Text>
           </View>
+
+          {/* Dot indicators */}
+          {images.length > 1 && (
+            <View style={styles.dotContainer}>
+              {images.map((_: string, i: number) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    { backgroundColor: i === activeImageIndex ? '#ffffff' : 'rgba(255,255,255,0.5)' },
+                  ]}
+                />
+              ))}
+            </View>
+          )}
         </View>
+
+        {/* Fullscreen Image Viewer Modal */}
+        <Modal
+          visible={fullscreenVisible}
+          transparent
+          animationType="none"
+          onRequestClose={closeFullscreen}
+          statusBarTranslucent
+        >
+          <ReAnimated.View style={[styles.fullscreenContainer, animatedBgStyle]}>
+            <StatusBar barStyle="light-content" />
+            <GestureDetector gesture={dismissGesture}>
+              <ReAnimated.View style={[{ flex: 1 }, animatedImageStyle]}>
+                <FlatList
+                  ref={fullscreenFlatListRef}
+                  data={images}
+                  keyExtractor={(_, i) => `fs-${i}`}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onScroll={onFullscreenScroll}
+                  scrollEventThrottle={16}
+                  initialScrollIndex={fullscreenIndex}
+                  getItemLayout={(_, index) => ({
+                    length: width,
+                    offset: width * index,
+                    index,
+                  })}
+                  renderItem={({ item }) => (
+                    <View style={{ width, flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                      <Image
+                        source={{ uri: item }}
+                        style={{ width, height: '100%' }}
+                        contentFit="contain"
+                        cachePolicy="disk"
+                        transition={200}
+                      />
+                    </View>
+                  )}
+                />
+              </ReAnimated.View>
+            </GestureDetector>
+
+            {/* Close button + counter */}
+            <SafeAreaView style={styles.fullscreenHeader}>
+              <TouchableOpacity onPress={closeFullscreen} style={styles.fullscreenCloseBtn}>
+                <X size={24} color="#ffffff" />
+              </TouchableOpacity>
+              <Text style={styles.fullscreenCounter}>
+                {fullscreenIndex + 1} / {images.length}
+              </Text>
+              <View style={{ width: 44 }} />
+            </SafeAreaView>
+          </ReAnimated.View>
+        </Modal>
 
         {/* Content */}
         <View style={[styles.content, { backgroundColor: theme.colors.surface }]}>
@@ -379,7 +551,7 @@ const PropertyDetailScreen: React.FC = () => {
               }}
             >
               <View style={styles.ownerInfo}>
-                <Image source={{ uri: owner?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e' }} style={styles.ownerPhoto} />
+                <Image source={{ uri: owner?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e' }} style={styles.ownerPhoto} cachePolicy="disk" />
                 <View>
                   <View style={styles.ownerNameRow}>
                     <Text style={[styles.ownerName, { color: theme.colors.textPrimary }]}>
@@ -505,17 +677,62 @@ const styles = StyleSheet.create({
   },
   imageCountBadge: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 44,
     right: 20,
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+    zIndex: 5,
   },
   imageCountText: {
     color: '#ffffff',
     fontSize: 12,
     fontFamily: 'Inter-Medium',
+  },
+  dotContainer: {
+    position: 'absolute',
+    bottom: 44,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    zIndex: 5,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  // Fullscreen image viewer
+  fullscreenContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  fullscreenHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 10 : 16,
+  },
+  fullscreenCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenCounter: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
   content: {
     padding: 20,

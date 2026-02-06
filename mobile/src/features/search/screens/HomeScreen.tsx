@@ -375,11 +375,10 @@ const HomeScreen: React.FC = () => {
                     floor: property.floor,
                     totalFloors: property.totalFloors,
                   }}
-                  image={
-                    (property as any).images?.[0]?.url ||
-                    (property as any).photos?.[0]?.url ||
-                    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800'
-                  }
+                  images={[
+                    ...((property as any).images || []).map((i: any) => i.url),
+                    ...((property as any).photos || []).map((i: any) => i.url),
+                  ].filter(Boolean)}
                   onPress={() => handlePropertyPress(String(property.id))}
                   ownershipStatus={(property as any).ownershipStatus || 'none'}
                   isFavorite={favoriteIds.has(String(property.id))}
