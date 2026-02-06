@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
+import { S3Service } from '../../s3/s3.service.js';
 import { AuthOnly, CurrentUser } from '../../core/decorators.js';
 import { AdminGuard } from '../../core/admin.guard.js';
 
@@ -10,7 +11,10 @@ import { AdminGuard } from '../../core/admin.guard.js';
 @AuthOnly()
 @UseGuards(AdminGuard)
 export class AdminController {
-    constructor(private readonly adminService: AdminService) { }
+    constructor(
+        private readonly adminService: AdminService,
+        private readonly s3Service: S3Service,
+    ) { }
 
     @Get('users')
     @ApiOperation({ summary: 'List all users (Admin)' })
@@ -160,5 +164,18 @@ export class AdminController {
     @ApiOperation({ summary: 'Get system stats (Admin)' })
     async getStats() {
         return this.adminService.getSystemStats();
+    }
+
+    @Post('fix-images-acl')
+    @ApiOperation({ summary: 'Fix ACL on all listing images to public-read (one-time)' })
+    async fixImagesAcl() {
+        const listingsCount = await this.s3Service.makeAllPublic('listings/');
+        const ownershipCount = await this.s3Service.makeAllPublic('ownership-docs/');
+        return {
+            success: true,
+            message: `Made ${listingsCount} listing images and ${ownershipCount} ownership docs public`,
+            listingsUpdated: listingsCount,
+            ownershipDocsUpdated: ownershipCount,
+        };
     }
 }

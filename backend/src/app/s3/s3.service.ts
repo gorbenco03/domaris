@@ -78,6 +78,7 @@ export class S3Service implements OnModuleInit {
         Key: key,
         Body: file,
         ContentType: 'image/jpeg',
+        ACL: 'public-read',
       })
       .promise();
 
@@ -131,6 +132,50 @@ export class S3Service implements OnModuleInit {
       );
       throw error;
     }
+  }
+
+  /**
+   * Make all objects under a prefix publicly readable.
+   * Used to fix existing private uploads.
+   */
+  async makeAllPublic(prefix: string = 'listings/'): Promise<number> {
+    let updated = 0;
+    let continuationToken: string | undefined;
+
+    do {
+      const listParams: AWS.S3.ListObjectsV2Request = {
+        Bucket: this.bucket,
+        Prefix: prefix,
+        MaxKeys: 100,
+        ContinuationToken: continuationToken,
+      };
+
+      const listResult = await this.s3.listObjectsV2(listParams).promise();
+
+      for (const obj of listResult.Contents || []) {
+        if (!obj.Key) continue;
+        try {
+          await this.s3
+            .putObjectAcl({
+              Bucket: this.bucket,
+              Key: obj.Key,
+              ACL: 'public-read',
+            })
+            .promise();
+          updated++;
+          this.logger.log(`Made public: ${obj.Key}`);
+        } catch (err: any) {
+          this.logger.error(`Failed to make public: ${obj.Key} — ${err.message}`);
+        }
+      }
+
+      continuationToken = listResult.IsTruncated
+        ? listResult.NextContinuationToken
+        : undefined;
+    } while (continuationToken);
+
+    this.logger.log(`Made ${updated} objects public under prefix "${prefix}"`);
+    return updated;
   }
 
   private getExtensionFromContentType(contentType: string): string | null {
