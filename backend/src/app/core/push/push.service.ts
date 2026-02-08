@@ -471,6 +471,8 @@ export class PushNotificationService {
       body: options.notification.body,
       data: options.notification.data || {},
       sound: options.notification.sound || 'default',
+      ...(options.notification.subtitle && { subtitle: options.notification.subtitle }),
+      ...(options.notification.imageUrl && { mutableContent: true }),
     };
 
     const response = await fetch('https://api.expo.dev/v2/push/send', {
