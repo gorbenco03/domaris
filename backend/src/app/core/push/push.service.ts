@@ -465,14 +465,12 @@ export class PushNotificationService {
 
   private async sendWithExpo(options: SendToDeviceOptions): Promise<boolean> {
     const accessToken = this.configService.get<string>('EXPO_ACCESS_TOKEN');
-    const payload: Record<string, any> = {
+    const payload = {
       to: options.token,
       title: options.notification.title,
       body: options.notification.body,
       data: options.notification.data || {},
       sound: options.notification.sound || 'default',
-      ...(options.notification.subtitle && { subtitle: options.notification.subtitle }),
-      ...(options.notification.imageUrl && { mutableContent: true }),
     };
 
     const response = await fetch('https://api.expo.dev/v2/push/send', {
