@@ -423,18 +423,18 @@ export class PushNotificationService {
 
     // Platform-specific configuration
     if (options.platform === 'ios') {
-      message.apns = {
-        payload: {
-          aps: {
-            badge: options.notification.badge,
-            sound: options.notification.sound || 'default',
-            'mutable-content': 1,
-            alert: {
-              ...(options.notification.subtitle && { subtitle: options.notification.subtitle }),
-            },
-          },
-        },
+      const aps: any = {
+        badge: options.notification.badge,
+        sound: options.notification.sound || 'default',
+        'mutable-content': 1,
       };
+
+      // Only add alert object when subtitle is present, otherwise let Firebase handle title/body
+      if (options.notification.subtitle) {
+        aps.alert = { subtitle: options.notification.subtitle };
+      }
+
+      message.apns = { payload: { aps } };
     } else if (options.platform === 'android') {
       message.android = {
         priority: 'high',
