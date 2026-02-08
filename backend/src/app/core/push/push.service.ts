@@ -483,7 +483,8 @@ export class PushNotificationService {
     });
 
     if (!response.ok) {
-      this.logger.warn(`Expo push failed with HTTP ${response.status}`);
+      const errorBody = await response.text();
+      this.logger.warn(`Expo push failed with HTTP ${response.status}: ${errorBody}`);
       return false;
     }
 
