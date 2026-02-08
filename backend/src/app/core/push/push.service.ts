@@ -25,6 +25,7 @@ import { Notification } from '../../db/entities/notification.entity';
 export interface PushNotificationPayload {
   title: string;
   body: string;
+  subtitle?: string;
   data?: Record<string, string>;
   badge?: number;
   sound?: string;
@@ -357,16 +358,20 @@ export class PushNotificationService {
     oldPrice: number,
     newPrice: number,
     currency: string,
+    imageUrl?: string,
   ): Promise<boolean> {
-    const direction = newPrice < oldPrice ? 'scăzut' : 'crescut';
-    const arrow = newPrice < oldPrice ? '↓' : '↑';
+    const isPriceDrop = newPrice < oldPrice;
+    const direction = isPriceDrop ? 'scăzut' : 'crescut';
+    const arrow = isPriceDrop ? '↓' : '↑';
+    const percent = Math.round(Math.abs((newPrice - oldPrice) / oldPrice) * 100);
 
     return this.sendToUser({
       userId,
       type: NotificationTypes.FAVORITE_PRICE_CHANGE,
       notification: {
-        title: `${arrow} Preț ${direction} la o proprietate favorită`,
-        body: `"${propertyTitle}": ${oldPrice.toLocaleString()} ${currency} → ${newPrice.toLocaleString()} ${currency}`,
+        title: `${arrow} Preț ${direction} cu ${percent}%`,
+        subtitle: propertyTitle,
+        body: `${oldPrice.toLocaleString()} ${currency} → ${newPrice.toLocaleString()} ${currency}`,
         data: {
           type: NotificationTypes.FAVORITE_PRICE_CHANGE,
           propertyId: String(propertyId),
@@ -375,6 +380,7 @@ export class PushNotificationService {
           currency,
         },
         sound: 'notification.wav',
+        ...(imageUrl && { imageUrl }),
       },
     });
   }
@@ -423,6 +429,9 @@ export class PushNotificationService {
             badge: options.notification.badge,
             sound: options.notification.sound || 'default',
             'mutable-content': 1,
+            alert: {
+              ...(options.notification.subtitle && { subtitle: options.notification.subtitle }),
+            },
           },
         },
       };
@@ -433,6 +442,7 @@ export class PushNotificationService {
           sound: options.notification.sound || 'default',
           channelId: 'domaris_default',
           clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+          ...(options.notification.imageUrl && { imageUrl: options.notification.imageUrl }),
         },
       };
     }
@@ -455,12 +465,14 @@ export class PushNotificationService {
 
   private async sendWithExpo(options: SendToDeviceOptions): Promise<boolean> {
     const accessToken = this.configService.get<string>('EXPO_ACCESS_TOKEN');
-    const payload = {
+    const payload: Record<string, any> = {
       to: options.token,
       title: options.notification.title,
       body: options.notification.body,
       data: options.notification.data || {},
       sound: options.notification.sound || 'default',
+      ...(options.notification.subtitle && { subtitle: options.notification.subtitle }),
+      ...(options.notification.imageUrl && { mutableContent: true }),
     };
 
     const response = await fetch('https://api.expo.dev/v2/push/send', {

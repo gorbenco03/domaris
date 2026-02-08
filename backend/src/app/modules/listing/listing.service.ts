@@ -371,6 +371,14 @@ export class ListingService {
 
       if (eligibleUserIds.length === 0) return;
 
+      // Get property image for rich push notification
+      const primaryImage = await ListingImage.findOne({
+        where: { listingId: propertyId },
+        order: [['isPrimary', 'DESC'], ['order', 'ASC']],
+        attributes: ['url'],
+      });
+      const imageUrl = primaryImage?.url;
+
       this.logger.log(
         `Sending price change notifications for property ${propertyId} to ${eligibleUserIds.length} users ` +
         `(${oldPrice} → ${newPrice} ${currency})`
@@ -385,6 +393,7 @@ export class ListingService {
             oldPrice,
             newPrice,
             currency,
+            imageUrl,
           )
         )
       );

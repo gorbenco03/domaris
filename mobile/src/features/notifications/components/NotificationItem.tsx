@@ -6,7 +6,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Notification, NOTIFICATION_TYPE_INFO } from '../types';
-import { MessageCircle, Calendar, CheckCircle, XCircle, Clock, Home, TrendingDown, AlertCircle, Shield, Smartphone, Gift, Bell } from 'lucide-react-native';
+import { MessageCircle, Calendar, CheckCircle, XCircle, Clock, Home, TrendingDown, TrendingUp, AlertCircle, Shield, Smartphone, Gift, Bell, ArrowRight, ChevronRight } from 'lucide-react-native';
 
 interface NotificationItemProps {
   notification: Notification;
@@ -28,6 +28,10 @@ const mapNotificationType = (type: string): string => {
 
 // Default fallback for unknown types
 const DEFAULT_TYPE_INFO = { icon: 'bell', color: '#6366f1', label: 'Notificare' };
+
+const formatPrice = (price: number, currency: string = 'EUR') => {
+  return `${price.toLocaleString('ro-RO')} ${currency}`;
+};
 
 const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPress }) => {
   const { theme } = useTheme();
@@ -66,6 +70,85 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPre
     return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
   };
 
+  // Special rendering for price change notifications
+  if (mappedType === 'price_change' && notification.data?.oldPrice && notification.data?.newPrice) {
+    const oldPrice = Number(notification.data.oldPrice);
+    const newPrice = Number(notification.data.newPrice);
+    const currency = notification.data.currency || 'EUR';
+    const isPriceDrop = newPrice < oldPrice;
+    const percentChange = Math.round(Math.abs((newPrice - oldPrice) / oldPrice) * 100);
+
+    const accentColor = isPriceDrop ? '#10b981' : '#ef4444';
+    const bgTint = isPriceDrop ? '#10b98110' : '#ef444410';
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.container,
+          { backgroundColor: notification.read ? 'transparent' : theme.colors.accent.main + '08' },
+        ]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.unreadIndicator}>
+          {!notification.read && <View style={[styles.dot, { backgroundColor: theme.colors.accent.main }]} />}
+        </View>
+
+        <View style={{ flex: 1 }}>
+          {/* Header row: icon + label + time */}
+          <View style={styles.priceHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: accentColor + '15' }]}>
+              {isPriceDrop
+                ? <TrendingDown size={20} color={accentColor} />
+                : <TrendingUp size={20} color={accentColor} />
+              }
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.title, { color: theme.colors.textPrimary }]} numberOfLines={2}>
+                {notification.title}
+              </Text>
+              <Text style={[styles.time, { color: theme.colors.textTertiary, marginTop: 2 }]}>
+                {formatTime(notification.createdAt)}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={theme.colors.textTertiary} />
+          </View>
+
+          {/* Price change card */}
+          <View style={[styles.priceCard, { backgroundColor: bgTint, borderColor: accentColor + '20' }]}>
+            <View style={styles.priceRow}>
+              {/* Old price */}
+              <View style={styles.priceBlock}>
+                <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Preț anterior</Text>
+                <Text style={[styles.oldPrice, { color: theme.colors.textTertiary }]}>
+                  {formatPrice(oldPrice, currency)}
+                </Text>
+              </View>
+
+              <ArrowRight size={16} color={accentColor} style={{ marginHorizontal: 8, marginTop: 14 }} />
+
+              {/* New price */}
+              <View style={styles.priceBlock}>
+                <Text style={[styles.priceLabel, { color: theme.colors.textTertiary }]}>Preț nou</Text>
+                <Text style={[styles.newPrice, { color: accentColor }]}>
+                  {formatPrice(newPrice, currency)}
+                </Text>
+              </View>
+
+              {/* Percentage badge */}
+              <View style={[styles.percentBadge, { backgroundColor: accentColor }]}>
+                <Text style={styles.percentText}>
+                  {isPriceDrop ? '-' : '+'}{percentChange}%
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  // Default rendering for all other notification types
   return (
     <TouchableOpacity
       style={[styles.container, { backgroundColor: notification.read ? 'transparent' : theme.colors.accent.main + '08' }]}
@@ -75,11 +158,11 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPre
       <View style={styles.unreadIndicator}>
         {!notification.read && <View style={[styles.dot, { backgroundColor: theme.colors.accent.main }]} />}
       </View>
-      
+
       <View style={[styles.iconContainer, { backgroundColor: typeInfo.color + '15' }]}>
         {getIcon()}
       </View>
-      
+
       <View style={styles.content}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]} numberOfLines={1}>
           {notification.title}
@@ -91,7 +174,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPre
           {formatTime(notification.createdAt)}
         </Text>
       </View>
-      
+
       {notification.imageUrl && (
         <Image source={{ uri: notification.imageUrl }} style={styles.image} />
       )}
@@ -109,6 +192,27 @@ const styles = StyleSheet.create({
   body: { fontSize: 14, lineHeight: 20, marginBottom: 4 },
   time: { fontSize: 12 },
   image: { width: 48, height: 48, borderRadius: 8, marginLeft: 12 },
+  // Price change styles
+  priceHeader: { flexDirection: 'row', alignItems: 'center' },
+  priceCard: {
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  priceRow: { flexDirection: 'row', alignItems: 'center' },
+  priceBlock: { flex: 1 },
+  priceLabel: { fontSize: 11, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2 },
+  oldPrice: { fontSize: 15, fontWeight: '600', textDecorationLine: 'line-through' },
+  newPrice: { fontSize: 17, fontWeight: '700' },
+  percentBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  percentText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 });
 
 export default NotificationItem;

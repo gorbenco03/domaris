@@ -52,7 +52,8 @@ const NotificationsCenterScreen: React.FC = () => {
       userId: String(n.userId),
       type: n.type.toLowerCase().replace(/_/g, '_') as any,
       title: n.title,
-      body: n.body, // Backend returns 'body' not 'message'
+      body: n.body,
+      data: n.metadata,
       read: n.isRead,
       readAt: n.isRead ? new Date() : undefined,
       channels: ['push', 'in_app'],
