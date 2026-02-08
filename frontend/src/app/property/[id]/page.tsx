@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -25,18 +26,13 @@ import {
   Phone,
   Mail,
   BadgeCheck,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
-
-const propertyImages = [
-  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=1200&auto=format&fit=crop",
-];
+import { getPropertyDetail, PropertyListing, searchProperties } from "@/lib/propertiesApi";
 
 const timeSlots = [
   "09:00",
@@ -50,67 +46,65 @@ const timeSlots = [
   "18:00",
 ];
 
-// Mock owner data
-const ownerData = {
-  id: "owner-1",
-  name: "Alexandru Munteanu",
-  avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop",
-  phone: "+373 69 123 456",
-  email: "alex.munteanu@email.com",
-  isVerified: true,
-  memberSince: "Ianuarie 2024",
-  totalListings: 4,
-};
-
-// Mock other properties from same owner
-const ownerProperties = [
-  {
-    id: 2,
-    image: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800&auto=format&fit=crop",
-    price: "89.500 €",
-    priceType: "sale" as const,
-    title: "Apartament 2 camere - Centru",
-    location: "Strada Ștefan cel Mare, Chișinău",
-    rooms: 2,
-    baths: 1,
-    area: 58,
-    tags: ["Nou"],
-  },
-  {
-    id: 3,
-    image: "https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=800&auto=format&fit=crop",
-    price: "450 €",
-    priceType: "rent" as const,
-    title: "Apartament 3 camere - Botanica",
-    location: "Bulevardul Dacia, Chișinău",
-    rooms: 3,
-    baths: 1,
-    area: 75,
-    tags: ["Chirie"],
-  },
-  {
-    id: 4,
-    image: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&auto=format&fit=crop",
-    price: "155.000 €",
-    priceType: "sale" as const,
-    title: "Casă cu curte - Durlești",
-    location: "Strada Livezilor, Durlești",
-    rooms: 4,
-    baths: 2,
-    area: 180,
-    tags: ["Casă"],
-  },
-];
-
 export default function PropertyDetailPage() {
+  const params = useParams();
+  const propertyId = params.id as string;
+
+  // Property data state
+  const [property, setProperty] = useState<PropertyListing | null>(null);
+  const [relatedProperties, setRelatedProperties] = useState<PropertyListing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // UI state
   const [currentImage, setCurrentImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [bookingStep, setBookingStep] = useState(1);
 
-  const nextImage = () => setCurrentImage((prev) => (prev + 1) % propertyImages.length);
-  const prevImage = () => setCurrentImage((prev) => (prev - 1 + propertyImages.length) % propertyImages.length);
+  // Fetch property data
+  useEffect(() => {
+    const fetchProperty = async () => {
+      if (!propertyId) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const data = await getPropertyDetail(propertyId);
+        setProperty(data);
+        
+        // Fetch related properties from same city
+        if (data.city) {
+          try {
+            const related = await searchProperties({
+              city: data.city,
+              limit: 3,
+            });
+            // Filter out current property
+            setRelatedProperties(
+              related.data.filter(p => p.id !== data.id).slice(0, 3)
+            );
+          } catch {
+            // Ignore related properties errors
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch property:", err);
+        setError("Nu am putut încărca proprietatea");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProperty();
+  }, [propertyId]);
+
+  const propertyImages = property?.images?.map(img => img.url) || [];
+  
+  const nextImage = () => setCurrentImage((prev) => (prev + 1) % Math.max(propertyImages.length, 1));
+  const prevImage = () => setCurrentImage((prev) => (prev - 1 + Math.max(propertyImages.length, 1)) % Math.max(propertyImages.length, 1));
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -144,6 +138,35 @@ export default function PropertyDetailPage() {
       setBookingStep(2);
     }
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !property) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
+          <p className="text-lg text-muted-foreground">{error || "Proprietatea nu a fost găsită"}</p>
+          <Button asChild>
+            <Link href="/search">Înapoi la căutare</Link>
+          </Button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -230,47 +253,52 @@ export default function PropertyDetailPage() {
               {/* Tags */}
               <div className="mb-4 flex gap-2">
                 <span className="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground">
-                  De vânzare
+                  {property.transactionType === "RENT" ? "De închiriat" : "De vânzare"}
                 </span>
                 <span className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">
-                  Apartament
+                  {property.propertyType}
                 </span>
               </div>
 
               {/* Title & Location */}
               <h1 className="mb-2 text-3xl font-bold text-foreground lg:text-4xl">
-                Spațiu 5 camere - Tineretului
+                {property.title}
               </h1>
               <div className="mb-6 flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-5 w-5 text-accent" />
-                <span>Strada Tineretului nr. 28, Tineretului, București</span>
+                <span>{property.address || `${property.neighborhood || ""}, ${property.city}`}</span>
               </div>
 
               {/* Price */}
               <div className="mb-8">
-                <p className="text-4xl font-bold text-primary">203.910 €</p>
+                <p className="text-4xl font-bold text-primary">
+                  {property.priceEur.toLocaleString()} €
+                  {property.transactionType === "RENT" && <span className="text-lg font-normal text-muted-foreground">/lună</span>}
+                </p>
               </div>
 
               {/* Specs Grid */}
               <div className="mb-8 grid grid-cols-2 gap-4 rounded-2xl border border-border bg-card p-6 sm:grid-cols-4">
                 <div className="text-center">
                   <BedDouble className="mx-auto mb-2 h-8 w-8 text-accent" />
-                  <p className="text-2xl font-bold text-foreground">5</p>
+                  <p className="text-2xl font-bold text-foreground">{property.rooms}</p>
                   <p className="text-sm uppercase text-muted-foreground">Camere</p>
                 </div>
                 <div className="text-center">
                   <Maximize2 className="mx-auto mb-2 h-8 w-8 text-accent" />
-                  <p className="text-2xl font-bold text-foreground">142 m²</p>
+                  <p className="text-2xl font-bold text-foreground">{property.surfaceSqm} m²</p>
                   <p className="text-sm uppercase text-muted-foreground">Suprafață</p>
                 </div>
                 <div className="text-center">
                   <Building className="mx-auto mb-2 h-8 w-8 text-accent" />
-                  <p className="text-2xl font-bold text-foreground">3/11</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {property.floor !== undefined ? `${property.floor}/${property.totalFloors || "?"}` : "-"}
+                  </p>
                   <p className="text-sm uppercase text-muted-foreground">Etaj</p>
                 </div>
                 <div className="text-center">
                   <CalendarIcon className="mx-auto mb-2 h-8 w-8 text-accent" />
-                  <p className="text-2xl font-bold text-foreground">1982</p>
+                  <p className="text-2xl font-bold text-foreground">{property.yearBuilt || "-"}</p>
                   <p className="text-sm uppercase text-muted-foreground">An constr.</p>
                 </div>
               </div>
@@ -279,16 +307,7 @@ export default function PropertyDetailPage() {
               <div className="mb-8">
                 <h2 className="mb-4 text-xl font-semibold text-foreground">Descriere</h2>
                 <div className="prose prose-sm max-w-none text-muted-foreground">
-                  <p>
-                    Apartament spațios cu 5 camere situat în zona Tineretului, într-un bloc cu 
-                    acces facil la transportul public și aproape de parcul Tineretului. 
-                    Proprietatea beneficiază de o suprafață generoasă de 142 mp și este 
-                    perfect pentru o familie mare sau pentru a fi transformat în spațiu de birouri.
-                  </p>
-                  <p className="mt-4">
-                    Imobilul dispune de 5 camere luminoase, 2 băi, bucătărie separată și balcon. 
-                    Recent renovat cu materiale de calitate superioară.
-                  </p>
+                  <p className="whitespace-pre-wrap">{property.description}</p>
                 </div>
               </div>
 
@@ -296,22 +315,36 @@ export default function PropertyDetailPage() {
               <div>
                 <h2 className="mb-4 text-xl font-semibold text-foreground">Facilități</h2>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {[
-                    "Balcon",
-                    "Centrală termică",
-                    "Aer condiționat",
-                    "Loc parcare",
-                    "Lift",
-                    "Termopan",
-                    "Gresie/Faianță",
-                    "Parchet",
-                    "Bucătărie utilată",
-                  ].map((feature) => (
-                    <div key={feature} className="flex items-center gap-2 text-foreground">
+                  {property.isFurnished && (
+                    <div className="flex items-center gap-2 text-foreground">
                       <Check className="h-5 w-5 text-accent" />
-                      <span>{feature}</span>
+                      <span>Mobilat</span>
                     </div>
-                  ))}
+                  )}
+                  {property.hasCentralHeating && (
+                    <div className="flex items-center gap-2 text-foreground">
+                      <Check className="h-5 w-5 text-accent" />
+                      <span>Centrală termică</span>
+                    </div>
+                  )}
+                  {property.hasParking && (
+                    <div className="flex items-center gap-2 text-foreground">
+                      <Check className="h-5 w-5 text-accent" />
+                      <span>Loc parcare</span>
+                    </div>
+                  )}
+                  {property.hasBalcony && (
+                    <div className="flex items-center gap-2 text-foreground">
+                      <Check className="h-5 w-5 text-accent" />
+                      <span>Balcon</span>
+                    </div>
+                  )}
+                  {property.bathrooms && property.bathrooms > 0 && (
+                    <div className="flex items-center gap-2 text-foreground">
+                      <Check className="h-5 w-5 text-accent" />
+                      <span>{property.bathrooms} {property.bathrooms === 1 ? "Baie" : "Băi"}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -326,17 +359,19 @@ export default function PropertyDetailPage() {
                 {/* Property Summary */}
                 <div className="mb-6 flex gap-4 rounded-xl bg-muted p-4">
                   <div className="h-16 w-20 overflow-hidden rounded-lg bg-secondary">
-                    <img
-                      src={propertyImages[0]}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
+                    {propertyImages[0] && (
+                      <img
+                        src={propertyImages[0]}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    )}
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">Spațiu 5 camere - Tineretului</p>
+                    <p className="font-medium text-foreground">{property.title}</p>
                     <p className="text-sm text-muted-foreground">
                       <MapPin className="mr-1 inline h-3 w-3" />
-                      Strada Tineretului nr. 28
+                      {property.city}
                     </p>
                   </div>
                 </div>
@@ -498,23 +533,23 @@ export default function PropertyDetailPage() {
             <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
               <div className="flex items-center gap-4">
                 <div className="relative h-16 w-16 overflow-hidden rounded-full bg-muted">
-                  <img
-                    src={ownerData.avatar}
-                    alt={ownerData.name}
-                    className="h-full w-full object-cover"
-                  />
+                  {property.ownerAvatar && (
+                    <img
+                      src={property.ownerAvatar}
+                      alt={property.ownerName || "Proprietar"}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-semibold text-foreground">
-                      {ownerData.name}
+                      {property.ownerName || "Proprietar"}
                     </h3>
-                    {ownerData.isVerified && (
-                      <BadgeCheck className="h-5 w-5 text-primary" />
-                    )}
+                    <BadgeCheck className="h-5 w-5 text-primary" />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Membru din {ownerData.memberSince} · {ownerData.totalListings} anunțuri
+                    Proprietar verificat
                   </p>
                 </div>
               </div>
@@ -530,17 +565,31 @@ export default function PropertyDetailPage() {
               </div>
             </div>
 
-            {/* Other Properties from Owner */}
-            <div>
-              <h2 className="mb-6 text-xl font-semibold text-foreground">
-                Alte proprietăți de la acest proprietar
-              </h2>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {ownerProperties.map((property) => (
-                  <PropertyCard key={property.id} {...property} />
-                ))}
+            {/* Related Properties */}
+            {relatedProperties.length > 0 && (
+              <div>
+                <h2 className="mb-6 text-xl font-semibold text-foreground">
+                  Alte proprietăți similare
+                </h2>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {relatedProperties.map((relatedProperty) => (
+                    <PropertyCard
+                      key={relatedProperty.id}
+                      id={relatedProperty.id}
+                      image={relatedProperty.images?.[0]?.url || ""}
+                      price={`${relatedProperty.priceEur.toLocaleString()} €`}
+                      priceType={relatedProperty.transactionType === "RENT" ? "rent" : "sale"}
+                      title={relatedProperty.title}
+                      location={`${relatedProperty.neighborhood || ""}, ${relatedProperty.city}`}
+                      rooms={relatedProperty.rooms}
+                      baths={relatedProperty.bathrooms || 1}
+                      area={relatedProperty.surfaceSqm}
+                      tags={[]}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PropertyCard } from "@/components/PropertyCard";
@@ -17,6 +17,7 @@ import {
   Home,
   Store,
   Mountain,
+  Loader2,
 } from "lucide-react";
 import {
   Select,
@@ -34,130 +35,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { PropertyTypeFilters, PropertyType } from "@/components/search/PropertyTypeFilters";
-
-const mockProperties = [
-  {
-    id: 1,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop",
-    price: "564 €",
-    priceType: "rent" as const,
-    title: "Apartament 1 cameră - Drumul Taberei",
-    location: "Drumul Taberei, București",
-    rooms: 1,
-    baths: 1,
-    area: 51,
-    tags: ["De închiriat"],
-    lat: 44.4134,
-    lng: 26.0271,
-    propertyType: "apartments" as PropertyType,
-  },
-  {
-    id: 2,
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&auto=format&fit=crop",
-    price: "203.910 €",
-    priceType: "sale" as const,
-    title: "Spațiu comercial - Tineretului",
-    location: "Strada Tineretului nr. 28, București",
-    rooms: 5,
-    baths: 2,
-    area: 142,
-    tags: ["De vânzare"],
-    lat: 44.4076,
-    lng: 26.1063,
-    propertyType: "commercial" as PropertyType,
-  },
-  {
-    id: 3,
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop",
-    price: "185.000 €",
-    priceType: "sale" as const,
-    title: "Apartament modern 3 camere",
-    location: "Floreasca, București",
-    rooms: 3,
-    baths: 1,
-    area: 85,
-    isFavorite: true,
-    tags: ["De vânzare"],
-    lat: 44.4671,
-    lng: 26.0955,
-    propertyType: "apartments" as PropertyType,
-  },
-  {
-    id: 4,
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop",
-    price: "890 €",
-    priceType: "rent" as const,
-    title: "Penthouse cu terasă",
-    location: "Aviatorilor, București",
-    rooms: 2,
-    baths: 1,
-    area: 95,
-    tags: ["De închiriat"],
-    lat: 44.4612,
-    lng: 26.0803,
-    propertyType: "apartments" as PropertyType,
-  },
-  {
-    id: 5,
-    image: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&auto=format&fit=crop",
-    price: "320.000 €",
-    priceType: "sale" as const,
-    title: "Vilă cu grădină - Pipera",
-    location: "Pipera, București",
-    rooms: 4,
-    baths: 3,
-    area: 220,
-    tags: ["De vânzare"],
-    lat: 44.4909,
-    lng: 26.1148,
-    propertyType: "houses" as PropertyType,
-  },
-  {
-    id: 6,
-    image: "https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=800&auto=format&fit=crop",
-    price: "1.200 €",
-    priceType: "rent" as const,
-    title: "Casă de vacanță",
-    location: "Snagov, Ilfov",
-    rooms: 3,
-    baths: 2,
-    area: 150,
-    tags: ["De închiriat"],
-    lat: 44.6923,
-    lng: 26.1485,
-    propertyType: "houses" as PropertyType,
-  },
-  {
-    id: 7,
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&auto=format&fit=crop",
-    price: "450.000 €",
-    priceType: "sale" as const,
-    title: "Spațiu birouri clasa A",
-    location: "Piața Victoriei, București",
-    rooms: 8,
-    baths: 2,
-    area: 350,
-    tags: ["De vânzare"],
-    lat: 44.4525,
-    lng: 26.0857,
-    propertyType: "commercial" as PropertyType,
-  },
-  {
-    id: 8,
-    image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&auto=format&fit=crop",
-    price: "85.000 €",
-    priceType: "sale" as const,
-    title: "Teren intravilan 1000mp",
-    location: "Bragadiru, Ilfov",
-    rooms: 0,
-    baths: 0,
-    area: 1000,
-    tags: ["De vânzare"],
-    lat: 44.3672,
-    lng: 25.9756,
-    propertyType: "land" as PropertyType,
-  },
-];
+import { searchProperties, PropertyListing, PropertySearchParams } from "@/lib/propertiesApi";
 
 const propertyTypeTabs = [
   { id: "apartments" as PropertyType, label: "Apartamente", icon: Building2 },
@@ -166,20 +44,76 @@ const propertyTypeTabs = [
   { id: "land" as PropertyType, label: "Terenuri", icon: Mountain },
 ];
 
+// Map UI property types to backend types
+const propertyTypeMap: Record<PropertyType, string> = {
+  apartments: "APARTMENT",
+  houses: "HOUSE",
+  commercial: "COMMERCIAL",
+  land: "LAND",
+};
+
 export default function SearchPage() {
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [sortBy, setSortBy] = useState("relevance");
   const [propertyType, setPropertyType] = useState<PropertyType>("apartments");
+  
+  // API state
+  const [properties, setProperties] = useState<PropertyListing[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const limit = 12;
 
-  // Filter properties based on selected type
-  const filteredProperties = mockProperties.filter(
-    (p) => p.propertyType === propertyType
-  );
+  // Fetch properties
+  const fetchProperties = useCallback(async () => {
+    setIsLoading(true);
+    
+    try {
+      const params: PropertySearchParams = {
+        propertyType: propertyTypeMap[propertyType],
+        limit,
+        page,
+      };
+      
+      // Map sort options
+      if (sortBy === "newest") {
+        params.sortBy = "createdAt";
+        params.sortOrder = "DESC";
+      } else if (sortBy === "price-asc") {
+        params.sortBy = "price";
+        params.sortOrder = "ASC";
+      } else if (sortBy === "price-desc") {
+        params.sortBy = "price";
+        params.sortOrder = "DESC";
+      }
+      
+      const response = await searchProperties(params);
+      setProperties(response.data);
+      setTotal(response.total);
+    } catch (error) {
+      console.error("Failed to fetch properties:", error);
+      setProperties([]);
+      setTotal(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [propertyType, sortBy, page]);
+
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [propertyType, sortBy]);
 
   const getPropertyTypeLabel = () => {
     const tab = propertyTypeTabs.find((t) => t.id === propertyType);
     return tab?.label || "Proprietăți";
   };
+
+  const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="min-h-screen bg-background">
@@ -261,7 +195,7 @@ export default function SearchPage() {
             {/* Results Header */}
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">{filteredProperties.length}</span> {getPropertyTypeLabel().toLowerCase()}
+                <span className="font-semibold text-foreground">{total}</span> {getPropertyTypeLabel().toLowerCase()}
               </p>
 
               <div className="flex items-center gap-2">
@@ -307,12 +241,28 @@ export default function SearchPage() {
               </div>
             </div>
 
-            {/* Results Grid / Map */}
-            {viewMode === "list" ? (
-              filteredProperties.length > 0 ? (
+            {/* Loading State */}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              </div>
+            ) : viewMode === "list" ? (
+              properties.length > 0 ? (
                 <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                  {filteredProperties.map((property) => (
-                    <PropertyCard key={property.id} {...property} />
+                  {properties.map((property) => (
+                    <PropertyCard
+                      key={property.id}
+                      id={property.id}
+                      image={property.images?.[0]?.url || ""}
+                      price={`${property.priceEur.toLocaleString()} €`}
+                      priceType={property.transactionType === "RENT" ? "rent" : "sale"}
+                      title={property.title}
+                      location={`${property.neighborhood || ""}, ${property.city}`}
+                      rooms={property.rooms}
+                      baths={property.bathrooms || 1}
+                      area={property.surfaceSqm}
+                      tags={property.transactionType === "RENT" ? ["De închiriat"] : ["De vânzare"]}
+                    />
                   ))}
                 </div>
               ) : (
@@ -331,18 +281,18 @@ export default function SearchPage() {
             ) : (
               <div className="h-[600px] rounded-2xl border border-border overflow-hidden">
                 <PropertyMap 
-                  properties={filteredProperties.map(p => ({
+                  properties={properties.map(p => ({
                     id: p.id,
                     title: p.title,
-                    price: p.price,
-                    location: p.location,
-                    lat: p.lat,
-                    lng: p.lng,
-                    image: p.image,
+                    price: `${p.priceEur.toLocaleString()} €`,
+                    location: `${p.neighborhood || ""}, ${p.city}`,
+                    lat: p.lat || 44.4268,
+                    lng: p.lng || 26.1025,
+                    image: p.images?.[0]?.url || "",
                     rooms: p.rooms,
-                    baths: p.baths,
-                    area: p.area,
-                    priceType: p.priceType,
+                    baths: p.bathrooms || 1,
+                    area: p.surfaceSqm,
+                    priceType: p.transactionType === "RENT" ? "rent" as const : "sale" as const,
                   }))}
                   onViewDetails={(id) => {
                     window.open(`/property/${id}`, '_blank');
@@ -351,27 +301,51 @@ export default function SearchPage() {
               </div>
             )}
 
-            {/* Pagination - only show if there are results */}
-            {filteredProperties.length > 0 && (
+            {/* Pagination */}
+            {properties.length > 0 && totalPages > 1 && (
               <div className="mt-8 flex justify-center">
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={page === 1}
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                  >
                     Anterior
                   </Button>
-                  <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">
-                    1
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    2
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    3
-                  </Button>
-                  <span className="px-2 text-muted-foreground">...</span>
-                  <Button variant="outline" size="sm">
-                    10
-                  </Button>
-                  <Button variant="outline" size="sm">
+                  
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (page <= 3) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = page - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(pageNum)}
+                        className={cn(
+                          page === pageNum && "bg-primary text-primary-foreground"
+                        )}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={page === totalPages}
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  >
                     Următor
                   </Button>
                 </div>

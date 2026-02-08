@@ -71,18 +71,18 @@ export default function ProfilePage() {
     { icon: HelpCircle, label: "Ajutor & Suport", sublabel: "Centre de ajutor", href: "/help" },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push("/");
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  const getInitials = (firstName?: string, lastName?: string) => {
+    const initials = [firstName?.[0], lastName?.[0]].filter(Boolean).join("");
+    return initials.toUpperCase() || "U";
+  };
+
+  const getFullName = () => {
+    return [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Utilizator";
   };
 
   return (
@@ -95,10 +95,10 @@ export default function ProfilePage() {
           <div className="p-6 lg:p-8">
             <div className="flex items-center gap-4">
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-3xl font-bold text-white">
-                {user?.name ? getInitials(user.name) : "U"}
+                {getInitials(user?.firstName, user?.lastName)}
               </div>
               <div className="flex-1 text-white">
-                <h1 className="text-2xl font-bold">{user?.name || "Utilizator"}</h1>
+                <h1 className="text-2xl font-bold">{getFullName()}</h1>
                 <div className="mt-1 flex flex-col gap-1 text-sm text-white/70 sm:flex-row sm:gap-4">
                   <span className="flex items-center gap-1">
                     <MapPin className="h-4 w-4" />
@@ -106,7 +106,7 @@ export default function ProfilePage() {
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    Membru din {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("ro-RO", { month: "long", year: "numeric" }) : "februarie 2026"}
+                    Membru din februarie 2026
                   </span>
                 </div>
               </div>

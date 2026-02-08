@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Home, Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { forgotPassword, ApiError } from "@/lib/api";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -17,14 +18,19 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setSent(true);
-    setIsLoading(false);
-    toast.success("Email trimis!", {
-      description: "Verifică-ți inbox-ul pentru instrucțiuni.",
-    });
+    try {
+      await forgotPassword(email);
+      setSent(true);
+      toast.success("Email trimis!", {
+        description: "Verifică-ți inbox-ul pentru instrucțiuni.",
+      });
+    } catch (error) {
+      const apiError = error as ApiError;
+      const message = apiError?.message || "Eroare la trimiterea emailului";
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

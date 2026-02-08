@@ -1,30 +1,57 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PropertyCard } from "@/components/PropertyCard";
 import { Button } from "@/components/ui/button";
-import { Home, Plus, ArrowLeft } from "lucide-react";
+import { Home, Plus, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-
-const mockMyProperties = [
-  {
-    id: 1,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop",
-    price: "564 €",
-    priceType: "rent" as const,
-    title: "Apartament 1 cameră - Drumul Taberei",
-    location: "Drumul Taberei, București",
-    rooms: 1,
-    baths: 1,
-    area: 51,
-    tags: ["De închiriat"],
-  },
-];
+import { getMyProperties, PropertyListing } from "@/lib/propertiesApi";
 
 export default function MyPropertiesPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  
+  // API state
+  const [properties, setProperties] = useState<PropertyListing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      if (!isAuthenticated) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const data = await getMyProperties();
+        setProperties(data);
+      } catch (err) {
+        console.error("Failed to fetch my properties:", err);
+        setError("Nu am putut încărca proprietățile tale");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (!isAuthLoading) {
+      fetchProperties();
+    }
+  }, [isAuthenticated, isAuthLoading]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -60,7 +87,7 @@ export default function MyPropertiesPage() {
           <div>
             <h1 className="text-3xl font-bold">Proprietățile mele</h1>
             <p className="mt-1 text-muted-foreground">
-              {mockMyProperties.length} anunțuri active
+              {properties.length} anunțuri active
             </p>
           </div>
           <Button asChild>
@@ -71,10 +98,33 @@ export default function MyPropertiesPage() {
           </Button>
         </div>
 
-        {mockMyProperties.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-border bg-card py-16 text-center">
+            <p className="text-muted-foreground">{error}</p>
+            <Button onClick={() => window.location.reload()} className="mt-4">
+              Încearcă din nou
+            </Button>
+          </div>
+        ) : properties.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {mockMyProperties.map((property) => (
-              <PropertyCard key={property.id} {...property} />
+            {properties.map((property) => (
+              <PropertyCard
+                key={property.id}
+                id={property.id}
+                image={property.images?.[0]?.url || ""}
+                price={`${property.priceEur.toLocaleString()} €`}
+                priceType={property.transactionType === "RENT" ? "rent" : "sale"}
+                title={property.title}
+                location={`${property.neighborhood || ""}, ${property.city}`}
+                rooms={property.rooms}
+                baths={property.bathrooms || 1}
+                area={property.surfaceSqm}
+                tags={property.transactionType === "RENT" ? ["De închiriat"] : ["De vânzare"]}
+              />
             ))}
           </div>
         ) : (

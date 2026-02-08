@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Bell, User, MessageSquare, Calendar, Home, ChevronDown, LogOut, CheckCircle2, Clock, FileCheck, ArrowRight } from "lucide-react";
+import { Bell, User, MessageSquare, Calendar, Home, ChevronDown, LogOut, Clock, ArrowRight, Heart, Shield, CreditCard, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,36 +18,35 @@ import {
 } from "@/components/ui/popover";
 import { useAuth } from "@/contexts/AuthContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getNotifications, markAllNotificationsAsRead, Notification, NotificationType } from "@/lib/notificationsApi";
+import { formatDistanceToNow } from "date-fns";
+import { ro } from "date-fns/locale";
 
-const mockNotifications = [
-  {
-    id: 1,
-    title: "Vizionare confirmată",
-    message: "Maria Ionescu a confirmat vizionarea pentru mâine la 14:00",
-    time: "Acum 5 min",
-    read: false,
-    icon: CheckCircle2,
-    iconColor: "text-emerald-500",
-  },
-  {
-    id: 2,
-    title: "Mesaj nou",
-    message: "Andrei Popa: Perfect, ne vedem mâine la vizionare",
-    time: "Acum 1 oră",
-    read: false,
-    icon: MessageSquare,
-    iconColor: "text-blue-500",
-  },
-  {
-    id: 3,
-    title: "Anunț aprobat",
-    message: "Anunțul tău 'Apartament 3 camere - Floreasca' a fost aprobat",
-    time: "Ieri",
-    read: true,
-    icon: FileCheck,
-    iconColor: "text-violet-500",
-  },
-];
+const notificationIcons: Record<NotificationType, typeof Bell> = {
+  MESSAGE: MessageSquare,
+  VIEWING_CONFIRMED: Calendar,
+  VIEWING_REMINDER: Calendar,
+  VIEWING_CANCELLED: Calendar,
+  NEW_PROPERTY_MATCH: Home,
+  PROPERTY_STATUS_CHANGE: Home,
+  FAVORITE_PRICE_DROP: Heart,
+  VERIFICATION_STATUS_CHANGE: Shield,
+  SUBSCRIPTION_EXPIRING: CreditCard,
+  SYSTEM_ANNOUNCEMENT: Megaphone,
+};
+
+const notificationColors: Record<NotificationType, string> = {
+  MESSAGE: "text-blue-500",
+  VIEWING_CONFIRMED: "text-green-500",
+  VIEWING_REMINDER: "text-orange-500",
+  VIEWING_CANCELLED: "text-red-500",
+  NEW_PROPERTY_MATCH: "text-purple-500",
+  PROPERTY_STATUS_CHANGE: "text-indigo-500",
+  FAVORITE_PRICE_DROP: "text-pink-500",
+  VERIFICATION_STATUS_CHANGE: "text-teal-500",
+  SUBSCRIPTION_EXPIRING: "text-yellow-500",
+  SYSTEM_ANNOUNCEMENT: "text-gray-500",
+};
 
 const mockMessages = [
   {
@@ -74,8 +74,35 @@ const mockMessages = [
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const unreadNotifications = mockNotifications.filter((n) => !n.read).length;
+  // Fetch notifications on mount and every 30s
+  const fetchNotifications = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const data = await getNotifications();
+      setNotifications(data.slice(0, 5)); // Show only latest 5 in popover
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
   const unreadMessages = mockMessages.filter((m) => m.unread).length;
 
   const navLinks = [{
@@ -218,28 +245,33 @@ export const Navbar = () => {
                         </span>
                       )}
                     </div>
-                    <button className="text-xs font-medium text-primary transition-colors hover:text-primary/80">
+                    <button 
+                      onClick={handleMarkAllAsRead}
+                      className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                    >
                       Marchează citite
                     </button>
                   </div>
                   <ScrollArea className="max-h-[320px]">
                     <div className="divide-y divide-border">
-                      {mockNotifications.map((notif) => {
-                        const IconComponent = notif.icon;
+                      {notifications.length > 0 ? notifications.map((notif) => {
+                        const IconComponent = notificationIcons[notif.type] || Bell;
+                        const colorClass = notificationColors[notif.type] || "text-gray-500";
                         return (
-                          <div
+                          <Link
                             key={notif.id}
-                            className={`flex items-start gap-3 p-4 transition-all hover:bg-muted/50 ${!notif.read ? "bg-primary/5" : ""}`}
+                            href="/notifications"
+                            className={`flex items-start gap-3 p-4 transition-all hover:bg-muted/50 ${!notif.isRead ? "bg-primary/5" : ""}`}
                           >
-                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted ${notif.iconColor}`}>
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted ${colorClass}`}>
                               <IconComponent className="h-5 w-5" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-2">
-                                <p className={`text-sm font-medium ${!notif.read ? "text-foreground" : "text-muted-foreground"}`}>
+                                <p className={`text-sm font-medium ${!notif.isRead ? "text-foreground" : "text-muted-foreground"}`}>
                                   {notif.title}
                                 </p>
-                                {!notif.read && (
+                                {!notif.isRead && (
                                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
                                 )}
                               </div>
@@ -248,14 +280,27 @@ export const Navbar = () => {
                               </p>
                               <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
-                                {notif.time}
+                                {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true, locale: ro })}
                               </div>
                             </div>
-                          </div>
+                          </Link>
                         );
-                      })}
+                      }) : (
+                        <div className="p-8 text-center text-sm text-muted-foreground">
+                          Nicio notificare
+                        </div>
+                      )}
                     </div>
                   </ScrollArea>
+                  <div className="border-t border-border bg-muted/30 px-4 py-3">
+                    <Link 
+                      href="/notifications" 
+                      className="flex items-center justify-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+                    >
+                      Vezi toate notificările
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
                 </PopoverContent>
               </Popover>
 
@@ -266,7 +311,7 @@ export const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" className="ml-1 bg-accent text-accent-foreground hover:bg-accent/90">
                     <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">{user?.name?.split(" ")[0] || "Contul meu"}</span>
+                    <span className="hidden sm:inline">{user?.firstName || "Contul meu"}</span>
                     <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -298,7 +343,7 @@ export const Navbar = () => {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    onClick={logout}
+                    onClick={async () => await logout()}
                     className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
                   >
                     <LogOut className="h-4 w-4" />

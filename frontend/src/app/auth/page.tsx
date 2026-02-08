@@ -36,7 +36,7 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
 
-  const { login, signup, isLoading } = useAuth();
+  const { login, register, isLoading } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,8 +47,9 @@ export default function AuthPage() {
         await login(email, password);
         toast.success("Autentificare reușită!");
         router.push("/");
-      } catch (error) {
-        toast.error("Eroare la autentificare");
+      } catch (error: any) {
+        const message = error?.message || "Eroare la autentificare";
+        toast.error(message);
       }
     } else {
       if (password !== confirmPassword) {
@@ -59,12 +60,19 @@ export default function AuthPage() {
         toast.error("Trebuie să accepți termenii și condițiile");
         return;
       }
+      
+      // Parse name into first/last name
+      const nameParts = name.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      
       try {
-        await signup(email, password, name);
-        toast.success("Cont creat! Verifică-ți emailul.");
+        await register(email, password, firstName, lastName);
+        toast.success("Cod de verificare trimis! Verifică-ți emailul.");
         router.push("/verify-email");
-      } catch (error) {
-        toast.error("Eroare la crearea contului");
+      } catch (error: any) {
+        const message = error?.message || "Eroare la crearea contului";
+        toast.error(message);
       }
     }
   };
