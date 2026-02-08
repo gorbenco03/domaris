@@ -12,6 +12,8 @@ import { User } from '../../db/entities/user.entity.js';
 import { S3Service } from '../../s3/s3.service.js';
 import { GeocodingService } from '../geocoding/geocoding.service.js';
 import { SubscriptionService } from '../monetization/services/subscription.service.js';
+import { PushNotificationService } from '../../core/push/push.service.js';
+import { Favorite } from '../../db/entities/favorite.entity.js';
 import { Sequelize } from 'sequelize-typescript';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -25,6 +27,7 @@ export class ListingService {
     private readonly s3Service: S3Service,
     private readonly geocodingService: GeocodingService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly pushService: PushNotificationService,
   ) {}
 
   /**
@@ -282,7 +285,14 @@ export class ListingService {
       throw new ForbiddenException('You are not the owner of this listing');
     }
 
+    const oldPrice = listing.priceEur;
+
     const updateData: any = { ...dto };
+
+    // Map DTO price -> priceEur (same as create)
+    if (dto.price !== undefined) {
+      updateData.priceEur = dto.price;
+    }
 
     // GEOCODING LOGIC (same as create)
     if ((dto as any).lat && (dto as any).lng) {
@@ -301,7 +311,86 @@ export class ListingService {
     }
 
     await listing.update(updateData);
+
+    // Notify users who favorited this property about price change
+    const newPrice = listing.priceEur;
+    if (oldPrice !== undefined && newPrice !== undefined && oldPrice !== newPrice) {
+      this.notifyFavoritesOfPriceChange(
+        Number(id),
+        listing.title,
+        oldPrice,
+        newPrice,
+        listing.currency || 'EUR',
+        Number(ownerId),
+      ).catch(err => {
+        this.logger.error(`Failed to send price change notifications: ${err.message}`);
+      });
+    }
+
     return listing;
+  }
+
+  /**
+   * Notify all users who favorited a property about a price change.
+   * Runs asynchronously - does not block the update response.
+   */
+  private async notifyFavoritesOfPriceChange(
+    propertyId: number,
+    propertyTitle: string,
+    oldPrice: number,
+    newPrice: number,
+    currency: string,
+    ownerId: number,
+  ): Promise<void> {
+    try {
+      const favorites = await Favorite.findAll({
+        where: { propertyId },
+        attributes: ['userId'],
+      });
+
+      if (favorites.length === 0) return;
+
+      // Exclude the owner (they made the change)
+      const userIds = [...new Set(favorites.map(f => Number(f.userId)))]
+        .filter(uid => uid !== ownerId);
+
+      if (userIds.length === 0) return;
+
+      // Check notification preferences
+      const users = await User.findAll({
+        where: { id: userIds },
+        attributes: ['id', 'notificationPreferences'],
+      });
+
+      const eligibleUserIds = users
+        .filter(user => {
+          const prefs = user.notificationPreferences;
+          return prefs?.push !== false && prefs?.priceDrops !== false;
+        })
+        .map(user => Number(user.id));
+
+      if (eligibleUserIds.length === 0) return;
+
+      this.logger.log(
+        `Sending price change notifications for property ${propertyId} to ${eligibleUserIds.length} users ` +
+        `(${oldPrice} → ${newPrice} ${currency})`
+      );
+
+      await Promise.allSettled(
+        eligibleUserIds.map(userId =>
+          this.pushService.notifyFavoritePriceChange(
+            userId,
+            propertyTitle,
+            propertyId,
+            oldPrice,
+            newPrice,
+            currency,
+          )
+        )
+      );
+    } catch (error: any) {
+      this.logger.error(`Error sending price change notifications: ${error.message}`);
+    }
   }
 
   async findMyListings(ownerId: number | string) {

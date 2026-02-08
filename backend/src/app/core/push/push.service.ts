@@ -55,6 +55,7 @@ export const NotificationTypes = {
   VERIFICATION_APPROVED: 'verification_approved',
   VERIFICATION_REJECTED: 'verification_rejected',
   PROPERTY_FAVORITED: 'property_favorited',
+  FAVORITE_PRICE_CHANGE: 'price_change',
   SYSTEM: 'system',
 } as const;
 
@@ -342,6 +343,38 @@ export class PushNotificationService {
           type: NotificationTypes.PROPERTY_FAVORITED,
           propertyId: String(propertyId),
         },
+      },
+    });
+  }
+
+  /**
+   * Notificare: Prețul unei proprietăți favorite s-a schimbat
+   */
+  async notifyFavoritePriceChange(
+    userId: number,
+    propertyTitle: string,
+    propertyId: number,
+    oldPrice: number,
+    newPrice: number,
+    currency: string,
+  ): Promise<boolean> {
+    const direction = newPrice < oldPrice ? 'scăzut' : 'crescut';
+    const arrow = newPrice < oldPrice ? '↓' : '↑';
+
+    return this.sendToUser({
+      userId,
+      type: NotificationTypes.FAVORITE_PRICE_CHANGE,
+      notification: {
+        title: `${arrow} Preț ${direction} la o proprietate favorită`,
+        body: `"${propertyTitle}": ${oldPrice.toLocaleString()} ${currency} → ${newPrice.toLocaleString()} ${currency}`,
+        data: {
+          type: NotificationTypes.FAVORITE_PRICE_CHANGE,
+          propertyId: String(propertyId),
+          oldPrice: String(oldPrice),
+          newPrice: String(newPrice),
+          currency,
+        },
+        sound: 'notification.wav',
       },
     });
   }
