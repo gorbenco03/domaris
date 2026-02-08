@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PropertyCard } from "@/components/PropertyCard";
@@ -52,7 +53,16 @@ const propertyTypeMap: Record<PropertyType, string> = {
   land: "LAND",
 };
 
+// Map URL query params to internal property types
+const urlTypeMap: Record<string, PropertyType> = {
+  apartment: "apartments",
+  house: "houses",
+  commercial: "commercial",
+  land: "land",
+};
+
 export default function SearchPage() {
+  const searchParams = useSearchParams();
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [sortBy, setSortBy] = useState("relevance");
   const [propertyType, setPropertyType] = useState<PropertyType>("apartments");
@@ -102,6 +112,14 @@ export default function SearchPage() {
   useEffect(() => {
     fetchProperties();
   }, [fetchProperties]);
+
+  // Sync URL params with state
+  useEffect(() => {
+    const typeParam = searchParams.get("type");
+    if (typeParam && urlTypeMap[typeParam]) {
+      setPropertyType(urlTypeMap[typeParam]);
+    }
+  }, [searchParams]);
 
   // Reset page when filters change
   useEffect(() => {

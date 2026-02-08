@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Bell, User, MessageSquare, Calendar, Home, ChevronDown, LogOut, Clock, ArrowRight, Heart, Shield, CreditCard, Megaphone } from "lucide-react";
+import { Bell, User, MessageSquare, Calendar, Home, ChevronDown, LogOut, Clock, ArrowRight, Heart, Shield, CreditCard, Megaphone, Bot } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -117,6 +118,10 @@ export const Navbar = () => {
   }, {
     label: "Terenuri",
     href: "/search?type=land"
+  }, {
+    label: "RIVA AI",
+    href: "/ai-chat",
+    icon: true
   }];
 
   return (
@@ -133,8 +138,14 @@ export const Navbar = () => {
             <Link 
               key={link.label} 
               href={link.href} 
-              className="rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              className={cn(
+                "rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted",
+                link.icon 
+                  ? "flex items-center gap-1.5 text-accent hover:text-accent" 
+                  : "text-foreground"
+              )}
             >
+              {link.icon && <Bot className="h-4 w-4" />}
               {link.label}
             </Link>
           ))}

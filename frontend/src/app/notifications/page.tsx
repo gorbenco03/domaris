@@ -2,89 +2,100 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { 
+  Bell, 
   ArrowLeft, 
   Loader2, 
-  Bell, 
-  BellOff,
-  MessageCircle,
+  Clock,
+  MessageSquare,
   Calendar,
   Home,
   Heart,
   Shield,
   CreditCard,
   Megaphone,
-  CheckCheck,
+  CheckCircle2,
+  FileCheck,
   Trash2,
-  Settings
+  Check
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   getNotifications, 
-  markNotificationAsRead, 
+  markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification,
   Notification,
-  NotificationType
+  NotificationType 
 } from "@/lib/notificationsApi";
 import { formatDistanceToNow } from "date-fns";
 import { ro } from "date-fns/locale";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
+// Icon mapping matching pixel-perfect-pixels style
 const notificationIcons: Record<NotificationType, typeof Bell> = {
-  MESSAGE: MessageCircle,
-  VIEWING_CONFIRMED: Calendar,
+  MESSAGE: MessageSquare,
+  VIEWING_CONFIRMED: CheckCircle2,
   VIEWING_REMINDER: Calendar,
   VIEWING_CANCELLED: Calendar,
   NEW_PROPERTY_MATCH: Home,
-  PROPERTY_STATUS_CHANGE: Home,
+  PROPERTY_STATUS_CHANGE: FileCheck,
   FAVORITE_PRICE_DROP: Heart,
   VERIFICATION_STATUS_CHANGE: Shield,
   SUBSCRIPTION_EXPIRING: CreditCard,
   SYSTEM_ANNOUNCEMENT: Megaphone,
 };
 
+// Color mapping matching pixel-perfect-pixels style
 const notificationColors: Record<NotificationType, string> = {
-  MESSAGE: "text-blue-500 bg-blue-500/10",
-  VIEWING_CONFIRMED: "text-green-500 bg-green-500/10",
-  VIEWING_REMINDER: "text-orange-500 bg-orange-500/10",
-  VIEWING_CANCELLED: "text-red-500 bg-red-500/10",
-  NEW_PROPERTY_MATCH: "text-purple-500 bg-purple-500/10",
-  PROPERTY_STATUS_CHANGE: "text-indigo-500 bg-indigo-500/10",
-  FAVORITE_PRICE_DROP: "text-pink-500 bg-pink-500/10",
-  VERIFICATION_STATUS_CHANGE: "text-teal-500 bg-teal-500/10",
-  SUBSCRIPTION_EXPIRING: "text-yellow-500 bg-yellow-500/10",
-  SYSTEM_ANNOUNCEMENT: "text-gray-500 bg-gray-500/10",
+  MESSAGE: "text-blue-500",
+  VIEWING_CONFIRMED: "text-emerald-500",
+  VIEWING_REMINDER: "text-orange-500",
+  VIEWING_CANCELLED: "text-red-500",
+  NEW_PROPERTY_MATCH: "text-purple-500",
+  PROPERTY_STATUS_CHANGE: "text-violet-500",
+  FAVORITE_PRICE_DROP: "text-pink-500",
+  VERIFICATION_STATUS_CHANGE: "text-teal-500",
+  SUBSCRIPTION_EXPIRING: "text-yellow-500",
+  SYSTEM_ANNOUNCEMENT: "text-gray-500",
 };
 
 export default function NotificationsPage() {
-  const router = useRouter();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  
+  // API state
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  const loadNotifications = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getNotifications();
-      setNotifications(data);
-    } catch (err) {
-      console.error("Failed to load notifications:", err);
-      setError("Nu am putut încărca notificările");
-    } finally {
-      setIsLoading(false);
+    const fetchNotifications = async () => {
+      if (!isAuthenticated) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const data = await getNotifications();
+        setNotifications(data);
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
+        setError("Nu am putut încărca notificările");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (!isAuthLoading) {
+      fetchNotifications();
     }
-  };
+  }, [isAuthenticated, isAuthLoading]);
 
   const handleMarkAsRead = async (id: number) => {
     try {
@@ -94,7 +105,6 @@ export default function NotificationsPage() {
       );
     } catch (err) {
       console.error("Failed to mark as read:", err);
-      toast.error("Nu am putut marca notificarea");
     }
   };
 
@@ -105,7 +115,7 @@ export default function NotificationsPage() {
       toast.success("Toate notificările au fost marcate ca citite");
     } catch (err) {
       console.error("Failed to mark all as read:", err);
-      toast.error("Nu am putut marca notificările");
+      toast.error("Nu am putut marca notificările ca citite");
     }
   };
 
@@ -115,43 +125,18 @@ export default function NotificationsPage() {
       setNotifications(prev => prev.filter(n => n.id !== id));
       toast.success("Notificare ștearsă");
     } catch (err) {
-      console.error("Failed to delete notification:", err);
+      console.error("Failed to delete:", err);
       toast.error("Nu am putut șterge notificarea");
     }
   };
 
-  const handleNotificationClick = (notification: Notification) => {
-    handleMarkAsRead(notification.id);
-    
-    // Navigate based on notification type and data
-    if (notification.data) {
-      if (notification.type === "MESSAGE" && notification.data.conversationId) {
-        router.push(`/messages/${notification.data.conversationId}`);
-      } else if (
-        (notification.type === "VIEWING_CONFIRMED" || 
-         notification.type === "VIEWING_REMINDER" || 
-         notification.type === "VIEWING_CANCELLED") && 
-        notification.data.viewingId
-      ) {
-        router.push("/viewings");
-      } else if (
-        (notification.type === "NEW_PROPERTY_MATCH" || 
-         notification.type === "PROPERTY_STATUS_CHANGE" ||
-         notification.type === "FAVORITE_PRICE_DROP") && 
-        notification.data.propertyId
-      ) {
-        router.push(`/property/${notification.data.propertyId}`);
-      }
-    }
-  };
-
-  const filteredNotifications = filter === "unread" 
+  const filteredNotifications = filter === 'unread' 
     ? notifications.filter(n => !n.isRead)
     : notifications;
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  if (isLoading) {
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -163,11 +148,30 @@ export default function NotificationsPage() {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <Bell className="mx-auto h-16 w-16 text-muted-foreground" />
+          <h1 className="mt-4 text-2xl font-bold">Autentificare necesară</h1>
+          <p className="mt-2 text-muted-foreground">
+            Trebuie să fii autentificat pentru a vedea notificările.
+          </p>
+          <Button asChild className="mt-6">
+            <Link href="/auth">Autentifică-te</Link>
+          </Button>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="mx-auto max-w-2xl px-4 py-8">
+      <main className="mx-auto max-w-3xl px-4 py-8 lg:px-8">
         <div className="mb-6">
           <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
@@ -175,132 +179,147 @@ export default function NotificationsPage() {
           </Link>
         </div>
 
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Notificări</h1>
-            {unreadCount > 0 && (
-              <p className="text-sm text-muted-foreground">{unreadCount} necitite</p>
-            )}
+        {/* Header - matching pixel-perfect-pixels popup header */}
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex items-center justify-between bg-muted/50 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" />
+              <h1 className="font-semibold text-foreground">Notificări</h1>
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-destructive-foreground">
+                  {unreadCount} noi
+                </span>
+              )}
+            </div>
+            <button 
+              onClick={handleMarkAllAsRead}
+              className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              Marchează citite
+            </button>
           </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/settings">
-                <Settings className="h-4 w-4" />
-              </Link>
-            </Button>
-            {unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={handleMarkAllAsRead}>
-                <CheckCheck className="mr-2 h-4 w-4" />
-                Marchează toate
+
+          {/* Filter tabs */}
+          <div className="flex gap-2 border-b border-border px-4 py-2">
+            <button
+              onClick={() => setFilter('all')}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                filter === 'all' 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              Toate
+            </button>
+            <button
+              onClick={() => setFilter('unread')}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                filter === 'unread' 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              Necitite
+            </button>
+          </div>
+
+          {/* Notifications list - matching pixel-perfect-pixels popup style */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : error ? (
+            <div className="py-16 text-center">
+              <p className="text-muted-foreground">{error}</p>
+              <Button onClick={() => window.location.reload()} className="mt-4">
+                Încearcă din nou
               </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="mb-4 flex gap-2">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("all")}
-          >
-            Toate ({notifications.length})
-          </Button>
-          <Button
-            variant={filter === "unread" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("unread")}
-          >
-            Necitite ({unreadCount})
-          </Button>
-        </div>
-
-        {/* Notifications List */}
-        {error ? (
-          <div className="rounded-xl border border-border bg-card py-12 text-center">
-            <Bell className="mx-auto h-12 w-12 text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">{error}</p>
-            <Button className="mt-4" onClick={loadNotifications}>
-              Încearcă din nou
-            </Button>
-          </div>
-        ) : filteredNotifications.length > 0 ? (
-          <div className="space-y-2">
-            {filteredNotifications.map((notification) => {
-              const Icon = notificationIcons[notification.type] || Bell;
-              const colorClass = notificationColors[notification.type] || "text-gray-500 bg-gray-500/10";
-              
-              return (
-                <div
-                  key={notification.id}
-                  className={cn(
-                    "group flex gap-3 rounded-xl border border-border bg-card p-4 transition-all hover:shadow-sm",
-                    !notification.isRead && "bg-accent/5 border-accent/20"
-                  )}
-                >
-                  {/* Icon */}
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", colorClass)}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-
-                  {/* Content */}
-                  <div 
-                    className="flex-1 cursor-pointer"
-                    onClick={() => handleNotificationClick(notification)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className={cn(
-                        "text-sm",
-                        !notification.isRead && "font-semibold"
-                      )}>
-                        {notification.title}
-                      </h3>
-                      {!notification.isRead && (
-                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent" />
+            </div>
+          ) : filteredNotifications.length > 0 ? (
+            <ScrollArea className="max-h-[600px]">
+              <div className="divide-y divide-border">
+                {filteredNotifications.map((notif) => {
+                  const IconComponent = notificationIcons[notif.type] || Bell;
+                  const iconColor = notificationColors[notif.type] || "text-gray-500";
+                  
+                  return (
+                    <div
+                      key={notif.id}
+                      className={cn(
+                        "flex items-start gap-3 p-4 transition-all hover:bg-muted/50",
+                        !notif.isRead && "bg-primary/5"
                       )}
-                    </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
-                      {notification.message}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: ro })}
-                    </p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex shrink-0 items-start gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    {!notification.isRead && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notification.id); }}
-                      >
-                        <CheckCheck className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(notification.id); }}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-card py-12 text-center">
-            <BellOff className="mx-auto h-12 w-12 text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">
-              {filter === "unread" ? "Nicio notificare necitită" : "Nicio notificare"}
-            </p>
-          </div>
-        )}
+                      {/* Icon with colored background - matching pixel-perfect-pixels */}
+                      <div className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted",
+                        iconColor
+                      )}>
+                        <IconComponent className="h-5 w-5" />
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={cn(
+                            "text-sm font-medium",
+                            !notif.isRead ? "text-foreground" : "text-muted-foreground"
+                          )}>
+                            {notif.title}
+                          </p>
+                          {!notif.isRead && (
+                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
+                          {notif.message}
+                        </p>
+                        <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true, locale: ro })}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1">
+                        {!notif.isRead && (
+                          <button
+                            onClick={() => handleMarkAsRead(notif.id)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            title="Marchează ca citit"
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(notif.id)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          title="Șterge"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <Bell className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h2 className="text-lg font-semibold">Nicio notificare</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {filter === 'unread' 
+                  ? "Nu ai notificări necitite" 
+                  : "Notificările tale vor apărea aici"}
+              </p>
+            </div>
+          )}
+        </div>
       </main>
 
       <Footer />
