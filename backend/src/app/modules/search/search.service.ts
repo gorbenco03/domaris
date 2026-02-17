@@ -15,7 +15,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Listing } from '../../db/entities/listing.entity.js';
 import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { User } from '../../db/entities/user.entity.js';
-import { Op, literal, fn, col, where } from 'sequelize';
+import { SubscriptionService } from '../monetization/services/subscription.service.js';
+import { Op, literal, fn, col } from 'sequelize';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -81,6 +82,9 @@ export interface SearchFilters {
   
   // Sorting
   sortBy?: 'price_asc' | 'price_desc' | 'date_desc' | 'date_asc' | 'relevance';
+
+  // Internal (not exposed in query schema)
+  viewerUserId?: number;
 }
 
 export interface SearchResult {
@@ -108,24 +112,30 @@ interface PromotedListingInfo {
   showOnHomepage: boolean;
 }
 
+interface MapListingRow {
+  id: number;
+  lat: number;
+  lng: number;
+  priceEur: number;
+  rooms: number;
+  title: string;
+  status: string;
+  publicFrom: Date | null;
+}
+
 @Injectable()
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
 
-  private normalizeDiacritics(value: string) {
-    // First, handle Romanian/Moldovan specific characters that NFD doesn't decompose properly
-    // ș (U+0219) and ş (U+015F) -> s
-    // ț (U+021B) and ţ (U+0163) -> t
-    // ă (U+0103) -> a
-    // â (U+00E2) and î (U+00EE) -> a/i
-    return value
-      .replace(/[șş]/gi, 's')
-      .replace(/[țţ]/gi, 't')
-      .replace(/[ăâ]/gi, 'a')
-      .replace(/[î]/gi, 'i')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
+  constructor(private readonly subscriptionService: SubscriptionService) {}
+
+  private async getVisibleStatuses(viewerUserId?: number): Promise<Array<'public' | 'early_access'>> {
+    if (!viewerUserId) {
+      return ['public'];
+    }
+
+    const hasEarlyAccess = await this.subscriptionService.hasEarlyAccess(viewerUserId);
+    return hasEarlyAccess ? ['public', 'early_access'] : ['public'];
   }
 
   /**
@@ -172,10 +182,11 @@ export class SearchService {
     const page = filters.page || 1;
     const limit = Math.min(filters.limit || 20, 50);
     const offset = (page - 1) * limit;
+    const visibleStatuses = await this.getVisibleStatuses(filters.viewerUserId);
 
     // Build WHERE conditions
     const whereConditions: any[] = [
-      { status: { [Op.in]: ['public', 'early_access'] } },
+      { status: { [Op.in]: visibleStatuses } },
     ];
 
     // Full-text search using PostgreSQL
@@ -342,6 +353,13 @@ export class SearchService {
 
     // Apply limit after sorting
     const finalRows = sortedRows.slice(0, limit);
+    const earlyAccessCount = finalRows.filter((item) => item.status === 'early_access').length;
+
+    if (earlyAccessCount > 0) {
+      this.logger.log(
+        `[METRIC] search.search served early_access=${earlyAccessCount} total=${finalRows.length} viewer=${filters.viewerUserId || 'anonymous'}`,
+      );
+    }
 
     const totalPages = Math.ceil(count / limit);
 
@@ -400,10 +418,14 @@ export class SearchService {
   /**
    * Sugestii autocomplete pentru căutare
    */
-  async suggestions(query: string): Promise<{ text: string; type: string; count?: number }[]> {
+  async suggestions(
+    query: string,
+    viewerUserId?: number,
+  ): Promise<{ text: string; type: string; count?: number }[]> {
     if (!query || query.length < 2) return [];
 
     const searchQuery = this.sanitizeSearchQuery(query);
+    const visibleStatuses = await this.getVisibleStatuses(viewerUserId);
     const suggestions: { text: string; type: string; count?: number }[] = [];
 
     // Search cities
@@ -414,7 +436,7 @@ export class SearchService {
       ],
       where: {
         city: { [Op.iLike]: `%${searchQuery}%` },
-        status: { [Op.in]: ['public', 'early_access'] },
+        status: { [Op.in]: visibleStatuses },
       },
       group: ['city'],
       order: [[fn('COUNT', col('id')), 'DESC']],
@@ -439,7 +461,7 @@ export class SearchService {
       ],
       where: {
         neighborhood: { [Op.iLike]: `%${searchQuery}%` },
-        status: { [Op.in]: ['public', 'early_access'] },
+        status: { [Op.in]: visibleStatuses },
       },
       group: ['neighborhood', 'city'],
       order: [[fn('COUNT', col('id')), 'DESC']],
@@ -463,9 +485,11 @@ export class SearchService {
    * Include informații despre promoții
    */
   async getMapData(filters: SearchFilters) {
+    const visibleStatuses = await this.getVisibleStatuses(filters.viewerUserId);
+
     // Reuse search logic but only return coordinates
     const whereConditions: any[] = [
-      { status: { [Op.in]: ['public', 'early_access'] } },
+      { status: { [Op.in]: visibleStatuses } },
       { lat: { [Op.ne]: null } },
       { lng: { [Op.ne]: null } },
     ];
@@ -494,11 +518,18 @@ export class SearchService {
     }
 
     const listings = await Listing.findAll({
-      attributes: ['id', 'lat', 'lng', 'priceEur', 'rooms', 'title'],
+      attributes: ['id', 'lat', 'lng', 'priceEur', 'rooms', 'title', 'status', 'publicFrom'],
       where: { [Op.and]: whereConditions },
       limit: 500,
       raw: true,
-    });
+    }) as unknown as MapListingRow[];
+
+    const earlyAccessCount = listings.filter((item) => item.status === 'early_access').length;
+    if (earlyAccessCount > 0) {
+      this.logger.log(
+        `[METRIC] search.getMapData served early_access=${earlyAccessCount} total=${listings.length} viewer=${filters.viewerUserId || 'anonymous'}`,
+      );
+    }
 
     // Get promoted listings
     const promotedListings = await this.getPromotedListings();
@@ -519,6 +550,8 @@ export class SearchService {
             price: l.priceEur,
             rooms: l.rooms,
             title: l.title,
+            status: l.status,
+            publicFrom: l.publicFrom,
             isPromoted: !!promoInfo,
             promotionBadge: promoInfo?.showBadge || false,
           },
@@ -531,8 +564,9 @@ export class SearchService {
    * Obține facets/agregări pentru filtre
    */
   async getFacets(baseFilters: SearchFilters = {}): Promise<SearchResult['facets']> {
+    const visibleStatuses = await this.getVisibleStatuses(baseFilters.viewerUserId);
     const whereBase: any = {
-      status: { [Op.in]: ['public', 'early_access'] },
+      status: { [Op.in]: visibleStatuses },
     };
 
     // Cities with counts

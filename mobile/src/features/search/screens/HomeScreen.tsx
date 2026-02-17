@@ -379,6 +379,8 @@ const HomeScreen: React.FC = () => {
                     ...((property as any).images || []).map((i: any) => i.url),
                     ...((property as any).photos || []).map((i: any) => i.url),
                   ].filter(Boolean)}
+                  listingStatus={(property as any).status}
+                  publicFrom={(property as any).publicFrom}
                   onPress={() => handlePropertyPress(String(property.id))}
                   ownershipStatus={(property as any).ownershipStatus || 'none'}
                   isFavorite={favoriteIds.has(String(property.id))}

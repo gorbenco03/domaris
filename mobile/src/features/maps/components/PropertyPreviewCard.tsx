@@ -3,7 +3,7 @@
  * Airbnb-style bottom sheet preview for map markers
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { Heart, MapPin, Maximize2, X } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { Badge } from '@/shared/components/Badge';
+import { getEarlyAccessBadgeLabel, isEarlyAccessStatus } from '@/shared/utils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -27,6 +29,8 @@ interface PropertyPreviewCardProps {
   surface: number;
   rooms?: number;
   transactionType: string;
+  listingStatus?: string;
+  publicFrom?: string | Date;
   imageUrl?: string;
   onPress: () => void;
   onClose: () => void;
@@ -43,6 +47,8 @@ export const PropertyPreviewCard: React.FC<PropertyPreviewCardProps> = ({
   surface,
   rooms,
   transactionType,
+  listingStatus,
+  publicFrom,
   imageUrl,
   onPress,
   onClose,
@@ -50,6 +56,21 @@ export const PropertyPreviewCard: React.FC<PropertyPreviewCardProps> = ({
   isFavorite = false,
 }) => {
   const { theme } = useTheme();
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  const hasEarlyAccessCountdown = isEarlyAccessStatus(listingStatus) && !!publicFrom;
+
+  useEffect(() => {
+    if (!hasEarlyAccessCountdown) return;
+
+    const intervalId = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+
+    return () => clearInterval(intervalId);
+  }, [hasEarlyAccessCountdown]);
+
+  const earlyAccessBadgeLabel = getEarlyAccessBadgeLabel(listingStatus, publicFrom, nowMs);
 
   const formatPrice = () => {
     const formatted = price?.toLocaleString('ro-RO') || '0';
@@ -95,6 +116,12 @@ export const PropertyPreviewCard: React.FC<PropertyPreviewCardProps> = ({
           <Text style={[styles.price, { color: theme.colors.textPrimary }]}>
             {formatPrice()}
           </Text>
+
+          {earlyAccessBadgeLabel && (
+            <View style={styles.badgeRow}>
+              <Badge label={earlyAccessBadgeLabel} variant="new" size="sm" />
+            </View>
+          )}
 
           <Text
             style={[styles.title, { color: theme.colors.textPrimary }]}
@@ -187,6 +214,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     justifyContent: 'center',
+  },
+  badgeRow: {
+    alignSelf: 'flex-start',
+    marginBottom: 6,
   },
   price: {
     fontSize: 18,

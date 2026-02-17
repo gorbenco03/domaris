@@ -3,7 +3,7 @@
  * Premium property card with swipeable image carousel
  */
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import {
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
+import { getEarlyAccessBadgeLabel, isEarlyAccessStatus } from '@/shared/utils';
 
 // ============================================
 // TYPES
@@ -61,6 +62,8 @@ interface PropertyCardProps {
   isNew?: boolean;
   isVerified?: boolean;
   ownershipStatus?: 'none' | 'pending' | 'verified' | 'rejected';
+  listingStatus?: string;
+  publicFrom?: string | Date;
   priceReduced?: boolean;
   stats?: {
     views: number;
@@ -91,6 +94,8 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   isNew = false,
   isVerified = false,
   ownershipStatus,
+  listingStatus,
+  publicFrom,
   priceReduced = false,
   stats,
   onPress,
@@ -101,6 +106,19 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   const heartScale = useRef(new Animated.Value(1)).current;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [imageWidth, setImageWidth] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  const hasEarlyAccessCountdown = isEarlyAccessStatus(listingStatus) && !!publicFrom;
+
+  useEffect(() => {
+    if (!hasEarlyAccessCountdown) return;
+
+    const intervalId = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+
+    return () => clearInterval(intervalId);
+  }, [hasEarlyAccessCountdown]);
 
   // Resolve images: prefer array, fall back to single image, then placeholder
   const resolvedImages = (imagesProp && imagesProp.length > 0)
@@ -162,6 +180,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   ), [imageWidth]);
 
   const keyExtractor = useCallback((_: string, index: number) => `img-${index}`, []);
+  const earlyAccessBadgeLabel = getEarlyAccessBadgeLabel(listingStatus, publicFrom, nowMs);
 
   return (
     <Card
@@ -220,6 +239,9 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         <View style={styles.badgesContainer}>
           {priceReduced && (
             <Badge label="REDUS" variant="warning" size="sm" />
+          )}
+          {earlyAccessBadgeLabel && (
+            <Badge label={earlyAccessBadgeLabel} variant="new" size="sm" />
           )}
         </View>
 

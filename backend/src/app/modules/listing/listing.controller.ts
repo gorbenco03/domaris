@@ -105,12 +105,14 @@ export class ListingController {
     @Query('maxPrice') maxPrice?: string,
     @Query('minRooms') minRooms?: string,
     @Query('maxRooms') maxRooms?: string,
+    @CurrentUser() user?: any,
   ) {
     return this.listingService.findInBounds({
       neLat: parseFloat(neLat),
       neLng: parseFloat(neLng),
       swLat: parseFloat(swLat),
       swLng: parseFloat(swLng),
+      viewerUserId: user?.id,
       limit: limit ? parseInt(limit) : undefined,
       transactionType,
       propertyType,
@@ -160,6 +162,7 @@ export class ListingController {
     @Query('amenities') amenities?: string | string[],
     @Query('sortBy') sortBy?: 'price' | 'createdAt' | 'postedAt',
     @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
+    @CurrentUser() user?: any,
   ) {
     const parsedLimit = limit ? Number(limit) : 20;
     const parsedPage = page ? Number(page) : 1;
@@ -174,6 +177,7 @@ export class ListingController {
     return this.listingService.findAll({
       limit: parsedLimit,
       offset: parsedOffset,
+      viewerUserId: user?.id,
       city,
       neighborhood,
       transactionType,
@@ -220,7 +224,7 @@ export class ListingController {
       throw new NotFoundException('Invalid property ID');
     }
 
-    return this.listingService.findOne(numericId);
+    return this.listingService.findOnePublic(numericId, user?.id);
   }
 
   /**
@@ -246,6 +250,9 @@ export class ListingController {
       req?.ip;
     const anonymousHeader = req?.headers?.['x-anonymous-id'];
     const anonymousId = Array.isArray(anonymousHeader) ? anonymousHeader[0] : anonymousHeader;
+
+    // Respect listing visibility (public / eligible early access)
+    await this.listingService.findOnePublic(numericId, user?.id);
 
     await this.analyticsService.trackView(numericId, user?.id, anonymousId, ip);
 

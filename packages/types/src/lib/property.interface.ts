@@ -285,6 +285,7 @@ export interface IPropertyListItem {
   
   // Status
   status: PropertyStatus;
+  publicFrom?: Date | string;
   isNew: boolean;
   isPromoted: boolean;
   isFavorite?: boolean;

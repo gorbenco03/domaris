@@ -11,7 +11,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { SearchService, SearchFilters } from './search.service';
-import { Public } from '../../core/decorators.js';
+import { Public, CurrentUser } from '../../core/decorators.js';
 
 @ApiTags('search')
 @Controller('search')
@@ -50,7 +50,10 @@ export class SearchController {
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (1-indexed)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (max 50)' })
   @ApiResponse({ status: 200, description: 'Search results with pagination metadata' })
-  async search(@Query() filters: Record<string, any>) {
+  async search(
+    @Query() filters: Record<string, any>,
+    @CurrentUser() user?: any,
+  ) {
     // Parse numeric values from query strings
     const amenitiesList = Array.isArray(filters.amenities)
       ? filters.amenities
@@ -88,6 +91,7 @@ export class SearchController {
       petFriendly: filters.petFriendly === 'true' as unknown as boolean ? true :
                    filters.petFriendly === 'false' as unknown as boolean ? false : undefined,
       excludeAgencies: filters.excludeAgencies === 'true' as unknown as boolean ? true : false,
+      viewerUserId: user?.id,
     };
 
     return this.searchService.search(parsedFilters);
@@ -98,8 +102,11 @@ export class SearchController {
   @ApiOperation({ summary: 'Search Autocomplete Suggestions' })
   @ApiQuery({ name: 'q', required: true, description: 'Search query (min 2 characters)' })
   @ApiResponse({ status: 200, description: 'List of suggestions with type and count' })
-  async suggestions(@Query('q') query: string) {
-    return this.searchService.suggestions(query);
+  async suggestions(
+    @Query('q') query: string,
+    @CurrentUser() user?: any,
+  ) {
+    return this.searchService.suggestions(query, user?.id);
   }
 
   @Public()
@@ -118,7 +125,10 @@ export class SearchController {
   @ApiQuery({ name: 'east', required: false, type: Number, description: 'Bounding box east' })
   @ApiQuery({ name: 'west', required: false, type: Number, description: 'Bounding box west' })
   @ApiResponse({ status: 200, description: 'GeoJSON FeatureCollection for map display' })
-  async mapData(@Query() filters: any) {
+  async mapData(
+    @Query() filters: any,
+    @CurrentUser() user?: any,
+  ) {
     const parsedFilters: SearchFilters = {
       city: filters.city,
       neighborhood: filters.neighborhood,
@@ -129,6 +139,7 @@ export class SearchController {
       rooms: filters.rooms ? Number(filters.rooms) : undefined,
       bedroomsMin: filters.bedroomsMin ? Number(filters.bedroomsMin) : undefined,
       bedroomsMax: filters.bedroomsMax ? Number(filters.bedroomsMax) : undefined,
+      viewerUserId: user?.id,
     };
 
     // Parse bounding box if provided
@@ -151,7 +162,7 @@ export class SearchController {
     status: 200, 
     description: 'Aggregated data for building filter UI (cities, price ranges, room counts)' 
   })
-  async facets() {
-    return this.searchService.getFacets();
+  async facets(@CurrentUser() user?: any) {
+    return this.searchService.getFacets({ viewerUserId: user?.id });
   }
 }

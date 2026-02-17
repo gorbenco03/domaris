@@ -544,6 +544,20 @@ export class SubscriptionService {
   // ============================================================================
 
   /**
+   * Verifică dacă utilizatorul are acces la listing-urile în early access.
+   * Regula curentă: doar planurile standard și premium.
+   */
+  async hasEarlyAccess(userId: number): Promise<boolean> {
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription || !subscription.isActiveAndValid()) {
+      return false;
+    }
+
+    const planCode = ((subscription.plan as any)?.code || '').toLowerCase();
+    return planCode === 'standard' || planCode === 'premium';
+  }
+
+  /**
    * Returnează capabilitățile utilizatorului bazate pe plan
    */
   getUserCapabilities(subscription: UserSubscription | null): {

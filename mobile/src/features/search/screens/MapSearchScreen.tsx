@@ -143,6 +143,8 @@ const MapSearchScreen: React.FC = () => {
           surface={selectedProperty.surfaceSqm}
           rooms={selectedProperty.rooms}
           transactionType={selectedProperty.transactionType}
+          listingStatus={selectedProperty.status}
+          publicFrom={selectedProperty.publicFrom}
           imageUrl={selectedProperty.images?.[0]?.url}
           onPress={() =>
             navigation.navigate('PropertyDetail', {

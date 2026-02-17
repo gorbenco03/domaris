@@ -33,6 +33,8 @@ export interface MapProperty {
   neighborhood: string;
   transactionType: string;
   propertyType: string;
+  status?: string;
+  publicFrom?: string;
   images?: Array<{ id: number; url: string; isPrimary: boolean }>;
 }
 

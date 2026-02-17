@@ -16,11 +16,18 @@ export interface Property {
   id: number;
   title: string;
   priceEur: number;
+  currency: string;
   surfaceSqm: number;
   rooms: number;
   lat: number;
   lng: number;
-  images?: Array<{ url: string }>;
+  city: string;
+  neighborhood: string;
+  transactionType: string;
+  propertyType: string;
+  status?: string;
+  publicFrom?: string;
+  images?: Array<{ id: number; url: string; isPrimary: boolean }>;
 }
 
 interface MapViewProps {

@@ -454,6 +454,8 @@ const SearchResultsScreen: React.FC = () => {
             totalFloors: anyItem.totalFloors,
           }}
           images={(anyItem.images || []).map((i: any) => i.url).filter(Boolean)}
+          listingStatus={anyItem.status}
+          publicFrom={anyItem.publicFrom}
           ownershipStatus={anyItem.ownershipStatus || 'none'}
           onPress={() => handlePropertyPress(String(item.id))}
           isFavorite={favoriteIds.has(String(item.id))}

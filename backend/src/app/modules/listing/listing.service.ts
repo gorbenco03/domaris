@@ -15,6 +15,7 @@ import { SubscriptionService } from '../monetization/services/subscription.servi
 import { PushNotificationService } from '../../core/push/push.service.js';
 import { Favorite } from '../../db/entities/favorite.entity.js';
 import { Sequelize } from 'sequelize-typescript';
+import { Op } from 'sequelize';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -22,6 +23,7 @@ import * as os from 'os';
 @Injectable()
 export class ListingService {
   private readonly logger = new Logger(ListingService.name);
+  private static readonly EARLY_ACCESS_DELAY_HOURS = 12;
 
   constructor(
     private readonly s3Service: S3Service,
@@ -29,6 +31,15 @@ export class ListingService {
     private readonly subscriptionService: SubscriptionService,
     private readonly pushService: PushNotificationService,
   ) {}
+
+  private async getVisibleStatuses(viewerUserId?: number): Promise<Array<'public' | 'early_access'>> {
+    if (!viewerUserId) {
+      return ['public'];
+    }
+
+    const hasEarlyAccess = await this.subscriptionService.hasEarlyAccess(viewerUserId);
+    return hasEarlyAccess ? ['public', 'early_access'] : ['public'];
+  }
 
   /**
    * Creează un anunț nou pentru user-ul curent
@@ -58,6 +69,11 @@ export class ListingService {
       input.apartment ? `Ap. ${input.apartment}` : ''
     ].filter(Boolean).join(', ');
 
+    const now = new Date();
+    const publicFrom = new Date(
+      now.getTime() + ListingService.EARLY_ACCESS_DELAY_HOURS * 60 * 60 * 1000,
+    );
+
     const listingData: any = {
       ...input,
       ownerId,
@@ -71,7 +87,9 @@ export class ListingService {
       yearBuilt: input.yearBuilt !== undefined ? Number(input.yearBuilt) : undefined,
       transactionType: input.transactionType,
       propertyType: input.propertyType,
-      status: 'public',    // Default to public for now so it's visible
+      status: 'early_access',
+      postedAt: now,
+      publicFrom,
 
       // Location mapping
       addressText: input.addressText || input.address || computedAddress,
@@ -119,6 +137,7 @@ export class ListingService {
   async findAll(params: {
     limit?: number;
     offset?: number;
+    viewerUserId?: number;
     city?: string;
     neighborhood?: string;
     transactionType?: string;
@@ -148,6 +167,7 @@ export class ListingService {
     const {
       limit = 20,
       offset = 0,
+      viewerUserId,
       city,
       neighborhood,
       transactionType,
@@ -176,7 +196,8 @@ export class ListingService {
     } = params;
 
     const where: any = {};
-    const { Op } = require('sequelize');
+    const visibleStatuses = await this.getVisibleStatuses(viewerUserId);
+    where.status = { [Op.in]: visibleStatuses };
 
     if (city) where.city = city;
     if (neighborhood) where.neighborhood = neighborhood;
@@ -250,6 +271,13 @@ export class ListingService {
       include: [{ model: ListingImage, as: 'images' }],
     });
 
+    const earlyAccessCount = rows.filter((item) => item.status === 'early_access').length;
+    if (earlyAccessCount > 0) {
+      this.logger.log(
+        `[METRIC] listing.findAll served early_access=${earlyAccessCount} total=${rows.length} viewer=${viewerUserId || 'anonymous'}`,
+      );
+    }
+
     return { items: rows, total: count };
   }
 
@@ -267,6 +295,39 @@ export class ListingService {
     if (!listing) {
       throw new NotFoundException('Listing not found');
     }
+    return listing;
+  }
+
+  async findOnePublic(
+    id: number | string,
+    viewerUserId?: number,
+  ): Promise<Listing> {
+    const listing = await this.findOne(id);
+
+    // Owner can always view their own listing details
+    if (viewerUserId && String(listing.ownerId) === String(viewerUserId)) {
+      return listing;
+    }
+
+    const isVisiblePublicly = listing.status === 'public';
+
+    if (isVisiblePublicly) {
+      return listing;
+    }
+
+    if (listing.status !== 'early_access') {
+      throw new NotFoundException('Listing not found');
+    }
+
+    if (!viewerUserId) {
+      throw new NotFoundException('Listing not found');
+    }
+
+    const hasEarlyAccess = await this.subscriptionService.hasEarlyAccess(viewerUserId);
+    if (!hasEarlyAccess) {
+      throw new NotFoundException('Listing not found');
+    }
+
     return listing;
   }
 
@@ -438,6 +499,7 @@ export class ListingService {
     neLng: number; // Northeast corner longitude
     swLat: number; // Southwest corner latitude
     swLng: number; // Southwest corner longitude
+    viewerUserId?: number;
     limit?: number;
     // Optional filters
     transactionType?: string;
@@ -447,37 +509,43 @@ export class ListingService {
     minRooms?: number;
     maxRooms?: number;
   }) {
-    const { neLat, neLng, swLat, swLng, limit = 100 } = params;
-    const { Op } = require('sequelize');
+    const { neLat, neLng, swLat, swLng, limit = 100, viewerUserId } = params;
+    const visibleStatuses = await this.getVisibleStatuses(viewerUserId);
 
-    const where: any = {
-      lat: {
-        [Op.between]: [swLat, neLat],
+    const andConditions: any[] = [
+      {
+        lat: {
+          [Op.between]: [swLat, neLat],
+        },
       },
-      lng: {
-        [Op.between]: [swLng, neLng],
+      {
+        lng: {
+          [Op.between]: [swLng, neLng],
+        },
       },
-      lat: { [Op.ne]: null }, // Only properties with coordinates
-      lng: { [Op.ne]: null },
-      status: 'public', // Only public listings
-    };
+      { lat: { [Op.ne]: null } },
+      { lng: { [Op.ne]: null } },
+      { status: { [Op.in]: visibleStatuses } },
+    ];
 
     // Apply optional filters
-    if (params.transactionType) where.transactionType = params.transactionType;
-    if (params.propertyType) where.propertyType = params.propertyType;
+    if (params.transactionType) andConditions.push({ transactionType: params.transactionType });
+    if (params.propertyType) andConditions.push({ propertyType: params.propertyType });
     if (params.minPrice || params.maxPrice) {
-      where.priceEur = {};
-      if (params.minPrice) where.priceEur[Op.gte] = params.minPrice;
-      if (params.maxPrice) where.priceEur[Op.lte] = params.maxPrice;
+      const priceWhere: any = {};
+      if (params.minPrice) priceWhere[Op.gte] = params.minPrice;
+      if (params.maxPrice) priceWhere[Op.lte] = params.maxPrice;
+      andConditions.push({ priceEur: priceWhere });
     }
     if (params.minRooms || params.maxRooms) {
-      where.rooms = {};
-      if (params.minRooms) where.rooms[Op.gte] = params.minRooms;
-      if (params.maxRooms) where.rooms[Op.lte] = params.maxRooms;
+      const roomsWhere: any = {};
+      if (params.minRooms) roomsWhere[Op.gte] = params.minRooms;
+      if (params.maxRooms) roomsWhere[Op.lte] = params.maxRooms;
+      andConditions.push({ rooms: roomsWhere });
     }
 
     const listings = await Listing.findAll({
-      where,
+      where: { [Op.and]: andConditions },
       limit,
       include: [{ model: ListingImage, as: 'images' }],
       attributes: [
@@ -493,9 +561,18 @@ export class ListingService {
         'neighborhood',
         'transactionType',
         'propertyType',
+        'status',
+        'publicFrom',
         'ownershipStatus',
       ],
     });
+
+    const earlyAccessCount = listings.filter((item) => item.status === 'early_access').length;
+    if (earlyAccessCount > 0) {
+      this.logger.log(
+        `[METRIC] listing.findInBounds served early_access=${earlyAccessCount} total=${listings.length} viewer=${viewerUserId || 'anonymous'}`,
+      );
+    }
 
     this.logger.log(`Found ${listings.length} listings in bounds`);
     return listings;

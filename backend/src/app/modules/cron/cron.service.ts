@@ -9,9 +9,10 @@
  * 5. expirePromotions - La fiecare oră, expiră promoțiile terminate
  * 6. processExpiredSubscriptions - Zilnic la 02:00, procesează subscripții expirate
  * 7. resetMonthlyBoostCounters - La 1 ale lunii, resetează contoarele de boost
+ * 8. publishEarlyAccessListings - La fiecare 15 minute, publică listing-urile ieșite din fereastra early-access
  */
 
-import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SavedSearchService } from '../saved-search/saved-search.service.js';
 import { NotificationService } from '../notification/notification.service.js';
@@ -94,7 +95,7 @@ export class CronService {
           type: 'VIEWING_REMINDER',
           title: '⏰ Reminder: Vizionare în 1 oră',
           body: `Ai o vizionare programată în curând!`,
-          data: { viewingId: viewing.id },
+          metadata: { viewingId: viewing.id },
         });
         
         // Mark as reminded
@@ -121,7 +122,7 @@ export class CronService {
             type: 'VIEWING_REMINDER',
             title: '📅 Reminder: Vizionare mâine',
             body: `Ai o vizionare programată pentru mâine.`,
-            data: { viewingId: viewing.id },
+            metadata: { viewingId: viewing.id },
           });
         }
 
@@ -169,7 +170,7 @@ export class CronService {
           type: 'NEW_PROPERTY_MATCH',
           title: `🏠 ${search.newMatchesCount} proprietăți noi pentru "${search.name}"`,
           body: `Bună ${userName}! Am găsit ${search.newMatchesCount} proprietăți noi care corespund căutării tale.`,
-          data: { savedSearchId: search.id },
+          metadata: { savedSearchId: search.id },
         });
 
         // Reset counter and update lastAlertAt
@@ -218,7 +219,7 @@ export class CronService {
           type: 'NEW_PROPERTY_MATCH',
           title: `📊 Rezumat săptămânal: ${search.newMatchesCount} proprietăți noi`,
           body: `Bună ${userName}! Săptămâna aceasta am găsit ${search.newMatchesCount} proprietăți noi pentru "${search.name}".`,
-          data: { savedSearchId: search.id },
+          metadata: { savedSearchId: search.id },
         });
 
         // Reset counter and update lastAlertAt
@@ -260,7 +261,7 @@ export class CronService {
         type: 'NEW_PROPERTY_MATCH',
         title: `🆕 Proprietate nouă pentru "${search.name}"!`,
         body: `Bună ${userName}! Tocmai a apărut o proprietate care corespunde căutării tale.`,
-        data: { savedSearchId: search.id },
+        metadata: { savedSearchId: search.id },
       });
 
       // Update lastAlertAt
@@ -335,15 +336,17 @@ export class CronService {
             });
 
             // Notificare pentru owner (proprietar)
-            await this.notificationService.create(listing.ownerId, {
-              type: 'feedback_request',
-              title: '⭐ Evaluează vizitatul',
-              body: `Lasă un feedback despre ${seekerName} care a vizionat proprietatea ta`,
-              metadata: {
-                viewingId: viewing.id,
-                propertyId: viewing.propertyId,
-              },
-            });
+            if (listing.ownerId) {
+              await this.notificationService.create(listing.ownerId, {
+                type: 'feedback_request',
+                title: '⭐ Evaluează vizitatul',
+                body: `Lasă un feedback despre ${seekerName} care a vizionat proprietatea ta`,
+                metadata: {
+                  viewingId: viewing.id,
+                  propertyId: viewing.propertyId,
+                },
+              });
+            }
 
             notificationsSent += 2;
           }
@@ -392,6 +395,38 @@ export class CronService {
   // ========================================================================
 
   /**
+   * Publică listing-urile care au depășit fereastra early-access.
+   * Rulează la fiecare 15 minute.
+   */
+  @Cron('*/15 * * * *')
+  async publishEarlyAccessListings() {
+    this.logger.log('🕒 [CRON] Checking early-access listings to publish...');
+
+    try {
+      const { Listing } = await import('../../db/entities/listing.entity.js');
+      const now = new Date();
+
+      const [publishedCount] = await Listing.update(
+        { status: 'public' },
+        {
+          where: {
+            status: 'early_access',
+            publicFrom: { [Op.lte]: now },
+          },
+        },
+      );
+
+      if (publishedCount > 0) {
+        this.logger.log(`✅ [CRON] Published ${publishedCount} early-access listings`);
+      } else {
+        this.logger.log('✅ [CRON] No early-access listings ready for publishing');
+      }
+    } catch (error: any) {
+      this.logger.error(`❌ [CRON] Early-access publishing failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Expiră promoțiile terminate
    * Rulează la fiecare oră
    */
@@ -401,7 +436,6 @@ export class CronService {
 
     try {
       // Lazy import to avoid circular dependency
-      const { PromotionService } = await import('../monetization/services/promotion.service.js');
       const { ListingPromotion } = await import('../../db/entities/listing-promotion.entity.js');
 
       const now = new Date();
@@ -457,7 +491,6 @@ export class CronService {
 
     try {
       const { UserSubscription } = await import('../../db/entities/user-subscription.entity.js');
-      const { SubscriptionPlan } = await import('../../db/entities/subscription-plan.entity.js');
 
       const now = new Date();
       const gracePeriodDays = 7;
