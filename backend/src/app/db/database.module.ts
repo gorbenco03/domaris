@@ -32,6 +32,26 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 // Options default
 pg.defaults.parseInt8 = true;
 
+const parseBoolean = (value: string | boolean | undefined, fallback: boolean): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalizedValue = value.trim().toLowerCase();
+
+    if (normalizedValue === 'true') {
+      return true;
+    }
+
+    if (normalizedValue === 'false') {
+      return false;
+    }
+  }
+
+  return fallback;
+};
+
 @Global()
 @Module({
   imports: [
@@ -39,9 +59,13 @@ pg.defaults.parseInt8 = true;
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
         const isProduction = configService.get<string>('NODE_ENV') === 'production';
-        const shouldSynchronize = configService.get<boolean>('DB_SYNCHRONIZE') ?? !isProduction;
-        const useSsl = configService.get<boolean>('DB_SSL') ?? isProduction;
-        const rejectUnauthorized = configService.get<boolean>('DB_SSL_REJECT_UNAUTHORIZED') ?? false;
+        const shouldSynchronize = parseBoolean(configService.get<string>('DB_SYNCHRONIZE'), !isProduction);
+        const useSsl = parseBoolean(configService.get<string>('DB_SSL'), isProduction);
+        const rejectUnauthorized = parseBoolean(
+          configService.get<string>('DB_SSL_REJECT_UNAUTHORIZED'),
+          false
+        );
+        const enableLogging = parseBoolean(configService.get<string>('DB_LOGGING'), false);
 
         return {
           dialect: 'postgres',
@@ -90,11 +114,11 @@ pg.defaults.parseInt8 = true;
               alter: !isProduction,
             },
           }),
-          logging: (sql: string) => {
-            if (configService.get<boolean>('DB_LOGGING')) {
-              console.log('📊 [DB Query]', sql.substring(0, 200));
-            }
-          },
+          logging: enableLogging
+            ? (sql: string) => {
+                console.log('📊 [DB Query]', sql.substring(0, 200));
+              }
+            : false,
           ...(useSsl && {
             ssl: true,
             dialectOptions: {

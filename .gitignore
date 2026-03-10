@@ -23,6 +23,7 @@ node_modules
 
 
 ./backend/.env
+./backend/.env.railway
 # IDE - VSCode
 .vscode/*
 !.vscode/settings.json
