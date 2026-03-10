@@ -38,8 +38,13 @@ export interface MapProperty {
   images?: Array<{ id: number; url: string; isPrimary: boolean }>;
 }
 
+type RawMapProperty = Omit<MapProperty, 'lat' | 'lng'> & {
+  lat: number | string;
+  lng: number | string;
+};
+
 const fetchMapProperties = async (params: MapSearchParams): Promise<MapProperty[]> => {
-  const response = await apiClient.get<MapProperty[]>('/properties/map-search', {
+  const response = await apiClient.get<RawMapProperty[]>('/properties/map-search', {
     params: {
       neLat: params.neLat,
       neLng: params.neLng,
@@ -55,7 +60,13 @@ const fetchMapProperties = async (params: MapSearchParams): Promise<MapProperty[
     },
   });
 
-  return response.data;
+  return response.data
+    .map((property) => ({
+      ...property,
+      lat: Number(property.lat),
+      lng: Number(property.lng),
+    }))
+    .filter((property) => Number.isFinite(property.lat) && Number.isFinite(property.lng));
 };
 
 export const useMapProperties = (params: MapSearchParams | null) => {

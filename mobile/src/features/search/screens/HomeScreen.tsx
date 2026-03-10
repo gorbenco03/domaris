@@ -26,6 +26,7 @@ import {
   Home,
   Store,
   Bookmark,
+  Zap,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { QuickFilters } from '@/features/search/components/QuickFilters';
@@ -110,6 +111,13 @@ const HomeScreen: React.FC = () => {
     }
   };
 
+  // Homepage promoted listings
+  const {
+    data: homepageData,
+    isLoading: homepageLoading,
+    refetch: refetchHomepage,
+  } = useSearch({ showOnHomepage: true, limit: 10 });
+
   // Real data fetching
   const { 
     data: propertiesData, 
@@ -120,6 +128,8 @@ const HomeScreen: React.FC = () => {
     sortBy: 'createdAt' as any,
     sortOrder: 'DESC'
   });
+
+  const homepageListings = homepageData?.data || [];
 
   const {
     data: facetsData,
@@ -153,9 +163,9 @@ const HomeScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchProperties(), refetchFacets()]);
+    await Promise.all([refetchProperties(), refetchFacets(), refetchHomepage()]);
     setRefreshing(false);
-  }, [refetchProperties, refetchFacets]);
+  }, [refetchProperties, refetchFacets, refetchHomepage]);
 
   return (
     <SafeAreaView 
@@ -338,6 +348,67 @@ const HomeScreen: React.FC = () => {
             )}
           </ScrollView>
         </View>
+
+        {/* Homepage Promoted Listings */}
+        {(homepageLoading || homepageListings.length > 0) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Zap size={18} color={theme.colors.accent.main} fill={theme.colors.accent.main} />
+                <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
+                  Promovate
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => handleSearch({ showOnHomepage: true })}>
+                <Text style={[styles.seeAllText, { color: theme.colors.primary.main }]}>
+                  Vezi toate
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.propertiesContainer}>
+              {homepageLoading ? (
+                <ActivityIndicator color={theme.colors.primary.main} />
+              ) : (
+                homepageListings.map((property: any) => (
+                  <PropertyCard
+                    key={property.id}
+                    id={String(property.id)}
+                    title={property.title}
+                    transactionType={property.transactionType || 'SALE'}
+                    price={property.priceEur ?? property.price ?? 0}
+                    currency={(property.currency === 'RON' ? 'RON' : 'EUR') as 'EUR' | 'RON'}
+                    location={{
+                      neighborhood: property.neighborhood || undefined,
+                      city: property.city || '',
+                    }}
+                    characteristics={{
+                      rooms: property.rooms,
+                      bedrooms: property.bedrooms,
+                      bathrooms: property.bathrooms,
+                      totalArea: property.surfaceSqm ?? property.surface ?? 0,
+                      floor: property.floor,
+                      totalFloors: property.totalFloors,
+                    }}
+                    images={(property.images || []).map((i: any) => i.url).filter(Boolean)}
+                    listingStatus={property.status}
+                    publicFrom={property.publicFrom}
+                    ownershipStatus={property.ownershipStatus || 'none'}
+                    isPromoted={true}
+                    promotionBadgeText="Prima pagină"
+                    isFavorite={favoriteIds.has(String(property.id))}
+                    onPress={() => handlePropertyPress(String(property.id))}
+                    onFavoritePress={() =>
+                      handleToggleFavorite(
+                        Number(property.id),
+                        favoriteIds.has(String(property.id))
+                      )
+                    }
+                  />
+                ))
+              )}
+            </View>
+          </View>
+        )}
 
         {/* New Listings */}
         <View style={styles.section}>

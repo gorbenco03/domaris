@@ -3,20 +3,18 @@
  * Premium property card with swipeable image carousel
  */
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Animated,
   Dimensions,
-  FlatList,
+  ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   Heart,
   MapPin,
@@ -27,7 +25,6 @@ import {
   CheckCircle,
 } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { Card } from '@/shared/components/Card';
 import { Badge } from '@/shared/components/Badge';
 import { getEarlyAccessBadgeLabel, isEarlyAccessStatus } from '@/shared/utils';
 
@@ -36,6 +33,38 @@ import { getEarlyAccessBadgeLabel, isEarlyAccessStatus } from '@/shared/utils';
 // ============================================
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800';
+
+let sharedNowMs = Date.now();
+let sharedNowInterval: ReturnType<typeof setInterval> | null = null;
+const sharedNowSubscribers = new Set<(nowMs: number) => void>();
+
+const ensureSharedNowTicker = () => {
+  if (sharedNowInterval) return;
+
+  sharedNowInterval = setInterval(() => {
+    sharedNowMs = Date.now();
+    for (const notify of sharedNowSubscribers) {
+      notify(sharedNowMs);
+    }
+  }, 30_000);
+};
+
+const cleanupSharedNowTicker = () => {
+  if (sharedNowSubscribers.size > 0 || !sharedNowInterval) return;
+  clearInterval(sharedNowInterval);
+  sharedNowInterval = null;
+};
+
+const subscribeSharedNow = (notify: (nowMs: number) => void) => {
+  sharedNowSubscribers.add(notify);
+  notify(sharedNowMs);
+  ensureSharedNowTicker();
+
+  return () => {
+    sharedNowSubscribers.delete(notify);
+    cleanupSharedNowTicker();
+  };
+};
 
 interface PropertyCardProps {
   id: string;
@@ -65,6 +94,8 @@ interface PropertyCardProps {
   listingStatus?: string;
   publicFrom?: string | Date;
   priceReduced?: boolean;
+  isPromoted?: boolean;
+  promotionBadgeText?: string;
   stats?: {
     views: number;
     favorites: number;
@@ -97,146 +128,128 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   listingStatus,
   publicFrom,
   priceReduced = false,
+  isPromoted = false,
+  promotionBadgeText,
   stats,
   onPress,
   onFavoritePress,
   variant = 'list',
 }) => {
   const { theme } = useTheme();
-  const heartScale = useRef(new Animated.Value(1)).current;
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [imageWidth, setImageWidth] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   const hasEarlyAccessCountdown = isEarlyAccessStatus(listingStatus) && !!publicFrom;
 
   useEffect(() => {
     if (!hasEarlyAccessCountdown) return;
-
-    const intervalId = setInterval(() => {
-      setNowMs(Date.now());
-    }, 30_000);
-
-    return () => clearInterval(intervalId);
+    return subscribeSharedNow(setNowMs);
   }, [hasEarlyAccessCountdown]);
 
-  // Resolve images: prefer array, fall back to single image, then placeholder
   const resolvedImages = (imagesProp && imagesProp.length > 0)
     ? imagesProp
-    : singleImage
-      ? [singleImage]
-      : [FALLBACK_IMAGE];
+    : singleImage ? [singleImage] : [FALLBACK_IMAGE];
+  const imageCount = resolvedImages.length;
 
-  const handleFavoritePress = () => {
-    Animated.sequence([
-      Animated.spring(heartScale, {
-        toValue: 1.3,
-        useNativeDriver: true,
-      }),
-      Animated.spring(heartScale, {
-        toValue: 1,
-        friction: 3,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    onFavoritePress?.();
-  };
-
-  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (imageWidth <= 0) return;
-    const index = Math.round(e.nativeEvent.contentOffset.x / imageWidth);
-    setActiveImageIndex(index);
-  }, [imageWidth]);
+  // Track current image index via ref only — no state update during scroll
+  const currentIndexRef = useRef(0);
+  const [displayIndex, setDisplayIndex] = useState(0);
+  const containerWidthRef = useRef(0);
 
   const handleImageLayout = useCallback((e: any) => {
-    setImageWidth(e.nativeEvent.layout.width);
+    containerWidthRef.current = e.nativeEvent.layout.width;
   }, []);
 
-  const formatPrice = (value: number | undefined, curr: string) => {
-    if (typeof value !== 'number') {
-      return '-';
+  const handleScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const w = containerWidthRef.current;
+    if (w <= 0) return;
+    const idx = Math.round(e.nativeEvent.contentOffset.x / w);
+    if (idx !== currentIndexRef.current) {
+      currentIndexRef.current = idx;
+      setDisplayIndex(idx);
     }
-    if (curr === 'EUR') {
-      return `${value.toLocaleString('ro-RO')} €`;
-    }
-    return `${value.toLocaleString('ro-RO')} RON`;
-  };
+  }, []);
 
-  const formatLocation = () => {
-    if (location.neighborhood) {
-      return `${location.neighborhood}, ${location.city}`;
-    }
-    return location.city;
-  };
-
-  const renderImage = useCallback(({ item }: { item: string }) => (
-    <Image
-      source={{ uri: item }}
-      style={[styles.image, imageWidth > 0 ? { width: imageWidth } : undefined]}
-      contentFit="cover"
-      cachePolicy="disk"
-      transition={200}
-    />
-  ), [imageWidth]);
-
-  const keyExtractor = useCallback((_: string, index: number) => `img-${index}`, []);
   const earlyAccessBadgeLabel = getEarlyAccessBadgeLabel(listingStatus, publicFrom, nowMs);
+  const locationText = location.neighborhood
+    ? `${location.neighborhood}, ${location.city}`
+    : location.city;
+  const priceText = typeof price !== 'number'
+    ? '-'
+    : currency === 'EUR'
+      ? `${price.toLocaleString('ro-RO')} €`
+      : `${price.toLocaleString('ro-RO')} RON`;
+
+  const cardStyle = variant === 'compact'
+    ? [styles.card, styles.compactCard, { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl, ...theme.shadows.card }]
+    : [styles.card, { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.xl, ...theme.shadows.card }];
+
+  const verificationStatus = ownershipStatus || (isVerified ? 'verified' : 'none');
 
   return (
-    <Card
+    <TouchableOpacity
       onPress={onPress}
-      style={variant === 'compact' ? [styles.card, styles.compactCard] : styles.card}
+      activeOpacity={0.9}
+      style={cardStyle}
       testID={`property-card-${id}`}
     >
       {/* Image Section */}
       <View style={styles.imageContainer} onLayout={handleImageLayout}>
-        {resolvedImages.length === 1 ? (
+        {imageCount === 1 ? (
           <Image
             source={{ uri: resolvedImages[0] }}
             style={styles.image}
             contentFit="cover"
             cachePolicy="disk"
-            transition={200}
+            recyclingKey={`img-${id}-0`}
           />
         ) : (
-          <FlatList
-            data={resolvedImages}
-            renderItem={renderImage}
-            keyExtractor={keyExtractor}
+          <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
+            onMomentumScrollEnd={handleScrollEnd}
+            scrollEventThrottle={0}
             bounces={false}
-            nestedScrollEnabled
-          />
-        )}
-
-        {/* Gradient overlay for price */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.6)']}
-          style={styles.imageOverlay}
-          pointerEvents="none"
-        />
-
-        {/* Dot Indicators */}
-        {resolvedImages.length > 1 && (
-          <View style={styles.dotsContainer} pointerEvents="none">
-            {resolvedImages.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  index === activeImageIndex ? styles.dotActive : styles.dotInactive,
-                ]}
+            decelerationRate="fast"
+          >
+            {resolvedImages.map((uri, i) => (
+              <Image
+                key={i}
+                source={{ uri }}
+                style={[styles.image, { width: containerWidthRef.current || SCREEN_WIDTH }]}
+                contentFit="cover"
+                cachePolicy="disk"
+                recyclingKey={`img-${id}-${i}`}
               />
             ))}
+          </ScrollView>
+        )}
+
+        {/* Gradient overlay */}
+        <View style={styles.imageOverlay} pointerEvents="none" />
+
+        {/* Image count indicator — bottom right */}
+        {imageCount > 1 && (
+          <View style={styles.imageCountBadge} pointerEvents="none">
+            <Text style={styles.imageCountText}>{displayIndex + 1}/{imageCount}</Text>
           </View>
         )}
 
         {/* Badges */}
         <View style={styles.badgesContainer}>
+          {isPromoted && promotionBadgeText && (
+            <Badge
+              label={promotionBadgeText}
+              variant={
+                promotionBadgeText === 'Evidențiat'
+                  ? 'premium'
+                  : promotionBadgeText === 'Prima pagină'
+                  ? 'accent'
+                  : 'info'
+              }
+              size="sm"
+            />
+          )}
           {priceReduced && (
             <Badge label="REDUS" variant="warning" size="sm" />
           )}
@@ -247,9 +260,9 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Price Badge */}
         <View style={styles.priceContainer}>
-          <View style={[styles.priceBadge, { backgroundColor: 'rgba(255,255,255,0.95)' }]}>
+          <View style={styles.priceBadge}>
             <Text style={[styles.priceText, { color: theme.colors.primary.main }]}>
-              {formatPrice(price, currency)}
+              {priceText}
             </Text>
             {transactionType === 'RENT' && (
               <Text style={[styles.rentLabel, { color: theme.colors.textSecondary }]}>
@@ -261,17 +274,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Favorite Button */}
         <TouchableOpacity
-          onPress={handleFavoritePress}
-          style={[styles.favoriteButton, { backgroundColor: 'rgba(255,255,255,0.9)' }]}
-          activeOpacity={0.8}
+          onPress={onFavoritePress}
+          style={styles.favoriteButton}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-            <Heart
-              size={20}
-              color={isFavorite ? theme.colors.secondary.error : theme.colors.textSecondary}
-              fill={isFavorite ? theme.colors.secondary.error : 'none'}
-            />
-          </Animated.View>
+          <Heart
+            size={20}
+            color={isFavorite ? theme.colors.secondary.error : theme.colors.textSecondary}
+            fill={isFavorite ? theme.colors.secondary.error : 'none'}
+          />
         </TouchableOpacity>
       </View>
 
@@ -290,7 +302,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             style={[styles.locationText, { color: theme.colors.textSecondary }]}
             numberOfLines={1}
           >
-            {formatLocation()}
+            {locationText}
           </Text>
         </View>
 
@@ -329,39 +341,27 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           )}
         </View>
 
-        {/* Footer with stats and verified badge */}
+        {/* Footer */}
         <View style={[styles.footer, { borderTopColor: theme.colors.divider }]}>
-          {(() => {
-            const status = ownershipStatus || (isVerified ? 'verified' : 'none');
-            if (status === 'verified') {
-              return (
-                <View style={styles.verifiedRow}>
-                  <CheckCircle size={14} color={theme.colors.accent.main} />
-                  <Text style={[styles.verifiedText, { color: theme.colors.accent.main }]}>
-                    Proprietate verificată
-                  </Text>
-                </View>
-              );
-            }
-            if (status === 'pending') {
-              return (
-                <View style={styles.verifiedRow}>
-                  <CheckCircle size={14} color={theme.colors.secondary.warning} />
-                  <Text style={[styles.verifiedText, { color: theme.colors.secondary.warning }]}>
-                    Verificare în curs
-                  </Text>
-                </View>
-              );
-            }
-            return (
-              <View style={styles.verifiedRow}>
-                <CheckCircle size={14} color={theme.colors.textTertiary} />
-                <Text style={[styles.verifiedText, { color: theme.colors.textTertiary }]}>
-                  Neverificată
-                </Text>
-              </View>
-            );
-          })()}
+          <View style={styles.verifiedRow}>
+            <CheckCircle
+              size={14}
+              color={
+                verificationStatus === 'verified' ? theme.colors.accent.main
+                : verificationStatus === 'pending' ? theme.colors.secondary.warning
+                : theme.colors.textTertiary
+              }
+            />
+            <Text style={[styles.verifiedText, {
+              color: verificationStatus === 'verified' ? theme.colors.accent.main
+                : verificationStatus === 'pending' ? theme.colors.secondary.warning
+                : theme.colors.textTertiary
+            }]}>
+              {verificationStatus === 'verified' ? 'Proprietate verificată'
+                : verificationStatus === 'pending' ? 'Verificare în curs'
+                : 'Neverificată'}
+            </Text>
+          </View>
           {stats && (
             <View style={styles.statsRow}>
               <Eye size={12} color={theme.colors.textTertiary} />
@@ -376,7 +376,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           )}
         </View>
       </View>
-    </Card>
+    </TouchableOpacity>
   );
 };
 
@@ -385,6 +385,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     width: '100%',
     maxWidth: '100%',
+    overflow: 'hidden',
   },
   compactCard: {
     width: SCREEN_WIDTH * 0.7,
@@ -407,27 +408,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 60,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  dotsContainer: {
+  imageCountBadge: {
     position: 'absolute',
-    bottom: 44,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 5,
+    bottom: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotActive: {
-    backgroundColor: '#ffffff',
-  },
-  dotInactive: {
-    backgroundColor: 'rgba(255,255,255,0.5)',
+  imageCountText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
   },
   badgesContainer: {
     position: 'absolute',
@@ -447,6 +442,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.95)',
   },
   priceText: {
     fontSize: 18,
@@ -536,4 +532,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PropertyCard;
+export default React.memo(PropertyCard);

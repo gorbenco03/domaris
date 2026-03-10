@@ -40,6 +40,58 @@ import { PAGINATION } from '@/config/constants';
 
 type NavigationProp = NativeStackNavigationProp<SearchStackParamList>;
 
+// ============================================
+// MEMOIZED CARD ITEM
+// ============================================
+
+interface SearchResultItemProps {
+  item: any;
+  isFavorite: boolean;
+  onPress: (id: string) => void;
+  onFavoritePress: (id: number, isFav: boolean) => void;
+}
+
+const SearchResultItem = React.memo(
+  ({ item, isFavorite, onPress, onFavoritePress }: SearchResultItemProps) => (
+    <View style={searchResultItemStyle}>
+      <PropertyCard
+        id={String(item.id)}
+        title={item.title}
+        transactionType={item.transactionType || 'SALE'}
+        price={item.priceEur ?? item.price ?? 0}
+        currency={(item.currency === 'RON' ? 'RON' : 'EUR') as 'EUR' | 'RON'}
+        location={{
+          neighborhood: item.neighborhood || undefined,
+          city: item.city || '',
+        }}
+        characteristics={{
+          rooms: item.rooms,
+          bedrooms: item.bedrooms,
+          bathrooms: item.bathrooms,
+          totalArea: item.surfaceSqm ?? item.surface ?? 0,
+          floor: item.floor,
+          totalFloors: item.totalFloors,
+        }}
+        images={(item.images || []).map((i: any) => i.url).filter(Boolean)}
+        listingStatus={item.status}
+        publicFrom={item.publicFrom}
+        ownershipStatus={item.ownershipStatus || 'none'}
+        isPromoted={item.isPromoted || false}
+        promotionBadgeText={item.promotionBadgeText || undefined}
+        isFavorite={isFavorite}
+        onPress={() => onPress(String(item.id))}
+        onFavoritePress={() => onFavoritePress(Number(item.id), isFavorite)}
+      />
+    </View>
+  ),
+  (prev, next) =>
+    prev.isFavorite === next.isFavorite &&
+    prev.item.id === next.item.id &&
+    prev.item.isPromoted === next.item.isPromoted,
+);
+
+const searchResultItemStyle = { paddingHorizontal: 16 };
+
 type SearchBarSuggestion = {
   id: string;
   text: string;
@@ -129,6 +181,8 @@ const SearchResultsScreen: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   const [showSortModal, setShowSortModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchResults, setSearchResults] = useState<IPropertyListItem[]>([]);
+  const isLoadingMoreRef = useRef(false);
 
   const { isAuthenticated, requireAuth } = useRequireAuth();
 
@@ -181,17 +235,72 @@ const SearchResultsScreen: React.FC = () => {
     }));
   }, [suggestionsData]);
 
-  // Real data fetching
-  const { 
-    data: searchResponse, 
-    isLoading, 
-    refetch,
-  } = useSearch({
-    ...filters,
-    sortBy: sortBy === 'date_newest' ? 'date_desc' : sortBy as any,
-  });
+  const resolvedSortBy: IAdvancedSearchFilters['sortBy'] =
+    sortBy === 'date_newest' ? 'date_desc' : sortBy;
 
-  const results = searchResponse?.data || [];
+  const searchRequestFilters = useMemo<IAdvancedSearchFilters>(
+    () => ({
+      ...filters,
+      page: filters.page ?? 1,
+      limit: filters.limit ?? PAGINATION.DEFAULT_PAGE_SIZE,
+      sortBy: resolvedSortBy,
+    }),
+    [filters, resolvedSortBy],
+  );
+
+  const resetResultsKey = useMemo(
+    () => JSON.stringify({ ...searchRequestFilters, page: 1 }),
+    [searchRequestFilters],
+  );
+
+  // Real data fetching
+  const {
+    data: searchResponse,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useSearch(searchRequestFilters);
+
+  useEffect(() => {
+    setSearchResults([]);
+    isLoadingMoreRef.current = false;
+  }, [resetResultsKey]);
+
+  useEffect(() => {
+    if (!isFetching) {
+      isLoadingMoreRef.current = false;
+    }
+  }, [isFetching]);
+
+  useEffect(() => {
+    const pageData = searchResponse?.data || [];
+    const currentPage = searchRequestFilters.page ?? 1;
+
+    setSearchResults((prev) => {
+      if (currentPage <= 1) {
+        return pageData;
+      }
+
+      if (pageData.length === 0) {
+        return prev;
+      }
+
+      const seen = new Set(prev.map((item) => String(item.id)));
+      const merged = [...prev];
+
+      for (const item of pageData) {
+        const id = String(item.id);
+        if (!seen.has(id)) {
+          seen.add(id);
+          merged.push(item);
+        }
+      }
+
+      return merged;
+    });
+  }, [searchResponse?.data, searchRequestFilters.page]);
+
+  const results = searchResults;
   const totalCount = searchResponse?.meta?.total ?? (searchResponse as any)?.total ?? 0;
 
   const onRefresh = useCallback(async () => {
@@ -200,11 +309,11 @@ const SearchResultsScreen: React.FC = () => {
     setRefreshing(false);
   }, [refetch]);
 
-  const handlePropertyPress = (propertyId: string) => {
+  const handlePropertyPress = useCallback((propertyId: string) => {
     navigation.navigate('PropertyDetail', { propertyId });
-  };
+  }, [navigation]);
 
-  const handleToggleFavorite = async (propertyId: number, currentlyFavorite: boolean) => {
+  const handleToggleFavorite = useCallback(async (propertyId: number, currentlyFavorite: boolean) => {
     if (!requireAuth({ message: 'Autentifică-te pentru a salva favorite.' })) {
       return;
     }
@@ -213,7 +322,7 @@ const SearchResultsScreen: React.FC = () => {
     } catch (error) {
       console.warn('Failed to toggle favorite', error);
     }
-  };
+  }, [requireAuth, toggleFavoriteMutation]);
 
   const handleApplyFilters = useCallback(
     (nextFilters: IAdvancedSearchFilters) => {
@@ -329,6 +438,19 @@ const SearchResultsScreen: React.FC = () => {
     });
   };
 
+  const handleLoadMore = useCallback(() => {
+    if (isLoading || isFetching || isLoadingMoreRef.current) return;
+    if (!searchResponse?.meta?.hasNextPage) return;
+    if (results.length === 0) return;
+
+    isLoadingMoreRef.current = true;
+
+    setFilters((prev) => ({
+      ...prev,
+      page: (prev.page || 1) + 1,
+    }));
+  }, [isLoading, isFetching, searchResponse?.meta?.hasNextPage, results.length]);
+
   const renderHeader = useCallback(() => (
     <View style={styles.headerContainer}>
       {/* Search Bar Row */}
@@ -429,46 +551,16 @@ const SearchResultsScreen: React.FC = () => {
 
   const headerElement = useMemo(() => renderHeader(), [renderHeader]);
 
-  const renderProperty = ({ item }: { item: IPropertyListItem }) => {
-    // Map API item to PropertyCard props
-    const anyItem = item as any;
+  const renderProperty = useCallback(({ item }: { item: IPropertyListItem }) => (
+    <SearchResultItem
+      item={item}
+      isFavorite={favoriteIds.has(String(item.id))}
+      onPress={handlePropertyPress}
+      onFavoritePress={handleToggleFavorite}
+    />
+  ), [favoriteIds, handlePropertyPress, handleToggleFavorite]);
 
-    return (
-      <View style={styles.propertyCard}>
-        <PropertyCard
-          id={String(anyItem.id)}
-          title={anyItem.title}
-          transactionType={anyItem.transactionType || 'SALE'}
-          price={anyItem.priceEur ?? anyItem.price ?? 0}
-          currency={(anyItem.currency === 'RON' ? 'RON' : 'EUR') as 'EUR' | 'RON'}
-          location={{
-            neighborhood: anyItem.neighborhood || undefined,
-            city: anyItem.city || '',
-          }}
-          characteristics={{
-            rooms: anyItem.rooms,
-            bedrooms: anyItem.bedrooms,
-            bathrooms: anyItem.bathrooms,
-            totalArea: anyItem.surfaceSqm ?? anyItem.surface ?? 0,
-            floor: anyItem.floor,
-            totalFloors: anyItem.totalFloors,
-          }}
-          images={(anyItem.images || []).map((i: any) => i.url).filter(Boolean)}
-          listingStatus={anyItem.status}
-          publicFrom={anyItem.publicFrom}
-          ownershipStatus={anyItem.ownershipStatus || 'none'}
-          onPress={() => handlePropertyPress(String(item.id))}
-          isFavorite={favoriteIds.has(String(item.id))}
-          onFavoritePress={() =>
-            handleToggleFavorite(
-              Number(item.id),
-              favoriteIds.has(String(item.id))
-            )
-          }
-        />
-      </View>
-    );
-  };
+  const keyExtractor = useCallback((item: IPropertyListItem) => String(item.id), []);
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
@@ -495,6 +587,14 @@ const SearchResultsScreen: React.FC = () => {
   );
 
   const renderFooter = () => {
+    if (isFetching && (searchRequestFilters.page ?? 1) > 1) {
+      return (
+        <View style={styles.footerLoader}>
+          <ActivityIndicator size="small" color={theme.colors.primary.main} />
+        </View>
+      );
+    }
+
     return null;
   };
 
@@ -506,7 +606,7 @@ const SearchResultsScreen: React.FC = () => {
       <FlatList
         data={results}
         renderItem={renderProperty}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={keyExtractor}
         ListHeaderComponent={headerElement}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
@@ -514,6 +614,11 @@ const SearchResultsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
+        initialNumToRender={6}
+        maxToRenderPerBatch={4}
+        windowSize={5}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={true}
         onScrollBeginDrag={() => setShowSortModal(false)}
         refreshControl={
           <RefreshControl
@@ -522,10 +627,8 @@ const SearchResultsScreen: React.FC = () => {
             tintColor={theme.colors.primary.main}
           />
         }
-        onEndReached={() => {
-          // Load more (to be implemented with infinite query)
-        }}
-        onEndReachedThreshold={0.5}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.25}
       />
       {isLoading && results.length === 0 && (
         <View style={styles.loadingContainer}>
@@ -556,6 +659,7 @@ const SearchResultsScreen: React.FC = () => {
                   ]}
                   onPress={() => {
                     setSortBy(option.value);
+                    setFilters((prev) => ({ ...prev, page: 1 }));
                     setShowSortModal(false);
                   }}
                 >
@@ -660,9 +764,6 @@ const styles = StyleSheet.create({
   },
   sortOptionText: {
     fontSize: 14,
-  },
-  propertyCard: {
-    paddingHorizontal: 16,
   },
   emptyContainer: {
     alignItems: 'center',

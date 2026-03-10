@@ -218,9 +218,8 @@ export async function purchasePromotion(
   if (useFreeBoost) {
     try {
       const result = await monetizationApi.createPromotion(listingId, {
-        promotionPlanId: plan.id,
+        promotionCode: plan.code,
         useFreeBoost: true,
-        paymentProvider: 'web', // Orice provider pentru free boost
       });
 
       return {

@@ -136,7 +136,13 @@ export type ProfileStackParamList = {
   AIAnalysis: { propertyId: string };
   // Monetization and AI features
   Pricing: undefined;
-  BoostPurchase: { propertyId?: string };
+  BoostPurchase: {
+    listingId?: number;
+    propertyId?: string; // legacy fallback
+    listingTitle?: string;
+    listingLocation?: string;
+    listingPrice?: string;
+  };
   AIChat: { conversationId?: number; propertyId?: string };
   AiConversationsList: undefined;
   ListingAnalysis: { propertyId: string };

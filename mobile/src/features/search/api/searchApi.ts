@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '@/core/api/client';
-import type { IPropertyListing } from '@/core/api/types';
+import type { IPropertyListItem } from '@/core/api/types';
 
 // ============================================================================
 // TYPES
@@ -51,6 +51,7 @@ export interface IAdvancedSearchFilters {
 
   // Filters
   excludeAgencies?: boolean;
+  showOnHomepage?: boolean;
 
   // Rent type
   rentType?: string;
@@ -67,7 +68,7 @@ export interface IAdvancedSearchFilters {
 }
 
 export interface ISearchResponse {
-  data: IPropertyListing[];
+  data: IPropertyListItem[];
   meta: {
     total: number;
     page: number;

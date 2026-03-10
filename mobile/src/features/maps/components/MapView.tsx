@@ -58,7 +58,7 @@ export const MapViewComponent: React.FC<MapViewProps> = ({
     try {
       const bounds = await mapRef.current.getVisibleBounds();
       if (bounds) {
-        const [[swLng, swLat], [neLng, neLat]] = bounds;
+        const [[neLng, neLat], [swLng, swLat]] = bounds;
         onRegionChange({ neLat, neLng, swLat, swLng });
       }
     } catch (error) {

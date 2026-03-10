@@ -107,11 +107,11 @@ export async function getPromotionPlans(): Promise<PromotionPlan[]> {
 export async function createPromotion(
   listingId: number,
   data: {
-    promotionPlanId: number;
+    promotionCode: string;
     useFreeBoost?: boolean;
-    paymentProvider: PaymentProvider;
-    receipt?: string;
-    purchaseToken?: string;
+    paymentMethodToken?: string;
+    appleReceipt?: string;
+    googlePurchaseToken?: string;
   },
 ): Promise<{
   success: boolean;

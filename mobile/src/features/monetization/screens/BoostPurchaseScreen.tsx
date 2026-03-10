@@ -48,7 +48,8 @@ import * as paymentService from '../services/paymentService';
 
 type BoostPurchaseRouteParams = {
   BoostPurchase: {
-    listingId: number;
+    listingId?: number | string;
+    propertyId?: string;
     listingTitle?: string;
     listingLocation?: string;
     listingPrice?: string;
@@ -65,7 +66,12 @@ const BoostPurchaseScreen: React.FC = () => {
   const route = useRoute<RouteProp<BoostPurchaseRouteParams, 'BoostPurchase'>>();
 
   // Get listing info from route params
-  const listingId = route.params?.listingId || 0;
+  const rawListingId = route.params?.listingId ?? route.params?.propertyId;
+  const parsedListingId =
+    typeof rawListingId === 'number' ? rawListingId : Number(rawListingId ?? 0);
+  const listingId = Number.isFinite(parsedListingId) && parsedListingId > 0
+    ? parsedListingId
+    : null;
   const listingTitle = route.params?.listingTitle || 'Anunț';
   const listingLocation = route.params?.listingLocation || '';
   const listingPrice = route.params?.listingPrice || '';
@@ -188,6 +194,28 @@ const BoostPurchaseScreen: React.FC = () => {
       ],
     );
   };
+
+  if (!listingId) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['top']}
+      >
+        <ScreenHeader title="Promovează Anunțul" />
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}> 
+            Nu am putut identifica anunțul pentru promovare.
+          </Text>
+          <Button
+            title="Înapoi"
+            onPress={() => navigation.goBack()}
+            variant="outline"
+            style={{ marginTop: theme.spacing[4] }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Loading state
   if (plansLoading || promotionLoading) {

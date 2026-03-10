@@ -11,6 +11,7 @@ import {
   PromotionPlan,
   BillingCycle,
   PaymentProvider,
+  PlatformPaymentConfig,
   MonetizationStatus,
   UserSubscription,
 } from '../types';
@@ -34,7 +35,7 @@ export interface PaymentState {
 export interface UsePaymentsReturn {
   // State
   state: PaymentState;
-  platformConfig: paymentService.PlatformPaymentConfig;
+  platformConfig: PlatformPaymentConfig;
 
   // Subscription actions
   purchaseSubscription: (
@@ -394,14 +395,20 @@ export interface UseListingPromotionReturn {
   refetch: () => Promise<void>;
 }
 
-export function useListingPromotion(listingId: number): UseListingPromotionReturn {
+export function useListingPromotion(listingId: number | null): UseListingPromotionReturn {
   const [promotion, setPromotion] = useState<any | null>(null);
   const [hasActivePromotion, setHasActivePromotion] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(Boolean(listingId));
   const [error, setError] = useState<string | null>(null);
 
   const fetchPromotion = useCallback(async () => {
-    if (!listingId) return;
+    if (!listingId) {
+      setHasActivePromotion(false);
+      setPromotion(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
     setError(null);

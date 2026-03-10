@@ -196,7 +196,10 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
         <View style={styles.actionButtonsContainer}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.colors.primary.main }]}
-            onPress={() => navigation.navigate('BoostPurchase', { propertyId })}
+            onPress={() => navigation.navigate('BoostPurchase', {
+              listingId: numericPropertyId,
+              propertyId,
+            })}
           >
             <Zap size={20} color={theme.colors.surface} />
             <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Promovează anunțul</Text>
