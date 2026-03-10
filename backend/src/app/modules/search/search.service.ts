@@ -75,6 +75,9 @@ export interface SearchFilters {
   
   // Exclude agencies
   excludeAgencies?: boolean;
+
+  // Homepage promoted only
+  showOnHomepage?: boolean;
   
   // Pagination
   page?: number;
@@ -110,6 +113,7 @@ interface PromotedListingInfo {
   boostMultiplier: number;
   showBadge: boolean;
   showOnHomepage: boolean;
+  badgeText: string | null;
 }
 
 interface MapListingRow {
@@ -126,6 +130,8 @@ interface MapListingRow {
 @Injectable()
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
+  private promotedCache: { map: Map<number, PromotedListingInfo>; expiresAt: number } | null = null;
+  private readonly PROMOTED_CACHE_TTL_MS = 30_000; // 30 seconds
 
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
@@ -143,30 +149,41 @@ export class SearchService {
    * Lazy import pentru a evita dependențe circulare
    */
   private async getPromotedListings(): Promise<Map<number, PromotedListingInfo>> {
+    const now = Date.now();
+    if (this.promotedCache && this.promotedCache.expiresAt > now) {
+      return this.promotedCache.map;
+    }
+
     try {
       const { ListingPromotion } = await import('../../db/entities/listing-promotion.entity.js');
-      const now = new Date();
+      const nowDate = new Date();
+
+      const { PromotionPlan } = await import('../../db/entities/promotion-plan.entity.js');
 
       const promotions = await ListingPromotion.findAll({
         where: {
           status: 'active',
-          startDate: { [Op.lte]: now },
-          endDate: { [Op.gt]: now },
+          startDate: { [Op.lte]: nowDate },
+          endDate: { [Op.gt]: nowDate },
         },
         attributes: ['listingId', 'searchBoostMultiplier', 'showBadge', 'showOnHomepage'],
+        include: [{ model: PromotionPlan, as: 'promotionPlan', attributes: ['badgeText'] }],
         raw: true,
+        nest: true,
       });
 
       const map = new Map<number, PromotedListingInfo>();
-      for (const p of promotions) {
+      for (const p of promotions as any[]) {
         map.set(p.listingId, {
           listingId: p.listingId,
           boostMultiplier: Number(p.searchBoostMultiplier),
           showBadge: p.showBadge,
           showOnHomepage: p.showOnHomepage,
+          badgeText: p.promotionPlan?.badgeText || null,
         });
       }
 
+      this.promotedCache = { map, expiresAt: now + this.PROMOTED_CACHE_TTL_MS };
       return map;
     } catch (error) {
       this.logger.warn('Could not load promoted listings:', error);
@@ -181,7 +198,6 @@ export class SearchService {
   async search(filters: SearchFilters): Promise<SearchResult> {
     const page = filters.page || 1;
     const limit = Math.min(filters.limit || 20, 50);
-    const offset = (page - 1) * limit;
     const visibleStatuses = await this.getVisibleStatuses(filters.viewerUserId);
 
     // Build WHERE conditions
@@ -316,43 +332,168 @@ export class SearchService {
       whereConditions.push({ isAgency: false });
     }
 
+    // Homepage promoted only: join with listing_promotions
+    if (filters.showOnHomepage) {
+      const { ListingPromotion } = await import('../../db/entities/listing-promotion.entity.js');
+      const now = new Date();
+      const homepagePromotions = await ListingPromotion.findAll({
+        where: {
+          status: 'active',
+          showOnHomepage: true,
+          startDate: { [Op.lte]: now },
+          endDate: { [Op.gt]: now },
+        },
+        attributes: ['listingId'],
+        raw: true,
+      });
+      const homepageIds = homepagePromotions.map((p: any) => p.listingId);
+      if (homepageIds.length === 0) {
+        return { data: [], meta: { total: 0, page: 1, limit, totalPages: 0, hasNextPage: false, hasPrevPage: false } };
+      }
+      whereConditions.push({ id: { [Op.in]: homepageIds } });
+    }
+
     // Build ORDER clause
     const order = this.buildOrderClause(filters.sortBy, filters.query);
 
     this.logger.log(`Search whereConditions count: ${whereConditions.length}`);
 
-    // Get promoted listings for prioritization
+    const include: any[] = [
+      {
+        model: ListingImage,
+        as: 'images',
+        limit: 5,
+        order: [['order', 'ASC']],
+      },
+      {
+        model: User,
+        as: 'owner',
+        attributes: ['id', 'firstName', 'lastName', 'avatar', 'verificationLevel'],
+      },
+    ];
+
+    // PROMOTED INTERLEAVING:
+    // Insert 1 promoted listing every PROMOTED_INTERVAL normal results.
+    // Promoted are sorted by: boostMultiplier DESC, then startDate ASC (first paid = first shown at equal multiplier).
+    // On page N, we skip the first (page-1)*promotedPerPage promoted slots.
+    const PROMOTED_INTERVAL = 4; // 1 promoted every 4 normal results
+    const promotedSlotsPerPage = Math.floor(limit / PROMOTED_INTERVAL); // e.g. 20/4 = 5 slots
+    const promotedOffset = (page - 1) * promotedSlotsPerPage;
+
+    // Fetch promoted map and matching promoted IDs in parallel
     const promotedListings = await this.getPromotedListings();
     const promotedIds = Array.from(promotedListings.keys());
 
-    // Execute query
-    const { count, rows } = await Listing.findAndCountAll({
-      where: { [Op.and]: whereConditions },
-      include: [
-        {
-          model: ListingImage,
-          as: 'images',
-          limit: 5,
-          order: [['order', 'ASC']],
+    // Fetch the promoted listings matching current filters, sorted correctly
+    let allMatchingPromoted: any[] = [];
+    if (promotedIds.length > 0) {
+      const promotedDbRows = await Listing.findAll({
+        where: {
+          [Op.and]: [
+            ...whereConditions,
+            { id: { [Op.in]: promotedIds } },
+          ],
         },
-        {
-          model: User,
-          as: 'owner',
-          attributes: ['id', 'firstName', 'lastName', 'avatar', 'verificationLevel'],
-        },
-      ],
-      order,
-      limit: limit + promotedIds.length, // Fetch extra to allow reordering
-      offset: Math.max(0, offset - (page === 1 ? 0 : promotedIds.length)),
-      distinct: true,
+        attributes: ['id'],
+        raw: true,
+      }) as any[];
+
+      // Sort by multiplier DESC, then startDate ASC (tie-break: first paid wins)
+      allMatchingPromoted = promotedDbRows
+        .map((r: any) => ({ id: r.id, info: promotedListings.get(r.id) }))
+        .filter((r: any) => r.info)
+        .sort((a: any, b: any) => {
+          const diff = b.info.boostMultiplier - a.info.boostMultiplier;
+          if (diff !== 0) return diff;
+          return (a.info.startDate?.getTime?.() ?? 0) - (b.info.startDate?.getTime?.() ?? 0);
+        });
+    }
+
+    // Slice the promoted listings for this page
+    const pagePromotedSlice = allMatchingPromoted.slice(
+      promotedOffset,
+      promotedOffset + promotedSlotsPerPage,
+    );
+    const pagePromotedIds = pagePromotedSlice.map((r: any) => r.id);
+
+    // Fetch full data for this page's promoted listings (preserving order)
+    let promotedFull: any[] = [];
+    if (pagePromotedIds.length > 0) {
+      const promotedDbFull = await Listing.findAll({
+        where: { id: { [Op.in]: pagePromotedIds } },
+        include,
+      }) as any[];
+
+      // Restore sort order (findAll doesn't guarantee order for IN clause)
+      const promotedById = new Map(promotedDbFull.map((r) => [r.id, r]));
+      promotedFull = pagePromotedIds
+        .map((id: number) => promotedById.get(id))
+        .filter(Boolean)
+        .map((row: any) => {
+          const promoInfo = promotedListings.get(row.id);
+          const plain = row.toJSON();
+          plain.isPromoted = true;
+          plain.promotionBadge = promoInfo?.showBadge || false;
+          plain.promotionBadgeText = promoInfo?.badgeText || null;
+          return plain;
+        });
+    }
+
+    // Fetch normal listings (excluding ALL matching promoted to avoid duplicates across pages)
+    const allPromotedMatchingIds = allMatchingPromoted.map((r: any) => r.id);
+    const normalWhereConditions =
+      allPromotedMatchingIds.length > 0
+        ? [...whereConditions, { id: { [Op.notIn]: allPromotedMatchingIds } }]
+        : whereConditions;
+
+    // Normal slots per page = limit minus promoted slots for this page
+    const normalLimit = limit - promotedFull.length;
+    const normalOffset = (page - 1) * (limit - promotedSlotsPerPage);
+
+    // Run count and rows fetch in parallel for performance
+    const [totalCount, rows] = await Promise.all([
+      Listing.count({ where: { [Op.and]: whereConditions } }).then(Number),
+      Listing.findAll({
+        where: { [Op.and]: normalWhereConditions },
+        include,
+        order,
+        limit: Math.max(1, normalLimit),
+        offset: normalOffset,
+        distinct: true,
+      } as any),
+    ]);
+
+    // Annotate normal rows as plain objects
+    const normalRows = rows.map((row) => {
+      const plain = row.toJSON() as any;
+      plain.isPromoted = false;
+      plain.promotionBadge = false;
+      plain.promotionBadgeText = null;
+      return plain;
     });
 
-    // Sort results: promoted listings first, then by original order
-    // Also add promotion metadata to results
-    const sortedRows = this.sortWithPromotedFirst(rows, promotedListings);
+    // Interleave: insert 1 promoted every PROMOTED_INTERVAL normal results
+    // e.g. [N, N, N, N, P, N, N, N, N, P, ...]
+    const finalRows: any[] = [];
+    let normalIdx = 0;
+    let promotedIdx = 0;
 
-    // Apply limit after sorting
-    const finalRows = sortedRows.slice(0, limit);
+    while (finalRows.length < limit) {
+      // Insert PROMOTED_INTERVAL normal results
+      for (let i = 0; i < PROMOTED_INTERVAL && finalRows.length < limit; i++) {
+        if (normalIdx < normalRows.length) {
+          finalRows.push(normalRows[normalIdx++]);
+        } else {
+          break;
+        }
+      }
+      // Insert 1 promoted
+      if (promotedIdx < promotedFull.length && finalRows.length < limit) {
+        finalRows.push(promotedFull[promotedIdx++]);
+      } else if (normalIdx >= normalRows.length) {
+        break;
+      }
+    }
     const earlyAccessCount = finalRows.filter((item) => item.status === 'early_access').length;
 
     if (earlyAccessCount > 0) {
@@ -361,12 +502,12 @@ export class SearchService {
       );
     }
 
-    const totalPages = Math.ceil(count / limit);
+    const totalPages = Math.ceil(totalCount / limit);
 
     return {
       data: finalRows,
       meta: {
-        total: count,
+        total: totalCount,
         page,
         limit,
         totalPages,
@@ -374,45 +515,6 @@ export class SearchService {
         hasPrevPage: page > 1,
       },
     };
-  }
-
-  /**
-   * Sortează rezultatele cu listing-urile promovate primele
-   * Adaugă metadata de promovare la rezultate
-   */
-  private sortWithPromotedFirst(
-    rows: Listing[],
-    promotedListings: Map<number, PromotedListingInfo>,
-  ): (Listing & { isPromoted?: boolean; promotionBadge?: boolean })[] {
-    // Split into promoted and non-promoted
-    const promoted: (Listing & { isPromoted?: boolean; promotionBadge?: boolean })[] = [];
-    const nonPromoted: (Listing & { isPromoted?: boolean; promotionBadge?: boolean })[] = [];
-
-    for (const row of rows) {
-      const promoInfo = promotedListings.get(row.id);
-      if (promoInfo) {
-        // Add promotion metadata
-        const enhancedRow = row as Listing & { isPromoted?: boolean; promotionBadge?: boolean };
-        enhancedRow.isPromoted = true;
-        enhancedRow.promotionBadge = promoInfo.showBadge;
-        promoted.push(enhancedRow);
-      } else {
-        const enhancedRow = row as Listing & { isPromoted?: boolean; promotionBadge?: boolean };
-        enhancedRow.isPromoted = false;
-        enhancedRow.promotionBadge = false;
-        nonPromoted.push(enhancedRow);
-      }
-    }
-
-    // Sort promoted by boost multiplier (higher first)
-    promoted.sort((a, b) => {
-      const aBoost = promotedListings.get(a.id)?.boostMultiplier || 1;
-      const bBoost = promotedListings.get(b.id)?.boostMultiplier || 1;
-      return bBoost - aBoost;
-    });
-
-    // Combine: promoted first, then non-promoted
-    return [...promoted, ...nonPromoted];
   }
 
   /**

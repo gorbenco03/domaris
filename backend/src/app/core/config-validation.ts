@@ -9,6 +9,16 @@ const schema = Joi.object({
   HOST: Joi.string().default('localhost'),
   PORT: Joi.number().default(3000),
   APP_NAME: Joi.string().required(),
+  API_URL: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().uri().required(),
+    otherwise: Joi.string().uri().optional(),
+  }),
+  APP_URL: Joi.when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().uri().required(),
+    otherwise: Joi.string().uri().optional(),
+  }),
 
   //DATABASE CONFIG
   DB_DIALECT: Joi.string().valid('postgres').required(),
@@ -17,10 +27,15 @@ const schema = Joi.object({
   DB_USER: Joi.string().required(),
   DB_PASS: Joi.string().required(),
   DB_NAME: Joi.string().required(),
+  DB_LOGGING: Joi.boolean().truthy('true').falsy('false').default(false),
+  DB_SSL: Joi.boolean().truthy('true').falsy('false').default(false),
+  DB_SSL_REJECT_UNAUTHORIZED: Joi.boolean().truthy('true').falsy('false').default(false),
+  DB_SYNCHRONIZE: Joi.boolean().truthy('true').falsy('false').default(false),
 
   // REDIS CONFIG
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().required(),
+  REDIS_PASSWORD: Joi.string().allow('').optional(),
 
   // DIGITALOCEAN SPACES (S3-compatible object storage)
   DO_SPACES_ACCESS_KEY_ID: Joi.string().required(),

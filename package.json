@@ -6,7 +6,10 @@
     "list-users": "cd backend && node scripts/list-users.js",
     "set-verification-level": "cd backend && node scripts/set-verification-level.js",
     "list-kyc-requests": "cd backend && node scripts/list-kyc-requests.js",
-    "kyc-review": "cd backend && node scripts/kyc-review.js"
+    "kyc-review": "cd backend && node scripts/kyc-review.js",
+    "grant-subscription": "cd backend && node scripts/grant-subscription.js",
+    "seed-listings": "cd backend && node scripts/seed-listings.js",
+    "clear-listings": "cd backend && node scripts/clear-listings.js"
   },
   "private": true,
   "devDependencies": {

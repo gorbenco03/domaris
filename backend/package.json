@@ -2,6 +2,12 @@
   "name": "@domaris/backend",
   "version": "0.0.1",
   "private": true,
+  "scripts": {
+    "grant-subscription": "node scripts/grant-subscription.js",
+    "seed-listings": "node scripts/seed-listings.js",
+    "clear-listings": "node scripts/clear-listings.js",
+    "seed-promotions": "node scripts/seed-promotions.js"
+  },
   "nx": {
     "targets": {
       "build": {

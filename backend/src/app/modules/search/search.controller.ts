@@ -46,6 +46,7 @@ export class SearchController {
   @ApiQuery({ name: 'hasCentralHeating', required: false, type: Boolean })
   @ApiQuery({ name: 'petFriendly', required: false, type: Boolean })
   @ApiQuery({ name: 'excludeAgencies', required: false, type: Boolean })
+  @ApiQuery({ name: 'showOnHomepage', required: false, type: Boolean, description: 'Return only homepage-promoted listings' })
   @ApiQuery({ name: 'sortBy', required: false, enum: ['price_asc', 'price_desc', 'date_desc', 'date_asc', 'relevance'] })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (1-indexed)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (max 50)' })
@@ -91,6 +92,7 @@ export class SearchController {
       petFriendly: filters.petFriendly === 'true' as unknown as boolean ? true :
                    filters.petFriendly === 'false' as unknown as boolean ? false : undefined,
       excludeAgencies: filters.excludeAgencies === 'true' as unknown as boolean ? true : false,
+      showOnHomepage: filters.showOnHomepage === 'true' ? true : undefined,
       viewerUserId: user?.id,
     };
 

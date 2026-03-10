@@ -97,6 +97,13 @@ export class PromotionPlan extends ExtModel {
   })
   showBadge!: boolean;
 
+  @ApiProperty({ example: 'Promovat', description: 'Text shown in the badge' })
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  badgeText?: string;
+
   @ApiProperty({ example: true, description: 'Appears on homepage' })
   @Column({
     type: DataType.BOOLEAN,

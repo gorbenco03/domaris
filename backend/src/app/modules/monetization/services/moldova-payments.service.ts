@@ -42,11 +42,13 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import { Transaction, TransactionType, TransactionStatus, PaymentMethod } from '../../../db/entities/transaction.entity.js';
+import { Op } from 'sequelize';
+import { Transaction } from '../../../db/entities/transaction.entity.js';
 import { UserSubscription } from '../../../db/entities/user-subscription.entity.js';
 import { ListingPromotion } from '../../../db/entities/listing-promotion.entity.js';
 import { SubscriptionPlan } from '../../../db/entities/subscription-plan.entity.js';
 import { PromotionPlan } from '../../../db/entities/promotion-plan.entity.js';
+import { Listing } from '../../../db/entities/listing.entity.js';
 
 export interface PaymentInitiationResult {
   success: boolean;
@@ -92,6 +94,10 @@ export class MoldovaPaymentsService {
     this.logger.log(`Initiating PAYNET payment for user ${userId}, type: ${type}`);
 
     try {
+      if (type === 'promotion') {
+        await this.validatePromotionPaymentRequest(userId, options.listingId);
+      }
+
       // 1. Calculează suma
       const { amount, currency, description } = await this.calculatePaymentAmount(
         type,
@@ -119,41 +125,41 @@ export class MoldovaPaymentsService {
       // 3. Apelează PAYNET API
       const paynetMerchantId = this.configService.get('PAYNET_MERCHANT_ID');
       const paynetSecretKey = this.configService.get('PAYNET_SECRET_KEY');
-      const paynetApiUrl = this.configService.get('PAYNET_API_URL', 'https://paynet.md/api/v1');
 
       if (!paynetMerchantId || !paynetSecretKey) {
         this.logger.warn('PAYNET credentials not configured');
+        const mockPaymentId = `PAY-${Date.now()}`;
+        await transaction.update({
+          externalTransactionId: mockPaymentId,
+          paynetTransactionId: mockPaymentId,
+          paymentProvider: 'paynet',
+        });
+
         // În development, returnăm un URL mock
         return {
           success: true,
           paymentUrl: `https://paynet.md/demo/checkout?order=${transaction.id}`,
           transactionId: transaction.id,
+          externalPaymentId: mockPaymentId,
           expiresAt: new Date(Date.now() + 30 * 60 * 1000),
         };
       }
 
-      // Construiește payload PAYNET
-      const payload = {
-        merchant_id: paynetMerchantId,
-        order_id: transaction.id.toString(),
-        amount: Math.round(amount * 100), // PAYNET folosește bani (100 = 1 MDL)
-        currency,
-        description,
-        return_url: `${this.configService.get('APP_URL')}/payments/paynet/return`,
-        callback_url: `${this.configService.get('API_URL')}/monetization/webhooks/paynet`,
-        language: 'ro',
-      };
-
-      // Generează semnătură HMAC
-      const signature = this.generatePaynetSignature(payload, paynetSecretKey);
-
-      // TODO: Fă request real la PAYNET API
+      // TODO: Fă request real la PAYNET API (payload, signature, paynetApiUrl)
+      // const payload = {
+      //   merchant_id: paynetMerchantId,
+      //   order_id: transaction.id.toString(),
+      //   amount: Math.round(amount * 100),
+      //   currency, description,
+      //   return_url: `${this.configService.get('APP_URL')}/payments/paynet/return`,
+      //   callback_url: `${this.configService.get('API_URL')}/monetization/webhooks/paynet`,
+      //   language: 'ro',
+      // };
+      // const signature = this.generatePaynetSignature(payload, paynetSecretKey);
+      // const paynetApiUrl = this.configService.get('PAYNET_API_URL', 'https://paynet.md/api/v1');
       // const response = await fetch(`${paynetApiUrl}/payments/create`, {
       //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-Signature': signature,
-      //   },
+      //   headers: { 'Content-Type': 'application/json', 'X-Signature': signature },
       //   body: JSON.stringify(payload),
       // });
       // const data = await response.json();
@@ -161,7 +167,9 @@ export class MoldovaPaymentsService {
       // Mock response pentru development
       const mockPaymentId = `PAY-${Date.now()}`;
       await transaction.update({
-        externalPaymentId: mockPaymentId,
+        externalTransactionId: mockPaymentId,
+        paynetTransactionId: mockPaymentId,
+        paymentProvider: 'paynet',
       });
 
       return {
@@ -199,10 +207,14 @@ export class MoldovaPaymentsService {
     if (!secretKey) return false;
 
     const expectedSignature = this.generatePaynetSignature(body, secretKey);
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature),
-    );
+    const signatureBuffer = Buffer.from(signature || '');
+    const expectedBuffer = Buffer.from(expectedSignature);
+
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
   }
 
   // ============================================================================
@@ -225,6 +237,10 @@ export class MoldovaPaymentsService {
     this.logger.log(`Initiating MAIB payment for user ${userId}, type: ${type}`);
 
     try {
+      if (type === 'promotion') {
+        await this.validatePromotionPaymentRequest(userId, options.listingId);
+      }
+
       // 1. Calculează suma
       const { amount, currency, description } = await this.calculatePaymentAmount(
         type,
@@ -256,10 +272,18 @@ export class MoldovaPaymentsService {
 
       if (!maibMerchantId || !maibTerminalId) {
         this.logger.warn('MAIB credentials not configured');
+        const mockTransactionId = `MAIB-${Date.now()}`;
+        await transaction.update({
+          externalTransactionId: mockTransactionId,
+          maibTransactionId: mockTransactionId,
+          paymentProvider: 'maib',
+        });
+
         return {
           success: true,
           paymentUrl: `https://ecomm.maib.md/demo?order=${transaction.id}`,
           transactionId: transaction.id,
+          externalPaymentId: mockTransactionId,
           expiresAt: new Date(Date.now() + 30 * 60 * 1000),
         };
       }
@@ -273,7 +297,9 @@ export class MoldovaPaymentsService {
 
       const mockTransactionId = `MAIB-${Date.now()}`;
       await transaction.update({
-        externalPaymentId: mockTransactionId,
+        externalTransactionId: mockTransactionId,
+        maibTransactionId: mockTransactionId,
+        paymentProvider: 'maib',
       });
 
       return {
@@ -323,6 +349,10 @@ export class MoldovaPaymentsService {
     this.logger.log(`Initiating MPAY payment for user ${userId}, type: ${type}`);
 
     try {
+      if (type === 'promotion') {
+        await this.validatePromotionPaymentRequest(userId, options.listingId);
+      }
+
       // 1. Calculează suma
       const { amount, currency, description } = await this.calculatePaymentAmount(
         type,
@@ -355,6 +385,12 @@ export class MoldovaPaymentsService {
       if (!mpayMerchantId || !mpaySecretKey) {
         this.logger.warn('MPAY credentials not configured');
         const mockPaymentId = `MPAY-${Date.now()}`;
+        await transaction.update({
+          externalTransactionId: mockPaymentId,
+          mpayTransactionId: mockPaymentId,
+          paymentProvider: 'mpay',
+        });
+
         return {
           success: true,
           deepLink: `mpay://pay/${mockPaymentId}`,
@@ -368,7 +404,9 @@ export class MoldovaPaymentsService {
       // TODO: Implement real MPAY API call
       const mockPaymentId = `MPAY-${Date.now()}`;
       await transaction.update({
-        externalPaymentId: mockPaymentId,
+        externalTransactionId: mockPaymentId,
+        mpayTransactionId: mockPaymentId,
+        paymentProvider: 'mpay',
       });
 
       return {
@@ -429,7 +467,7 @@ export class MoldovaPaymentsService {
       }
 
       const amount = billingCycle === 'yearly'
-        ? plan.priceYearly * 12 // Preț anual total
+        ? (plan.priceYearly ?? plan.priceMonthly) * 12 // Preț anual total
         : plan.priceMonthly;
 
       return {
@@ -471,31 +509,51 @@ export class MoldovaPaymentsService {
       return;
     }
 
-    // Actualizează tranzacția
-    await transaction.update({
-      status: 'completed',
-      externalPaymentId,
-      completedAt: new Date(),
-    });
-
     // Activează abonamentul sau promoția
-    const metadata = transaction.metadata as any;
+    const metadata = (transaction.metadata || {}) as Record<string, unknown>;
 
     if (transaction.type === 'subscription') {
+      const planId = Number(metadata?.itemId);
+      if (!Number.isFinite(planId)) {
+        throw new BadRequestException('Invalid subscription metadata in transaction');
+      }
+
       await this.activateSubscription(
         transaction.userId,
-        metadata.itemId,
-        metadata.billingCycle || 'monthly',
+        planId,
+        metadata.billingCycle === 'yearly' ? 'yearly' : 'monthly',
         provider,
         externalPaymentId,
       );
     } else if (transaction.type === 'promotion') {
+      const listingId = Number(metadata?.listingId);
+      const promotionPlanId = Number(metadata?.itemId);
+
+      if (!Number.isFinite(listingId) || !Number.isFinite(promotionPlanId)) {
+        throw new BadRequestException('Invalid promotion metadata in transaction');
+      }
+
       await this.activatePromotion(
-        metadata.listingId,
-        metadata.itemId,
-        transaction.id,
+        listingId,
+        promotionPlanId,
+        transaction,
+        provider,
+        externalPaymentId,
       );
+    } else {
+      throw new BadRequestException(`Unsupported transaction type: ${transaction.type}`);
     }
+
+    const completedAt = new Date();
+
+    await transaction.update({
+      status: 'completed',
+      paymentProvider: provider,
+      ...this.getProviderTransactionUpdate(provider, externalPaymentId),
+      completedAt,
+      failedAt: undefined,
+      failureMessage: undefined,
+    });
   }
 
   /**
@@ -509,7 +567,9 @@ export class MoldovaPaymentsService {
     externalId: string,
   ): Promise<void> {
     const plan = await SubscriptionPlan.findByPk(planId);
-    if (!plan) return;
+    if (!plan) {
+      throw new BadRequestException('Subscription plan not found');
+    }
 
     // Verifică dacă există deja un abonament
     const existing = await UserSubscription.findOne({
@@ -556,28 +616,140 @@ export class MoldovaPaymentsService {
   private async activatePromotion(
     listingId: number,
     promotionPlanId: number,
-    transactionId: number,
+    transaction: Transaction,
+    provider: 'paynet' | 'maib' | 'mpay',
+    externalPaymentId: string,
   ): Promise<void> {
     const plan = await PromotionPlan.findByPk(promotionPlanId);
-    if (!plan) return;
+    if (!plan) {
+      throw new BadRequestException('Promotion plan not found');
+    }
+
+    const listing = await Listing.findByPk(listingId);
+    if (!listing) {
+      throw new BadRequestException('Listing not found');
+    }
+
+    if (String(listing.ownerId) !== String(transaction.userId)) {
+      throw new BadRequestException('Transaction user does not own this listing');
+    }
 
     const now = new Date();
     const endDate = new Date(now.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
 
-    await ListingPromotion.create({
-      listingId,
+    const activePromotion = await ListingPromotion.findOne({
+      where: {
+        listingId,
+        status: 'active',
+        endDate: { [Op.gt]: now },
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (activePromotion) {
+      this.logger.warn(
+        `Listing ${listingId} already has active promotion ${activePromotion.id}; skipping activation for transaction ${transaction.id}`,
+      );
+      return;
+    }
+
+    const pendingPromotion = await ListingPromotion.findOne({
+      where: {
+        listingId,
+        userId: transaction.userId,
+        promotionPlanId,
+        status: 'pending',
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    const promotionPayload = {
       promotionPlanId,
-      transactionId,
       status: 'active',
       startDate: now,
       endDate,
-      boostMultiplier: plan.searchBoostMultiplier,
+      activatedAt: now,
+      searchBoostMultiplier: plan.searchBoostMultiplier,
       showBadge: plan.showBadge,
       showOnHomepage: plan.showOnHomepage,
+      isHighlighted: plan.isHighlighted,
+      amountPaid: Number(transaction.amount),
+      currency: transaction.currency || plan.currency,
+      paymentStatus: 'completed',
       isFreeBoost: false,
+      metadata: {
+        ...(pendingPromotion?.metadata || {}),
+        paymentProvider: provider,
+        transactionId: transaction.id,
+        externalTransactionId: externalPaymentId,
+      },
+    };
+
+    if (pendingPromotion) {
+      await pendingPromotion.update(promotionPayload as any);
+      this.logger.log(`Activated pending promotion ${pendingPromotion.id} for listing ${listingId}`);
+      return;
+    }
+
+    await ListingPromotion.create({
+      userId: transaction.userId,
+      listingId,
+      ...promotionPayload,
     } as any);
 
-    this.logger.log(`Activated promotion for listing ${listingId}`);
+    this.logger.log(`Activated promotion for listing ${listingId} from transaction ${transaction.id}`);
+  }
+
+  private getProviderTransactionUpdate(
+    provider: 'paynet' | 'maib' | 'mpay',
+    externalPaymentId: string,
+  ): Partial<Transaction> {
+    const updates: Record<string, any> = {
+      externalTransactionId: externalPaymentId,
+    };
+
+    if (provider === 'paynet') {
+      updates.paynetTransactionId = externalPaymentId;
+    } else if (provider === 'maib') {
+      updates.maibTransactionId = externalPaymentId;
+    } else if (provider === 'mpay') {
+      updates.mpayTransactionId = externalPaymentId;
+    }
+
+    return updates;
+  }
+
+  private async validatePromotionPaymentRequest(
+    userId: number,
+    listingId?: number,
+  ): Promise<void> {
+    if (!listingId) {
+      throw new BadRequestException('listingId is required for promotion payments');
+    }
+
+    const listing = await Listing.findByPk(listingId);
+    if (!listing) {
+      throw new BadRequestException('Listing not found');
+    }
+
+    if (String(listing.ownerId) !== String(userId)) {
+      throw new BadRequestException('You are not the owner of this listing');
+    }
+
+    const existingActivePromotion = await ListingPromotion.findOne({
+      where: {
+        listingId,
+        status: 'active',
+        endDate: { [Op.gt]: new Date() },
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (existingActivePromotion) {
+      throw new BadRequestException(
+        'This listing already has an active promotion. Wait for it to expire or cancel it first.',
+      );
+    }
   }
 
   /**
@@ -601,9 +773,15 @@ export class MoldovaPaymentsService {
     const transaction = await Transaction.findByPk(transactionId);
     if (!transaction) return;
 
+    if (transaction.status === 'completed') {
+      this.logger.warn(`Skipping failed update for completed transaction ${transactionId}`);
+      return;
+    }
+
     await transaction.update({
       status: 'failed',
-      failureReason: reason,
+      failureMessage: reason,
+      failedAt: new Date(),
     });
 
     this.logger.warn(`Payment ${transactionId} failed: ${reason}`);

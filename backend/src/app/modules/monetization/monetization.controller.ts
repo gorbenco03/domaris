@@ -61,6 +61,7 @@ import {
   HttpCode,
   HttpStatus,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -80,6 +81,7 @@ import { Public, CurrentUserId, MinVerificationLevel } from '../../core/decorato
 
 import { SubscriptionService } from './services/subscription.service.js';
 import { PromotionService } from './services/promotion.service.js';
+import { MoldovaPaymentsService } from './services/moldova-payments.service.js';
 import {
   CreateSubscriptionDto,
   ChangePlanDto,
@@ -103,6 +105,7 @@ export class MonetizationController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
     private readonly promotionService: PromotionService,
+    private readonly moldovaPaymentsService: MoldovaPaymentsService,
   ) {}
 
   // ============================================================================
@@ -623,43 +626,85 @@ export class MonetizationController {
   ) {
     this.logger.log(`Received PAYNET webhook: ${body.event}`);
 
-    // TODO: Implement PAYNET webhook handling
-    // 1. Verifică semnătura HMAC cu PAYNET_SECRET_KEY
-    // 2. Procesează evenimentele:
-    //    - PAYMENT_CONFIRMED → activează abonament/promoție
-    //    - PAYMENT_FAILED → marchează ca eșuat
-    //    - SUBSCRIPTION_RENEWED → reînnoiește abonament
-    //    - SUBSCRIPTION_CANCELLED → anulează abonament
-
     try {
-      const { event, transactionId } = body;
+      const { event, transactionId, externalId } = body;
+      const signature = this.resolveWebhookToken(
+        body?.signature,
+        req,
+        ['x-paynet-signature', 'x-signature'],
+      );
 
-      // Verificare semnătură (implementați cu cheia secretă PAYNET)
-      // const isValid = this.verifyPaynetSignature(body, signature);
-      // if (!isValid) {
-      //   this.logger.warn('Invalid PAYNET signature');
-      //   return { received: false, error: 'Invalid signature' };
-      // }
+      if (signature) {
+        const payloadWithoutSignature = { ...body };
+        delete payloadWithoutSignature.signature;
+
+        const isValid =
+          this.moldovaPaymentsService.verifyPaynetWebhook(body, signature) ||
+          this.moldovaPaymentsService.verifyPaynetWebhook(payloadWithoutSignature, signature);
+
+        if (!isValid) {
+          this.logger.warn('Invalid PAYNET signature');
+          return { received: false, error: 'Invalid signature' };
+        }
+      }
+
+      const internalTransactionId = await this.resolveTransactionId(
+        externalId ?? body.order_id ?? transactionId,
+      );
 
       switch (event) {
         case 'PAYMENT_CONFIRMED':
           this.logger.log(`PAYNET payment confirmed: ${transactionId}`);
-          // await this.processPaynetPayment(externalId, transactionId, amount);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processSuccessfulPayment(
+              internalTransactionId,
+              String(transactionId || externalId || internalTransactionId),
+              'paynet',
+            );
+          } else {
+            this.logger.warn(`PAYNET PAYMENT_CONFIRMED without resolvable transaction: ${externalId || transactionId}`);
+          }
           break;
 
         case 'PAYMENT_FAILED':
           this.logger.warn(`PAYNET payment failed: ${transactionId}`);
-          // await this.handlePaynetFailure(externalId, transactionId);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              `PAYNET payment failed (${body.status || 'unknown'})`,
+            );
+          }
+          break;
+
+        case 'PAYMENT_CANCELLED':
+          this.logger.log(`PAYNET payment cancelled: ${transactionId}`);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              'PAYNET payment cancelled',
+            );
+          }
           break;
 
         case 'SUBSCRIPTION_RENEWED':
           this.logger.log(`PAYNET subscription renewed: ${transactionId}`);
-          // await this.renewPaynetSubscription(externalId);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processSuccessfulPayment(
+              internalTransactionId,
+              String(transactionId || externalId || internalTransactionId),
+              'paynet',
+            );
+          }
           break;
 
         case 'SUBSCRIPTION_CANCELLED':
           this.logger.log(`PAYNET subscription cancelled: ${transactionId}`);
-          // await this.cancelPaynetSubscription(externalId);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              'PAYNET subscription cancelled',
+            );
+          }
           break;
 
         default:
@@ -714,33 +759,76 @@ export class MonetizationController {
   ) {
     this.logger.log(`Received MAIB webhook: ${body.event_type}`);
 
-    // TODO: Implement MAIB E-Commerce webhook handling
-    // 1. Verifică semnătura cu MAIB_SECRET_KEY
-    // 2. Procesează evenimentele
-
     try {
-      const { event_type, transaction_id } = body;
+      const { event_type, transaction_id, merchant_order_id } = body;
+      const signature = this.resolveWebhookToken(
+        body?.signature,
+        req,
+        ['x-maib-signature', 'x-signature'],
+      );
+
+      if (signature && !this.moldovaPaymentsService.verifyMaibWebhook(body, signature)) {
+        this.logger.warn('Invalid MAIB signature');
+        return { received: false, error: 'Invalid signature' };
+      }
+
+      const internalTransactionId = await this.resolveTransactionId(
+        merchant_order_id ?? body.order_id ?? transaction_id,
+      );
 
       switch (event_type) {
         case 'transaction.success':
           this.logger.log(`MAIB transaction success: ${transaction_id}`);
-          // await this.processMaibPayment(merchant_order_id, transaction_id, amount);
-          // Salvează card_token pentru plăți recurente
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processSuccessfulPayment(
+              internalTransactionId,
+              String(transaction_id || merchant_order_id || internalTransactionId),
+              'maib',
+            );
+          } else {
+            this.logger.warn(`MAIB success without resolvable transaction: ${merchant_order_id || transaction_id}`);
+          }
           break;
 
         case 'transaction.failed':
           this.logger.warn(`MAIB transaction failed: ${transaction_id}`);
-          // await this.handleMaibFailure(merchant_order_id, transaction_id);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              'MAIB transaction failed',
+            );
+          }
+          break;
+
+        case 'transaction.cancelled':
+          this.logger.log(`MAIB transaction cancelled: ${transaction_id}`);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              'MAIB transaction cancelled',
+            );
+          }
           break;
 
         case 'recurring.success':
           this.logger.log(`MAIB recurring payment success: ${transaction_id}`);
-          // await this.processMaibRecurring(merchant_order_id);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processSuccessfulPayment(
+              internalTransactionId,
+              String(transaction_id || merchant_order_id || internalTransactionId),
+              'maib',
+            );
+          }
           break;
 
         case 'recurring.failed':
           this.logger.warn(`MAIB recurring payment failed: ${transaction_id}`);
-          // await this.handleMaibRecurringFailure(merchant_order_id);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              'MAIB recurring payment failed',
+            );
+          }
           break;
 
         default:
@@ -788,28 +876,63 @@ export class MonetizationController {
   ) {
     this.logger.log(`Received MPAY webhook: ${body.action}`);
 
-    // TODO: Implement MPAY webhook handling
-
     try {
-      const { action, payment_id } = body;
+      const { action, payment_id, order_id } = body;
+      const hash = this.resolveWebhookToken(
+        body?.hash,
+        req,
+        ['x-mpay-hash', 'x-hash', 'x-signature'],
+      );
 
-      // Verificare hash MPAY
-      // const isValid = this.verifyMpayHash(body, hash);
+      if (hash && !this.moldovaPaymentsService.verifyMpayHash(body, hash)) {
+        this.logger.warn('Invalid MPAY hash');
+        return { received: false, error: 'Invalid hash' };
+      }
+
+      const internalTransactionId = await this.resolveTransactionId(order_id ?? payment_id);
 
       switch (action) {
         case 'payment_completed':
           this.logger.log(`MPAY payment completed: ${payment_id}`);
-          // await this.processMpayPayment(order_id, payment_id, amount);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processSuccessfulPayment(
+              internalTransactionId,
+              String(payment_id || order_id || internalTransactionId),
+              'mpay',
+            );
+          } else {
+            this.logger.warn(`MPAY completed without resolvable transaction: ${order_id || payment_id}`);
+          }
           break;
 
         case 'payment_failed':
           this.logger.warn(`MPAY payment failed: ${payment_id}`);
-          // await this.handleMpayFailure(order_id, payment_id);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              'MPAY payment failed',
+            );
+          }
           break;
 
         case 'payment_cancelled':
           this.logger.log(`MPAY payment cancelled: ${payment_id}`);
-          // await this.handleMpayCancellation(order_id);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              'MPAY payment cancelled',
+            );
+          }
+          break;
+
+        case 'payment_expired':
+          this.logger.log(`MPAY payment expired: ${payment_id}`);
+          if (internalTransactionId) {
+            await this.moldovaPaymentsService.processFailedPayment(
+              internalTransactionId,
+              'MPAY payment expired',
+            );
+          }
           break;
 
         default:
@@ -856,18 +979,27 @@ export class MonetizationController {
   ) {
     this.logger.log(`Initiating PAYNET payment for user ${userId}`);
 
-    // TODO: Implement PAYNET payment initiation
-    // 1. Calculează suma de plată
-    // 2. Creează înregistrare Transaction cu status 'pending'
-    // 3. Apelează PAYNET API pentru a crea sesiune de plată
-    // 4. Returnează URL pentru redirect
+    if (body.type === 'promotion' && !body.listingId) {
+      throw new BadRequestException('listingId is required for promotion payments');
+    }
+
+    const billingCycle = this.parseBillingCycle(body.billingCycle);
+
+    const result = await this.moldovaPaymentsService.initiatePaynetPayment(
+      userId,
+      body.type,
+      body.itemId,
+      {
+        billingCycle,
+        listingId: body.listingId,
+      },
+    );
 
     return {
-      success: true,
-      paymentUrl: 'https://paynet.md/checkout/xxx', // TODO: Real URL from PAYNET
-      transactionId: 'pending-xxx',
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minute
-      message: 'Redirect user to paymentUrl to complete payment',
+      ...result,
+      message: result.success
+        ? 'Redirect user to paymentUrl to complete payment'
+        : result.error || 'Failed to initiate PAYNET payment',
     };
   }
 
@@ -901,14 +1033,28 @@ export class MonetizationController {
   ) {
     this.logger.log(`Initiating MAIB payment for user ${userId}`);
 
-    // TODO: Implement MAIB E-Commerce payment initiation
+    if (body.type === 'promotion' && !body.listingId) {
+      throw new BadRequestException('listingId is required for promotion payments');
+    }
+
+    const billingCycle = this.parseBillingCycle(body.billingCycle);
+
+    const result = await this.moldovaPaymentsService.initiateMaibPayment(
+      userId,
+      body.type,
+      body.itemId,
+      {
+        billingCycle,
+        listingId: body.listingId,
+        saveCard: body.saveCard,
+      },
+    );
 
     return {
-      success: true,
-      paymentUrl: 'https://ecomm.maib.md/xxx', // TODO: Real URL from MAIB
-      transactionId: 'pending-xxx',
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-      message: 'Redirect user to paymentUrl for 3D Secure verification',
+      ...result,
+      message: result.success
+        ? 'Redirect user to paymentUrl for 3D Secure verification'
+        : result.error || 'Failed to initiate MAIB payment',
     };
   }
 
@@ -942,15 +1088,29 @@ export class MonetizationController {
   ) {
     this.logger.log(`Initiating MPAY payment for user ${userId}`);
 
-    // TODO: Implement MPAY payment initiation
+    if (body.type === 'promotion' && !body.listingId) {
+      throw new BadRequestException('listingId is required for promotion payments');
+    }
+
+    const billingCycle = this.parseBillingCycle(body.billingCycle);
+
+    const result = await this.moldovaPaymentsService.initiateMpayPayment(
+      userId,
+      body.type,
+      body.itemId,
+      {
+        billingCycle,
+        listingId: body.listingId,
+        phone: body.phone,
+      },
+    );
 
     return {
-      success: true,
-      mpayDeepLink: 'mpay://pay/xxx', // Deep link pentru aplicația MPAY
-      qrCode: 'data:image/png;base64,...', // QR code pentru scanare
-      transactionId: 'pending-xxx',
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minute
-      message: 'Open MPAY app or scan QR code to complete payment',
+      ...result,
+      mpayDeepLink: result.deepLink,
+      message: result.success
+        ? 'Open MPAY app or scan QR code to complete payment'
+        : result.error || 'Failed to initiate MPAY payment',
     };
   }
 
@@ -994,5 +1154,90 @@ export class MonetizationController {
       completedAt: transaction.completedAt,
       failureReason: transaction.failureMessage,
     };
+  }
+
+  private parseBillingCycle(value?: string): 'monthly' | 'yearly' | undefined {
+    if (!value) return undefined;
+    if (value === 'monthly' || value === 'yearly') return value;
+    throw new BadRequestException('billingCycle must be monthly or yearly');
+  }
+
+  private async resolveTransactionId(reference: unknown): Promise<number | null> {
+    const numericId = this.parseNumericId(reference);
+    if (numericId) {
+      return numericId;
+    }
+
+    if (typeof reference !== 'string' || !reference.trim()) {
+      return null;
+    }
+
+    const normalizedReference = reference.trim();
+    const transaction = await Transaction.findOne({
+      where: {
+        [Op.or]: [
+          { externalTransactionId: normalizedReference },
+          { paynetTransactionId: normalizedReference },
+          { maibTransactionId: normalizedReference },
+          { mpayTransactionId: normalizedReference },
+        ],
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    return transaction ? Number(transaction.id) : null;
+  }
+
+  private parseNumericId(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+      return Math.floor(value);
+    }
+
+    if (typeof value !== 'string' || !value.trim()) {
+      return null;
+    }
+
+    const normalizedValue = value.trim();
+    if (!/^\d+$/.test(normalizedValue)) {
+      return null;
+    }
+
+    const parsed = Number.parseInt(normalizedValue, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  private resolveWebhookToken(
+    explicitToken: unknown,
+    req: Request,
+    headerNames: string[],
+  ): string | undefined {
+    if (typeof explicitToken === 'string' && explicitToken.trim()) {
+      return explicitToken.trim();
+    }
+
+    for (const headerName of headerNames) {
+      const headerValue = this.readHeaderValue(req, headerName);
+      if (headerValue) {
+        return headerValue;
+      }
+    }
+
+    return undefined;
+  }
+
+  private readHeaderValue(req: Request, headerName: string): string | undefined {
+    const headers = req?.headers as Record<string, unknown> | undefined;
+    if (!headers) {
+      return undefined;
+    }
+
+    const directValue = headers[headerName] ?? headers[headerName.toLowerCase()];
+    if (Array.isArray(directValue)) {
+      return typeof directValue[0] === 'string' ? directValue[0] : undefined;
+    }
+
+    return typeof directValue === 'string' && directValue.trim()
+      ? directValue.trim()
+      : undefined;
   }
 }

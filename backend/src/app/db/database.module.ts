@@ -38,6 +38,11 @@ pg.defaults.parseInt8 = true;
     SequelizeModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
+        const isProduction = configService.get<string>('NODE_ENV') === 'production';
+        const shouldSynchronize = configService.get<boolean>('DB_SYNCHRONIZE') ?? !isProduction;
+        const useSsl = configService.get<boolean>('DB_SSL') ?? isProduction;
+        const rejectUnauthorized = configService.get<boolean>('DB_SSL_REJECT_UNAUTHORIZED') ?? false;
+
         return {
           dialect: 'postgres',
           host: configService.get<string>('DB_HOST'),
@@ -79,22 +84,23 @@ pg.defaults.parseInt8 = true;
             AiConversation,
             AiMessage,
           ],
-          synchronize: true,
-          sync: { alter: true }, // Force alter to add missing columns
+          synchronize: shouldSynchronize,
+          ...(shouldSynchronize && {
+            sync: {
+              alter: !isProduction,
+            },
+          }),
           logging: (sql: string) => {
-            // Log only when explicitly enabled
-            if (process.env.DB_LOGGING === 'true') {
+            if (configService.get<boolean>('DB_LOGGING')) {
               console.log('📊 [DB Query]', sql.substring(0, 200));
             }
           },
-          // Enable SSL only for production (cloud databases like Neon, Supabase)
-          // Disable SSL for local development (Docker PostgreSQL)
-          ...(configService.get<string>('NODE_ENV') === 'production' && {
+          ...(useSsl && {
             ssl: true,
             dialectOptions: {
               ssl: {
                 require: true,
-                rejectUnauthorized: false,
+                rejectUnauthorized,
               },
             },
           }),
