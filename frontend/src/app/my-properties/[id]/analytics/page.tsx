@@ -13,9 +13,13 @@ import {
   Heart,
   MessageCircle,
   Calendar,
+  FileText,
+  Sparkles,
+  Lightbulb,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPropertyDetail, getPropertyAnalytics, PropertyListing } from "@/lib/propertiesApi";
+import { analyzeProperty, PropertyAnalysis } from "@/lib/aiApi";
 import { toast } from "sonner";
 import {
   ResponsiveContainer,
@@ -43,6 +47,8 @@ export default function PropertyAnalyticsPage() {
 
   const [property, setProperty] = useState<PropertyListing | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [suggestions, setSuggestions] = useState<PropertyAnalysis | null>(null);
+  const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
   const [period, setPeriod] = useState<Period>("30d");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +78,20 @@ export default function PropertyAnalyticsPage() {
       fetchData();
     }
   }, [id, isAuthenticated, isAuthLoading, period]);
+
+  // Fetch AI suggestions (lazy, once)
+  const handleLoadSuggestions = async () => {
+    if (!id || suggestions || isSuggestionsLoading) return;
+    setIsSuggestionsLoading(true);
+    try {
+      const data = await analyzeProperty(Number(id));
+      setSuggestions(data);
+    } catch {
+      // silently fail
+    } finally {
+      setIsSuggestionsLoading(false);
+    }
+  };
 
   if (isAuthLoading || (isLoading && !analytics)) {
     return (
@@ -192,6 +212,72 @@ export default function PropertyAnalyticsPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* AI Suggestions */}
+        <div className="mb-8 rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-amber-500" />
+              <h2 className="text-lg font-semibold">Sugestii AI</h2>
+            </div>
+            {!suggestions && (
+              <Button variant="outline" size="sm" onClick={handleLoadSuggestions} disabled={isSuggestionsLoading}>
+                {isSuggestionsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Analizează
+              </Button>
+            )}
+          </div>
+          {suggestions ? (
+            <div className="space-y-3">
+              {/* Score overview */}
+              <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-4">
+                <div className="text-3xl font-bold text-primary">{suggestions.scores.overall}/100</div>
+                <div className="text-sm text-muted-foreground">Scor general al anunțului</div>
+              </div>
+              {/* Recommendations */}
+              {suggestions.recommendations.length > 0 && (
+                <div className="space-y-2">
+                  {suggestions.recommendations.map((rec, i) => (
+                    <div key={i} className="flex items-start gap-3 rounded-xl border border-border p-4">
+                      <div className="rounded-lg bg-amber-500/10 p-2 shrink-0">
+                        <Lightbulb className="h-4 w-4 text-amber-500" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Improvements */}
+              {suggestions.improvements.length > 0 && (
+                <div className="space-y-2">
+                  {suggestions.improvements.map((imp, i) => {
+                    const impactColor = imp.impact === 'high' ? 'text-red-500 bg-red-500/10' : imp.impact === 'medium' ? 'text-amber-500 bg-amber-500/10' : 'text-blue-500 bg-blue-500/10';
+                    return (
+                      <div key={i} className="flex items-start gap-3 rounded-xl border border-border p-4">
+                        <div className={`rounded-lg p-2 shrink-0 ${impactColor.split(' ').slice(1).join(' ')}`}>
+                          <FileText className={`h-4 w-4 ${impactColor.split(' ')[0]}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium">{imp.field}</p>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${impactColor}`}>{imp.impact}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{imp.suggested}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : !isSuggestionsLoading ? (
+            <p className="text-sm text-muted-foreground">Apasă "Analizează" pentru a primi sugestii AI despre cum să îți îmbunătățești anunțul.</p>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
         </div>
 
         {/* Daily Views Chart */}

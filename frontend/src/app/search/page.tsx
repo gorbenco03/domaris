@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { PropertyTypeFilters, PropertyType, SearchFilters, emptyFilters } from "@/components/search/PropertyTypeFilters";
+import { QuickFilters, QuickFilterId } from "@/components/search/FilterChips";
 import { searchProperties, PropertyListing, PropertySearchParams } from "@/lib/propertiesApi";
 import { getSearchSuggestions, SearchSuggestion, getMapData, MapProperty } from "@/lib/searchApi";
 import { createSavedSearch } from "@/lib/savedSearchesApi";
@@ -189,6 +190,15 @@ function SearchContent() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [savedSearchName, setSavedSearchName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Quick filters state
+  const [quickFilters, setQuickFilters] = useState<QuickFilterId[]>([]);
+
+  const handleQuickFilterToggle = (id: QuickFilterId) => {
+    setQuickFilters((prev) =>
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+    );
+  };
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -525,6 +535,11 @@ function SearchContent() {
               </div>
             </SheetContent>
           </Sheet>
+
+          {/* Quick Filters */}
+          <div className="mt-4">
+            <QuickFilters selected={quickFilters} onToggle={handleQuickFilterToggle} />
+          </div>
         </div>
 
         <div className="flex gap-8">

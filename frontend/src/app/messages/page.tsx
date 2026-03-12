@@ -58,7 +58,7 @@ function MessagesContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
+  const [filterTab, setFilterTab] = useState<"all" | "unread" | "archived">("all");
   const [typingUser, setTypingUser] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -130,7 +130,7 @@ function MessagesContent() {
       setIsLoading(true);
       try {
         const data = await getConversations({
-          type: showArchived ? "archived" : "all",
+          type: filterTab,
         });
         setConversations(data);
       } catch {
@@ -140,7 +140,7 @@ function MessagesContent() {
       }
     };
     if (!isAuthLoading) fetchConversations();
-  }, [isAuthenticated, isAuthLoading, showArchived]);
+  }, [isAuthenticated, isAuthLoading, filterTab]);
 
   // Fetch messages
   useEffect(() => {
@@ -271,23 +271,29 @@ function MessagesContent() {
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">Mesaje</h1>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            {showArchived ? (
-              <>
-                <MessageCircle className="mr-2 h-4 w-4" /> Active
-              </>
-            ) : (
-              <>
-                <Archive className="mr-2 h-4 w-4" /> Arhivate
-              </>
-            )}
-          </Button>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground mb-4">Mesaje</h1>
+          <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
+            {([
+              { key: "all" as const, label: "Toate", icon: MessageCircle },
+              { key: "unread" as const, label: "Necitite", icon: MessageCircle },
+              { key: "archived" as const, label: "Arhivate", icon: Archive },
+            ]).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setFilterTab(key)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  filterTab === key
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -393,9 +399,11 @@ function MessagesContent() {
                   <div className="flex flex-col items-center justify-center p-8 text-center">
                     <MessageCircle className="mb-4 h-12 w-12 text-muted-foreground" />
                     <p className="text-muted-foreground">
-                      {showArchived
+                      {filterTab === "archived"
                         ? "Nu ai conversații arhivate"
-                        : "Nu ai conversații"}
+                        : filterTab === "unread"
+                          ? "Nu ai mesaje necitite"
+                          : "Nu ai conversații"}
                     </p>
                   </div>
                 )}
