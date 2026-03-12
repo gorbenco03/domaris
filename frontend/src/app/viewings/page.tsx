@@ -5,39 +5,110 @@ import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft, Loader2, Clock, MapPin, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Calendar,
+  ArrowLeft,
+  Loader2,
+  Clock,
+  MapPin,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  MoreVertical,
+  CalendarClock,
+  Star,
+  MessageCircle,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getViewings, Viewing, ViewingStatus } from "@/lib/viewingsApi";
+import {
+  getViewings,
+  updateViewingStatus,
+  rescheduleViewing,
+  submitViewingFeedback,
+  Viewing,
+  ViewingStatus,
+} from "@/lib/viewingsApi";
 import { formatDistanceToNow, format } from "date-fns";
 import { ro } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-const statusConfig: Record<ViewingStatus, { label: string; color: string; icon: React.ElementType }> = {
-  PENDING: { label: "În așteptare", color: "bg-yellow-100 text-yellow-800", icon: AlertCircle },
-  CONFIRMED: { label: "Confirmat", color: "bg-green-100 text-green-800", icon: CheckCircle },
-  REJECTED: { label: "Respins", color: "bg-red-100 text-red-800", icon: XCircle },
-  CANCELLED: { label: "Anulat", color: "bg-gray-100 text-gray-800", icon: XCircle },
-  COMPLETED: { label: "Finalizat", color: "bg-blue-100 text-blue-800", icon: CheckCircle },
+const statusConfig: Record<
+  ViewingStatus,
+  { label: string; color: string; icon: React.ElementType }
+> = {
+  PENDING: {
+    label: "În așteptare",
+    color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+    icon: AlertCircle,
+  },
+  CONFIRMED: {
+    label: "Confirmat",
+    color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    icon: CheckCircle,
+  },
+  REJECTED: {
+    label: "Respins",
+    color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    icon: XCircle,
+  },
+  CANCELLED: {
+    label: "Anulat",
+    color: "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-400",
+    icon: XCircle,
+  },
+  COMPLETED: {
+    label: "Finalizat",
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    icon: CheckCircle,
+  },
 };
 
 export default function ViewingsPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  
-  // API state
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+
   const [viewings, setViewings] = useState<Viewing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<ViewingStatus | 'all'>('all');
+  const [filter, setFilter] = useState<ViewingStatus | "all">("all");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Reschedule dialog
+  const [rescheduleTarget, setRescheduleTarget] = useState<Viewing | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [rescheduleReason, setRescheduleReason] = useState("");
+
+  // Feedback dialog
+  const [feedbackTarget, setFeedbackTarget] = useState<Viewing | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackInterested, setFeedbackInterested] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fetchViewings = async () => {
       if (!isAuthenticated) return;
-      
       setIsLoading(true);
       setError(null);
-      
       try {
-        const params = filter !== 'all' ? { status: filter } : undefined;
+        const params = filter !== "all" ? { status: filter } : undefined;
         const data = await getViewings(params);
         setViewings(data);
       } catch (err) {
@@ -47,11 +118,91 @@ export default function ViewingsPage() {
         setIsLoading(false);
       }
     };
-    
-    if (!isAuthLoading) {
-      fetchViewings();
-    }
+    if (!isAuthLoading) fetchViewings();
   }, [isAuthenticated, isAuthLoading, filter]);
+
+  const handleStatusChange = async (
+    viewingId: string,
+    newStatus: "CONFIRMED" | "REJECTED" | "CANCELLED"
+  ) => {
+    setActionLoading(viewingId);
+    try {
+      const updated = await updateViewingStatus(viewingId, newStatus);
+      setViewings((prev) =>
+        prev.map((v) => (v.id === viewingId ? updated : v))
+      );
+      const labels = { CONFIRMED: "confirmată", REJECTED: "respinsă", CANCELLED: "anulată" };
+      toast.success(`Vizionarea a fost ${labels[newStatus]}.`);
+    } catch {
+      toast.error("Eroare la actualizarea statusului.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleTarget || !rescheduleDate || !rescheduleTime) return;
+    const newSlot = new Date(`${rescheduleDate}T${rescheduleTime}`).toISOString();
+    setActionLoading(rescheduleTarget.id);
+    try {
+      const updated = await rescheduleViewing(
+        rescheduleTarget.id,
+        newSlot,
+        rescheduleReason || undefined
+      );
+      setViewings((prev) =>
+        prev.map((v) => (v.id === rescheduleTarget.id ? updated : v))
+      );
+      toast.success("Vizionarea a fost reprogramată.");
+      setRescheduleTarget(null);
+      setRescheduleDate("");
+      setRescheduleTime("");
+      setRescheduleReason("");
+    } catch {
+      toast.error("Eroare la reprogramare.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleFeedback = async () => {
+    if (!feedbackTarget || feedbackRating === 0) return;
+    setActionLoading(feedbackTarget.id);
+    try {
+      await submitViewingFeedback(
+        feedbackTarget.id,
+        feedbackRating,
+        feedbackComment || undefined,
+        feedbackInterested ?? undefined
+      );
+      setViewings((prev) =>
+        prev.map((v) =>
+          v.id === feedbackTarget.id
+            ? {
+                ...v,
+                feedback: {
+                  rating: feedbackRating,
+                  comment: feedbackComment || undefined,
+                  interested: feedbackInterested ?? undefined,
+                },
+              }
+            : v
+        )
+      );
+      toast.success("Feedback trimis cu succes.");
+      setFeedbackTarget(null);
+      setFeedbackRating(0);
+      setFeedbackComment("");
+      setFeedbackInterested(null);
+    } catch {
+      toast.error("Eroare la trimiterea feedback-ului.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const isOwner = (viewing: Viewing) =>
+    String(viewing.owner.id) === String(user?.id);
 
   if (isAuthLoading) {
     return (
@@ -89,43 +240,35 @@ export default function ViewingsPage() {
       <Navbar />
       <main className="mx-auto max-w-4xl px-4 py-8">
         <div className="mb-6">
-          <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" />
             Înapoi
           </Link>
         </div>
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-3xl font-bold">Vizionări programate</h1>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant={filter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('all')}
-            >
-              Toate
-            </Button>
-            <Button
-              variant={filter === 'PENDING' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('PENDING')}
-            >
-              În așteptare
-            </Button>
-            <Button
-              variant={filter === 'CONFIRMED' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('CONFIRMED')}
-            >
-              Confirmate
-            </Button>
-            <Button
-              variant={filter === 'COMPLETED' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('COMPLETED')}
-            >
-              Finalizate
-            </Button>
+            {(
+              [
+                ["all", "Toate"],
+                ["PENDING", "În așteptare"],
+                ["CONFIRMED", "Confirmate"],
+                ["COMPLETED", "Finalizate"],
+              ] as [ViewingStatus | "all", string][]
+            ).map(([key, label]) => (
+              <Button
+                key={key}
+                variant={filter === key ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(key)}
+              >
+                {label}
+              </Button>
+            ))}
           </div>
         </div>
 
@@ -145,11 +288,17 @@ export default function ViewingsPage() {
             {viewings.map((viewing) => {
               const status = statusConfig[viewing.status];
               const StatusIcon = status.icon;
-              
+              const owner = isOwner(viewing);
+              const otherPerson = owner ? viewing.requester : viewing.owner;
+              const isPending = viewing.status === "PENDING";
+              const isConfirmed = viewing.status === "CONFIRMED";
+              const isCompleted = viewing.status === "COMPLETED";
+              const canGiveFeedback = isCompleted && !viewing.feedback;
+
               return (
                 <div
                   key={viewing.id}
-                  className="rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
+                  className="rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md"
                 >
                   <div className="flex gap-4">
                     {/* Property Image */}
@@ -177,35 +326,168 @@ export default function ViewingsPage() {
                           >
                             {viewing.property.title}
                           </Link>
-                          <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                            <MapPin className="h-3.5 w-3.5" />
-                            {viewing.property.address}, {viewing.property.city}
-                          </div>
+                          {viewing.property.address && (
+                            <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                              <MapPin className="h-3.5 w-3.5" />
+                              {viewing.property.address}
+                              {viewing.property.city && `, ${viewing.property.city}`}
+                            </div>
+                          )}
                         </div>
-                        <span className={cn("flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium", status.color)}>
-                          <StatusIcon className="h-3.5 w-3.5" />
-                          {status.label}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium",
+                              status.color
+                            )}
+                          >
+                            <StatusIcon className="h-3.5 w-3.5" />
+                            {status.label}
+                          </span>
+                          {(isPending || isConfirmed) && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  disabled={actionLoading === viewing.id}
+                                >
+                                  {actionLoading === viewing.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <MoreVertical className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {owner && isPending && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleStatusChange(viewing.id, "CONFIRMED")
+                                      }
+                                    >
+                                      <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                                      Confirmă
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleStatusChange(viewing.id, "REJECTED")
+                                      }
+                                    >
+                                      <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                                      Respinge
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                <DropdownMenuItem
+                                  onClick={() => setRescheduleTarget(viewing)}
+                                >
+                                  <CalendarClock className="mr-2 h-4 w-4" />
+                                  Reprogramează
+                                </DropdownMenuItem>
+                                {!owner && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleStatusChange(viewing.id, "CANCELLED")
+                                    }
+                                    className="text-destructive"
+                                  >
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Anulează
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="mt-3 flex items-center gap-4 text-sm">
+                      {/* Date and time */}
+                      <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          {format(new Date(viewing.scheduledAt), "d MMMM yyyy", { locale: ro })}
+                          {format(new Date(viewing.scheduledAt), "d MMMM yyyy", {
+                            locale: ro,
+                          })}
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Clock className="h-4 w-4" />
-                          {format(new Date(viewing.scheduledAt), "HH:mm", { locale: ro })}
+                          {format(new Date(viewing.scheduledAt), "HH:mm")}
+                          {viewing.duration > 0 && (
+                            <span className="ml-1">({viewing.duration} min)</span>
+                          )}
                         </div>
                         <span className="text-muted-foreground">
-                          ({formatDistanceToNow(new Date(viewing.scheduledAt), { addSuffix: true, locale: ro })})
+                          (
+                          {formatDistanceToNow(new Date(viewing.scheduledAt), {
+                            addSuffix: true,
+                            locale: ro,
+                          })}
+                          )
                         </span>
+                      </div>
+
+                      {/* Other person info */}
+                      <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{owner ? "Solicitant:" : "Proprietar:"}</span>
+                        <span className="font-medium text-foreground">
+                          {otherPerson.name}
+                        </span>
+                        {otherPerson.phone && (
+                          <span className="text-xs">· {otherPerson.phone}</span>
+                        )}
+                        <Link
+                          href={`/messages?chat=${otherPerson.id}`}
+                          className="ml-auto flex items-center gap-1 text-primary hover:underline"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          Mesaj
+                        </Link>
                       </div>
 
                       {viewing.notes && (
                         <p className="mt-2 text-sm text-muted-foreground">
                           Note: {viewing.notes}
                         </p>
+                      )}
+
+                      {/* Feedback display */}
+                      {viewing.feedback && (
+                        <div className="mt-3 rounded-lg bg-muted/50 p-3">
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={cn(
+                                  "h-4 w-4",
+                                  i < viewing.feedback!.rating
+                                    ? "fill-amber-400 text-amber-400"
+                                    : "text-muted-foreground"
+                                )}
+                              />
+                            ))}
+                          </div>
+                          {viewing.feedback.comment && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {viewing.feedback.comment}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Leave feedback button */}
+                      {canGiveFeedback && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => setFeedbackTarget(viewing)}
+                        >
+                          <Star className="mr-2 h-4 w-4" />
+                          Lasă un feedback
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -216,7 +498,9 @@ export default function ViewingsPage() {
         ) : (
           <div className="rounded-2xl border border-border bg-card py-16 text-center">
             <Calendar className="mx-auto h-16 w-16 text-muted-foreground" />
-            <h2 className="mt-4 text-xl font-semibold">Nicio vizionare programată</h2>
+            <h2 className="mt-4 text-xl font-semibold">
+              Nicio vizionare programată
+            </h2>
             <p className="mt-2 text-muted-foreground">
               Programează vizionări pentru proprietățile care te interesează.
             </p>
@@ -226,6 +510,163 @@ export default function ViewingsPage() {
           </div>
         )}
       </main>
+
+      {/* Reschedule Dialog */}
+      <Dialog
+        open={rescheduleTarget !== null}
+        onOpenChange={(open) => !open && setRescheduleTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reprogramează vizionarea</DialogTitle>
+            <DialogDescription>
+              Alege o nouă dată și oră pentru vizionare.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Data</Label>
+                <Input
+                  type="date"
+                  className="mt-1"
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                />
+              </div>
+              <div>
+                <Label>Ora</Label>
+                <Input
+                  type="time"
+                  className="mt-1"
+                  value={rescheduleTime}
+                  onChange={(e) => setRescheduleTime(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Motiv (opțional)</Label>
+              <Textarea
+                className="mt-1"
+                placeholder="De ce dorești reprogramarea..."
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRescheduleTarget(null)}>
+              Anulează
+            </Button>
+            <Button
+              onClick={handleReschedule}
+              disabled={
+                !rescheduleDate ||
+                !rescheduleTime ||
+                actionLoading === rescheduleTarget?.id
+              }
+            >
+              {actionLoading === rescheduleTarget?.id && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Reprogramează
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Feedback Dialog */}
+      <Dialog
+        open={feedbackTarget !== null}
+        onOpenChange={(open) => !open && setFeedbackTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Feedback vizionare</DialogTitle>
+            <DialogDescription>
+              Cum a fost experiența vizionării?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Star rating */}
+            <div>
+              <Label>Evaluare</Label>
+              <div className="mt-2 flex gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setFeedbackRating(i + 1)}
+                    className="p-0.5"
+                  >
+                    <Star
+                      className={cn(
+                        "h-7 w-7 transition-colors",
+                        i < feedbackRating
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-muted-foreground hover:text-amber-300"
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Comment */}
+            <div>
+              <Label>Comentariu (opțional)</Label>
+              <Textarea
+                className="mt-1"
+                placeholder="Descrie experiența ta..."
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            {/* Interest */}
+            <div>
+              <Label>Ești interesat de această proprietate?</Label>
+              <div className="mt-2 flex gap-2">
+                {[
+                  { value: true, label: "Da, sunt interesat" },
+                  { value: false, label: "Nu, nu mă interesează" },
+                ].map(({ value, label }) => (
+                  <Button
+                    key={String(value)}
+                    type="button"
+                    variant={feedbackInterested === value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFeedbackInterested(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeedbackTarget(null)}>
+              Anulează
+            </Button>
+            <Button
+              onClick={handleFeedback}
+              disabled={
+                feedbackRating === 0 ||
+                actionLoading === feedbackTarget?.id
+              }
+            >
+              {actionLoading === feedbackTarget?.id && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Trimite feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );
