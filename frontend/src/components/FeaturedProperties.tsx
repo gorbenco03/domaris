@@ -1,95 +1,25 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { PropertyCard } from "./PropertyCard";
 import { Sparkles, Clock, TrendingDown, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { searchProperties, PropertyListing } from "@/lib/propertiesApi";
 
-const mockProperties = [
-  {
-    id: 1,
-    image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop",
-    price: "564 €",
-    priceType: "rent" as const,
-    title: "Apartament 1 cameră - Drumul Taberei",
-    location: "Drumul Taberei, București",
-    rooms: 1,
-    baths: 1,
-    area: 51,
-    tags: ["De închiriat"],
-  },
-  {
-    id: 2,
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&auto=format&fit=crop",
-    price: "203.910 €",
-    priceType: "sale" as const,
-    title: "Spațiu 5 camere - Tineretului",
-    location: "Strada Tineretului nr. 28, București",
-    rooms: 5,
-    baths: 2,
-    area: 142,
-    tags: ["De vânzare"],
-  },
-  {
-    id: 3,
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&auto=format&fit=crop",
-    price: "185.000 €",
-    priceType: "sale" as const,
-    title: "Apartament modern 3 camere",
-    location: "Floreasca, București",
-    rooms: 3,
-    baths: 1,
-    area: 85,
-    isFavorite: true,
-    tags: ["De vânzare"],
-  },
-  {
-    id: 4,
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&auto=format&fit=crop",
-    price: "890 €",
-    priceType: "rent" as const,
-    title: "Penthouse cu terasă",
-    location: "Aviatorilor, București",
-    rooms: 2,
-    baths: 1,
-    area: 95,
-    tags: ["De închiriat"],
-  },
-  {
-    id: 5,
-    image: "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&auto=format&fit=crop",
-    price: "320.000 €",
-    priceType: "sale" as const,
-    title: "Vilă cu grădină - Pipera",
-    location: "Pipera, București",
-    rooms: 4,
-    baths: 3,
-    area: 220,
-    tags: ["De vânzare"],
-  },
-  {
-    id: 6,
-    image: "https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=800&auto=format&fit=crop",
-    price: "1.200 €",
-    priceType: "rent" as const,
-    title: "Loft industrial renovat",
-    location: "Centru Vechi, București",
-    rooms: 2,
-    baths: 1,
-    area: 110,
-    tags: ["De închiriat"],
-  },
-];
+type FilterType = "recent" | "sale" | "rent";
 
 interface FilterChipProps {
   icon: React.ReactNode;
   label: string;
   isActive?: boolean;
+  onClick?: () => void;
 }
 
-const FilterChip = ({ icon, label, isActive }: FilterChipProps) => (
+const FilterChip = ({ icon, label, isActive, onClick }: FilterChipProps) => (
   <button
+    onClick={onClick}
     className={cn(
       "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200",
       isActive
@@ -103,6 +33,39 @@ const FilterChip = ({ icon, label, isActive }: FilterChipProps) => (
 );
 
 export const FeaturedProperties = () => {
+  const [properties, setProperties] = useState<PropertyListing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<FilterType>("recent");
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setIsLoading(true);
+      try {
+        const params: Record<string, unknown> = {
+          limit: 6,
+          sortBy: "createdAt",
+          sortOrder: "DESC",
+        };
+
+        if (activeFilter === "sale") {
+          params.transactionType = "sale";
+        } else if (activeFilter === "rent") {
+          params.transactionType = "rent";
+        }
+
+        const response = await searchProperties(params as any);
+        setProperties(response.data || []);
+      } catch (err) {
+        console.error("Failed to fetch featured properties:", err);
+        setProperties([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [activeFilter]);
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-16">
       {/* Header */}
@@ -118,28 +81,84 @@ export const FeaturedProperties = () => {
         
         {/* Filters */}
         <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-          <FilterChip icon={<Sparkles className="h-4 w-4" />} label="Recomandate AI" isActive />
-          <FilterChip icon={<Clock className="h-4 w-4" />} label="Noi (7 zile)" />
-          <FilterChip icon={<TrendingDown className="h-4 w-4" />} label="Preț redus" />
+          <FilterChip
+            icon={<Clock className="h-4 w-4" />}
+            label="Cele mai noi"
+            isActive={activeFilter === "recent"}
+            onClick={() => setActiveFilter("recent")}
+          />
+          <FilterChip
+            icon={<Sparkles className="h-4 w-4" />}
+            label="De vânzare"
+            isActive={activeFilter === "sale"}
+            onClick={() => setActiveFilter("sale")}
+          />
+          <FilterChip
+            icon={<TrendingDown className="h-4 w-4" />}
+            label="De închiriat"
+            isActive={activeFilter === "rent"}
+            onClick={() => setActiveFilter("rent")}
+          />
         </div>
       </div>
 
       {/* Property Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {mockProperties.map((property) => (
-          <PropertyCard key={property.id} {...property} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="animate-pulse rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="aspect-[16/10] bg-muted" />
+              <div className="p-5 space-y-3">
+                <div className="h-6 w-24 rounded bg-muted" />
+                <div className="h-5 w-3/4 rounded bg-muted" />
+                <div className="h-4 w-1/2 rounded bg-muted" />
+                <div className="flex gap-4 pt-3 border-t border-border">
+                  <div className="h-4 w-16 rounded bg-muted" />
+                  <div className="h-4 w-12 rounded bg-muted" />
+                  <div className="h-4 w-14 rounded bg-muted" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : properties.length > 0 ? (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {properties.map((property) => (
+            <PropertyCard
+              key={property.id}
+              id={property.id}
+              image={property.images?.[0]?.url || ""}
+              price={`${(property.priceEur ?? 0).toLocaleString()} €`}
+              priceType={property.transactionType === "RENT" ? "rent" : "sale"}
+              title={property.title}
+              location={`${property.neighborhood ? property.neighborhood + ", " : ""}${property.city}`}
+              rooms={property.rooms}
+              baths={property.bathrooms || 1}
+              area={property.surfaceSqm}
+              tags={[property.transactionType === "RENT" ? "De închiriat" : "De vânzare"]}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-border bg-card py-16 text-center">
+          <p className="text-muted-foreground">Nu sunt proprietăți disponibile momentan.</p>
+          <Button asChild variant="outline" className="mt-4">
+            <Link href="/add-property">Adaugă prima proprietate</Link>
+          </Button>
+        </div>
+      )}
 
       {/* Load More */}
-      <div className="mt-10 text-center">
-        <Button size="lg" variant="outline" className="min-w-[200px]" asChild>
-          <Link href="/search">
-            Vezi toate proprietățile
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
+      {properties.length > 0 && (
+        <div className="mt-10 text-center">
+          <Button size="lg" variant="outline" className="min-w-[200px]" asChild>
+            <Link href="/search">
+              Vezi toate proprietățile
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      )}
     </section>
   );
 };

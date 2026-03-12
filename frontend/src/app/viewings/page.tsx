@@ -286,13 +286,14 @@ export default function ViewingsPage() {
         ) : viewings.length > 0 ? (
           <div className="space-y-4">
             {viewings.map((viewing) => {
-              const status = statusConfig[viewing.status];
+              const normalizedStatus = (viewing.status?.toUpperCase() || "PENDING") as ViewingStatus;
+              const status = statusConfig[normalizedStatus] || statusConfig.PENDING;
               const StatusIcon = status.icon;
               const owner = isOwner(viewing);
               const otherPerson = owner ? viewing.requester : viewing.owner;
-              const isPending = viewing.status === "PENDING";
-              const isConfirmed = viewing.status === "CONFIRMED";
-              const isCompleted = viewing.status === "COMPLETED";
+              const isPending = normalizedStatus === "PENDING";
+              const isConfirmed = normalizedStatus === "CONFIRMED";
+              const isCompleted = normalizedStatus === "COMPLETED";
               const canGiveFeedback = isCompleted && !viewing.feedback;
 
               return (

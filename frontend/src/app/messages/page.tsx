@@ -229,10 +229,10 @@ function MessagesContent() {
 
   const filteredConversations = conversations.filter(
     (c) =>
-      c.otherParticipant.name
+      (c.otherParticipant?.name || "")
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      c.property.title.toLowerCase().includes(searchQuery.toLowerCase())
+      (c.property?.title || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (isAuthLoading) {
