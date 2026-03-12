@@ -108,6 +108,7 @@ export class Listing extends ExtModel {
   @Column({
     type: DataType.INTEGER,
     field: 'price_eur',
+    allowNull: false,
   })
   priceEur!: number;
 

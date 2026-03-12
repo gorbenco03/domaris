@@ -77,8 +77,8 @@ export class ListingService {
     const listingData: any = {
       ...input,
       ownerId,
-      priceEur: input.price, // Map price -> priceEur
-      surfaceSqm: input.surface, // Map surface -> surfaceSqm
+      priceEur: input.price ?? input.priceEur, // Accept both field names
+      surfaceSqm: input.surface ?? input.surfaceSqm, // Accept both field names
       rooms: Number(input.rooms), // Ensure number
       bedrooms: input.bedrooms !== undefined ? Number(input.bedrooms) : undefined,
       bathrooms: input.bathrooms !== undefined ? Number(input.bathrooms) : undefined,
@@ -350,9 +350,13 @@ export class ListingService {
 
     const updateData: any = { ...dto };
 
-    // Map DTO price -> priceEur (same as create)
-    if (dto.price !== undefined) {
-      updateData.priceEur = dto.price;
+    // Map DTO price -> priceEur (accept both field names)
+    if (dto.price !== undefined || (dto as any).priceEur !== undefined) {
+      updateData.priceEur = dto.price ?? (dto as any).priceEur;
+    }
+    // Map DTO surface -> surfaceSqm (accept both field names)
+    if ((dto as any).surface !== undefined || (dto as any).surfaceSqm !== undefined) {
+      updateData.surfaceSqm = (dto as any).surface ?? (dto as any).surfaceSqm;
     }
 
     // GEOCODING LOGIC (same as create)
