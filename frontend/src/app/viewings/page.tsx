@@ -407,27 +407,31 @@ export default function ViewingsPage() {
 
                       {/* Date and time */}
                       <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Calendar className="h-4 w-4" />
-                          {format(new Date(viewing.scheduledAt), "d MMMM yyyy", {
-                            locale: ro,
-                          })}
-                        </div>
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Clock className="h-4 w-4" />
-                          {format(new Date(viewing.scheduledAt), "HH:mm")}
-                          {viewing.duration > 0 && (
-                            <span className="ml-1">({viewing.duration} min)</span>
-                          )}
-                        </div>
-                        <span className="text-muted-foreground">
-                          (
-                          {formatDistanceToNow(new Date(viewing.scheduledAt), {
-                            addSuffix: true,
-                            locale: ro,
-                          })}
-                          )
-                        </span>
+                        {viewing.scheduledAt && !isNaN(new Date(viewing.scheduledAt).getTime()) ? (
+                          <>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              {format(new Date(viewing.scheduledAt), "d MMMM yyyy", {
+                                locale: ro,
+                              })}
+                            </div>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Clock className="h-4 w-4" />
+                              {format(new Date(viewing.scheduledAt), "HH:mm")}
+                              {(viewing.duration ?? 0) > 0 && (
+                                <span className="ml-1">({viewing.duration} min)</span>
+                              )}
+                            </div>
+                            <span className="text-muted-foreground">
+                              ({formatDistanceToNow(new Date(viewing.scheduledAt), {
+                                addSuffix: true,
+                                locale: ro,
+                              })})
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">Dată neprecizată</span>
+                        )}
                       </div>
 
                       {/* Other person info */}

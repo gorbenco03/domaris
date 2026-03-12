@@ -339,7 +339,7 @@ function MessagesContent() {
                         <Avatar>
                           <AvatarImage
                             src={
-                              conversation.otherParticipant.avatar || undefined
+                              conversation.otherParticipant?.avatar || undefined
                             }
                           />
                           <AvatarFallback className="bg-primary text-primary-foreground">
@@ -349,7 +349,7 @@ function MessagesContent() {
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
-                        {conversation.otherParticipant.isOnline && (
+                        {conversation.otherParticipant?.isOnline && (
                           <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-accent" />
                         )}
                       </div>
@@ -358,37 +358,34 @@ function MessagesContent() {
                           <p
                             className={cn(
                               "text-foreground",
-                              conversation.unreadCount > 0
+                              (conversation.unreadCount || 0) > 0
                                 ? "font-bold"
                                 : "font-semibold"
                             )}
                           >
-                            {conversation.otherParticipant.name}
+                            {conversation.otherParticipant?.name || "Utilizator"}
                           </p>
                           <span className="text-xs text-muted-foreground">
-                            {conversation.lastMessage
-                              ? formatDistanceToNow(
-                                  new Date(conversation.lastMessage.createdAt),
-                                  { locale: ro }
-                                )
+                            {conversation.lastMessage?.createdAt
+                              ? (() => { try { return formatDistanceToNow(new Date(conversation.lastMessage.createdAt), { locale: ro }); } catch { return ""; } })()
                               : ""}
                           </span>
                         </div>
                         <p className="truncate text-sm text-muted-foreground">
-                          {conversation.property.title}
+                          {conversation.property?.title || "Proprietate"}
                         </p>
                         <p
                           className={cn(
                             "truncate text-sm",
-                            conversation.unreadCount > 0
+                            (conversation.unreadCount || 0) > 0
                               ? "font-medium text-foreground"
                               : "text-muted-foreground"
                           )}
                         >
-                          {conversation.lastMessage?.content}
+                          {conversation.lastMessage?.content || ""}
                         </p>
                       </div>
-                      {conversation.unreadCount > 0 && (
+                      {(conversation.unreadCount || 0) > 0 && (
                         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-medium text-accent-foreground">
                           {conversation.unreadCount}
                         </span>
@@ -465,7 +462,7 @@ function MessagesContent() {
                       <Avatar className="h-9 w-9">
                         <AvatarImage
                           src={
-                            activeConversation.otherParticipant.avatar ||
+                            activeConversation.otherParticipant?.avatar ||
                             undefined
                           }
                         />
@@ -478,12 +475,12 @@ function MessagesContent() {
                       </Avatar>
                       <div>
                         <p className="text-sm font-semibold text-foreground">
-                          {activeConversation.otherParticipant.name}
+                          {activeConversation.otherParticipant?.name || "Utilizator"}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {typingUser
                             ? "scrie..."
-                            : activeConversation.otherParticipant.isOnline
+                            : activeConversation.otherParticipant?.isOnline
                               ? "Online"
                               : "Offline"}
                         </p>
