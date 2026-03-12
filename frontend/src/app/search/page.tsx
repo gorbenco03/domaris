@@ -395,7 +395,7 @@ function SearchContent() {
     ? (mapProperties.length > 0 ? mapProperties : properties).map(p => ({
         id: 'id' in p ? (p as PropertyListing).id : (p as MapProperty).id,
         title: 'title' in p ? (p as PropertyListing).title : `${(p as MapProperty).rooms} camere`,
-        price: `${('priceEur' in p ? p.priceEur : 0).toLocaleString()} €`,
+        price: `${(('priceEur' in p ? p.priceEur : 0) ?? 0).toLocaleString()} €`,
         location: 'city' in p ? `${(p as PropertyListing).neighborhood || ""}, ${(p as PropertyListing).city}` : "",
         lat: p.lat || 44.4268,
         lng: p.lng || 26.1025,
@@ -656,7 +656,7 @@ function SearchContent() {
                         key={property.id}
                         id={property.id}
                         image={property.images?.[0]?.url || ""}
-                        price={`${property.priceEur.toLocaleString()} €`}
+                        price={`${(property.priceEur ?? 0).toLocaleString()} €`}
                         priceType={property.transactionType === "RENT" ? "rent" : "sale"}
                         title={property.title}
                         location={`${property.neighborhood || ""}, ${property.city}`}
