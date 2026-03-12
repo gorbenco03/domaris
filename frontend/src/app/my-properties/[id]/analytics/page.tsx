@@ -187,7 +187,7 @@ export default function PropertyAnalyticsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{label}</p>
-                  <p className="text-2xl font-bold">{value.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">{(value ?? 0).toLocaleString()}</p>
                 </div>
               </div>
             </div>

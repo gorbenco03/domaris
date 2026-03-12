@@ -432,9 +432,9 @@ function MessagesContent() {
                         <p className="truncate text-sm font-medium text-foreground">
                           {activeConversation.property.title}
                         </p>
-                        {activeConversation.property.price && (
+                        {activeConversation.property.price != null && (
                           <p className="text-xs font-semibold text-primary">
-                            {activeConversation.property.price.toLocaleString()}{" "}
+                            {(activeConversation.property.price ?? 0).toLocaleString()}{" "}
                             €
                           </p>
                         )}

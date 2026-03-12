@@ -553,13 +553,13 @@ export default function PropertyDetailPage() {
                             <div className="rounded-xl bg-muted p-4">
                               <p className="text-sm text-muted-foreground">Preț recomandat</p>
                               <p className="text-xl font-bold text-foreground">
-                                {valuation.valuation.recommendedPrice.toLocaleString()} €
+                                {(valuation.valuation.recommendedPrice ?? 0).toLocaleString()} €
                               </p>
                             </div>
                             <div className="rounded-xl bg-muted p-4">
                               <p className="text-sm text-muted-foreground">Interval</p>
                               <p className="text-lg font-semibold text-foreground">
-                                {valuation.valuation.priceRange.min.toLocaleString()} - {valuation.valuation.priceRange.max.toLocaleString()} €
+                                {(valuation.valuation.priceRange.min ?? 0).toLocaleString()} - {(valuation.valuation.priceRange.max ?? 0).toLocaleString()} €
                               </p>
                             </div>
                             <div className="rounded-xl bg-muted p-4">
@@ -582,7 +582,7 @@ export default function PropertyDetailPage() {
                           {valuation.valuation.comparables.count > 0 && (
                             <p className="text-sm text-muted-foreground">
                               Bazat pe {valuation.valuation.comparables.count} proprietăți comparabile
-                              (medie {valuation.valuation.comparables.avgPricePerSqm.toLocaleString()} €/m²)
+                              (medie {(valuation.valuation.comparables.avgPricePerSqm ?? 0).toLocaleString()} €/m²)
                             </p>
                           )}
                         </div>
@@ -908,7 +908,7 @@ export default function PropertyDetailPage() {
                     key={rp.id}
                     id={rp.id}
                     image={rp.images?.[0]?.url || ""}
-                    price={`${rp.priceEur.toLocaleString()} €`}
+                    price={`${(rp.priceEur ?? 0).toLocaleString()} €`}
                     priceType={rp.transactionType === "RENT" ? "rent" : "sale"}
                     title={rp.title}
                     location={`${rp.neighborhood || ""}, ${rp.city}`}
