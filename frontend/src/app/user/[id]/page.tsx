@@ -299,7 +299,7 @@ export default function PublicProfilePage() {
                   </div>
                   <div className="p-4">
                     <p className="font-bold text-primary">
-                      {listing.priceEur.toLocaleString()} €
+                      {(listing.priceEur ?? 0).toLocaleString()} €
                       {listing.transactionType === "RENT" && (
                         <span className="text-sm font-normal">/lună</span>
                       )}

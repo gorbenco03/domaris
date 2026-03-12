@@ -118,9 +118,9 @@ export default function AddPropertyPage() {
 
       toast.success(asDraft ? "Ciorna a fost salvată" : "Anunțul a fost publicat cu succes!");
       router.push("/my-properties");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create property:", err);
-      toast.error("Eroare la crearea anunțului");
+      toast.error(err?.message || "Eroare la crearea anunțului");
     } finally {
       setIsSubmitting(false);
     }

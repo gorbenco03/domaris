@@ -210,9 +210,17 @@ export async function getMyProperties(): Promise<PropertyListing[]> {
  * Create new property (requires Level 2+)
  */
 export async function createProperty(data: CreatePropertyRequest): Promise<PropertyListing> {
+  // Map frontend field names to backend DTO field names
+  const { priceEur, surfaceSqm, neighborhood, ...rest } = data;
+  const payload = {
+    ...rest,
+    price: priceEur,
+    surface: surfaceSqm,
+    area: neighborhood,
+  };
   return api.fetch<PropertyListing>('/properties', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -223,9 +231,15 @@ export async function updateProperty(
   id: string | number,
   data: UpdatePropertyRequest
 ): Promise<PropertyListing> {
+  // Map frontend field names to backend DTO field names
+  const { priceEur, surfaceSqm, neighborhood, ...rest } = data as any;
+  const payload: Record<string, any> = { ...rest };
+  if (priceEur !== undefined) payload.price = priceEur;
+  if (surfaceSqm !== undefined) payload.surface = surfaceSqm;
+  if (neighborhood !== undefined) payload.area = neighborhood;
   return api.fetch<PropertyListing>(`/properties/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 }
 

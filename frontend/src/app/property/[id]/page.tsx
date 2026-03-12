@@ -104,6 +104,7 @@ export default function PropertyDetailPage() {
 
       try {
         const data = await getPropertyDetail(propertyId);
+        console.log('Property detail response:', data);
         setProperty(data);
 
         // Track view
@@ -442,7 +443,7 @@ export default function PropertyDetailPage() {
               {/* Price */}
               <div className="mb-8">
                 <p className="text-4xl font-bold text-primary">
-                  {property.priceEur.toLocaleString()} €
+                  {(property.priceEur ?? 0).toLocaleString()} €
                   {property.transactionType === "RENT" && <span className="text-lg font-normal text-muted-foreground">/lună</span>}
                 </p>
                 {pricePerSqm && (
@@ -605,7 +606,7 @@ export default function PropertyDetailPage() {
                       properties={[{
                         id: property.id,
                         title: property.title,
-                        price: `${property.priceEur.toLocaleString()} €`,
+                        price: `${(property.priceEur ?? 0).toLocaleString()} €`,
                         location: `${property.neighborhood || ""}, ${property.city}`,
                         lat: property.lat,
                         lng: property.lng,

@@ -280,7 +280,7 @@ export default function MyPropertiesPage() {
 
                         <div className="mt-2 flex items-center gap-4">
                           <span className="text-xl font-bold text-primary">
-                            {property.priceEur.toLocaleString()} €
+                            {(property.priceEur ?? 0).toLocaleString()} €
                             {property.transactionType === "RENT" && (
                               <span className="text-sm font-normal text-muted-foreground">/lună</span>
                             )}

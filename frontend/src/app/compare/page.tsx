@@ -85,7 +85,7 @@ function CompareContent() {
       label: "Preț",
       render: (p) => (
         <span className="text-lg font-bold text-primary">
-          {p.priceEur.toLocaleString()} €
+          {(p.priceEur ?? 0).toLocaleString()} €
         </span>
       ),
     },
@@ -93,7 +93,7 @@ function CompareContent() {
       label: "Preț / m²",
       render: (p) =>
         p.surfaceSqm
-          ? `${Math.round(p.priceEur / p.surfaceSqm).toLocaleString()} €/m²`
+          ? `${Math.round((p.priceEur ?? 0) / p.surfaceSqm).toLocaleString()} €/m²`
           : "—",
     },
     { label: "Tip", render: (p) => p.propertyType },

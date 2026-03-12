@@ -79,7 +79,7 @@ export default function AIChatPage() {
           const properties: PropertyResult[] | undefined = response.properties?.map(p => ({
             id: p.id,
             title: p.title,
-            price: `${p.priceEur.toLocaleString()}€`,
+            price: `${(p.priceEur ?? 0).toLocaleString()}€`,
             priceType: p.transactionType === 'RENT' ? 'rent' : 'sale',
             location: `${p.city}${p.neighborhood ? `, ${p.neighborhood}` : ''}`,
             rooms: p.rooms,
@@ -103,7 +103,7 @@ export default function AIChatPage() {
           const properties: PropertyResult[] | undefined = response.properties?.map(p => ({
             id: p.id,
             title: p.title,
-            price: `${p.priceEur.toLocaleString()}€`,
+            price: `${(p.priceEur ?? 0).toLocaleString()}€`,
             priceType: p.transactionType === 'RENT' ? 'rent' : 'sale',
             location: `${p.city}${p.neighborhood ? `, ${p.neighborhood}` : ''}`,
             rooms: p.rooms,
