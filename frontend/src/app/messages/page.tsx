@@ -343,9 +343,9 @@ function MessagesContent() {
                             }
                           />
                           <AvatarFallback className="bg-primary text-primary-foreground">
-                            {conversation.otherParticipant.name
+                            {(conversation.otherParticipant?.name || "U")
                               .split(" ")
-                              .map((n) => n[0])
+                              .map((n: string) => n[0] || "")
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
@@ -470,9 +470,9 @@ function MessagesContent() {
                           }
                         />
                         <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                          {activeConversation.otherParticipant.name
+                          {(activeConversation.otherParticipant?.name || "U")
                             .split(" ")
-                            .map((n) => n[0])
+                            .map((n: string) => n[0] || "")
                             .join("")}
                         </AvatarFallback>
                       </Avatar>

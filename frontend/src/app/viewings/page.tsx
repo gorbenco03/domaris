@@ -202,7 +202,7 @@ export default function ViewingsPage() {
   };
 
   const isOwner = (viewing: Viewing) =>
-    String(viewing.owner.id) === String(user?.id);
+    String(viewing.owner?.id || "") === String(user?.id);
 
   if (isAuthLoading) {
     return (
@@ -290,7 +290,7 @@ export default function ViewingsPage() {
               const status = statusConfig[normalizedStatus] || statusConfig.PENDING;
               const StatusIcon = status.icon;
               const owner = isOwner(viewing);
-              const otherPerson = owner ? viewing.requester : viewing.owner;
+              const otherPerson = (owner ? viewing.requester : viewing.owner) || { id: 0, name: "Utilizator", avatar: undefined, phone: undefined };
               const isPending = normalizedStatus === "PENDING";
               const isConfirmed = normalizedStatus === "CONFIRMED";
               const isCompleted = normalizedStatus === "COMPLETED";
@@ -304,7 +304,7 @@ export default function ViewingsPage() {
                   <div className="flex gap-4">
                     {/* Property Image */}
                     <div className="h-24 w-32 shrink-0 overflow-hidden rounded-lg bg-muted">
-                      {viewing.property.image ? (
+                      {viewing.property?.image ? (
                         <img
                           src={viewing.property.image}
                           alt=""
@@ -322,12 +322,12 @@ export default function ViewingsPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <Link
-                            href={`/property/${viewing.property.id}`}
+                            href={`/property/${viewing.property?.id || ""}`}
                             className="font-medium hover:text-primary"
                           >
-                            {viewing.property.title}
+                            {viewing.property?.title || "Proprietate"}
                           </Link>
-                          {viewing.property.address && (
+                          {viewing.property?.address && (
                             <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                               <MapPin className="h-3.5 w-3.5" />
                               {viewing.property.address}

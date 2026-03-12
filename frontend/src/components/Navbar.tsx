@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getNotifications, markAllNotificationsAsRead, Notification, NotificationType } from "@/lib/notificationsApi";
+import { getConversations, ConversationListItem } from "@/lib/messagingApi";
 import { formatDistanceToNow } from "date-fns";
 import { ro } from "date-fns/locale";
 
@@ -49,50 +50,31 @@ const notificationColors: Record<NotificationType, string> = {
   SYSTEM_ANNOUNCEMENT: "text-gray-500",
 };
 
-const mockMessages = [
-  {
-    id: 1,
-    name: "Maria Ionescu",
-    message: "Da, apartamentul este încă disponibil",
-    time: "10:30",
-    unread: true,
-  },
-  {
-    id: 2,
-    name: "Andrei Popa",
-    message: "Perfect, ne vedem mâine la vizionare",
-    time: "Ieri",
-    unread: false,
-  },
-  {
-    id: 3,
-    name: "Elena Dumitrescu",
-    message: "Am trimis documentele solicitate",
-    time: "Luni",
-    unread: false,
-  },
-];
-
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [recentConversations, setRecentConversations] = useState<ConversationListItem[]>([]);
 
-  // Fetch notifications on mount and every 30s
-  const fetchNotifications = useCallback(async () => {
+  // Fetch notifications + conversations on mount and every 30s
+  const fetchData = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const data = await getNotifications();
-      setNotifications(data.slice(0, 5)); // Show only latest 5 in popover
+      const [notifData, convData] = await Promise.all([
+        getNotifications().catch(() => []),
+        getConversations({ limit: 5 }).catch(() => []),
+      ]);
+      setNotifications(notifData.slice(0, 5));
+      setRecentConversations(convData.slice(0, 5));
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      console.error('Failed to fetch navbar data:', err);
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  }, [fetchData]);
 
   const handleMarkAllAsRead = async () => {
     try {
@@ -104,7 +86,7 @@ export const Navbar = () => {
   };
 
   const unreadNotifications = notifications.filter((n) => !n.isRead).length;
-  const unreadMessages = mockMessages.filter((m) => m.unread).length;
+  const unreadMessages = recentConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   const navLinks = [{
     label: "Apartamente",
@@ -185,36 +167,51 @@ export const Navbar = () => {
                   </div>
                   <ScrollArea className="max-h-[320px]">
                     <div className="divide-y divide-border">
-                      {mockMessages.map((msg) => (
-                        <Link
-                          key={msg.id}
-                          href={`/messages?chat=${msg.id}`}
-                          className={`flex items-start gap-3 p-4 transition-all hover:bg-muted/50 ${msg.unread ? "bg-primary/5" : ""}`}
-                        >
-                          <div className="relative">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-sm font-semibold text-primary-foreground shadow-sm">
-                              {msg.name.split(" ").map((n) => n[0]).join("")}
-                            </div>
-                            {msg.unread && (
-                              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-accent" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className={`font-medium ${msg.unread ? "text-foreground" : "text-muted-foreground"}`}>
-                                {msg.name}
-                              </p>
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                {msg.time}
+                      {recentConversations.length > 0 ? recentConversations.map((conv) => {
+                        const name = conv.otherParticipant?.name || "Utilizator";
+                        const initials = name.split(" ").map((n: string) => n[0] || "").join("").slice(0, 2);
+                        const hasUnread = (conv.unreadCount || 0) > 0;
+                        const lastMsg = conv.lastMessage?.content || "Conversație nouă";
+                        const lastTime = conv.lastMessage?.createdAt
+                          ? formatDistanceToNow(new Date(conv.lastMessage.createdAt), { addSuffix: false, locale: ro })
+                          : "";
+                        return (
+                          <Link
+                            key={conv.id}
+                            href={`/messages?chat=${conv.id}`}
+                            className={`flex items-start gap-3 p-4 transition-all hover:bg-muted/50 ${hasUnread ? "bg-primary/5" : ""}`}
+                          >
+                            <div className="relative">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-sm font-semibold text-primary-foreground shadow-sm">
+                                {initials}
                               </div>
+                              {hasUnread && (
+                                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-accent" />
+                              )}
                             </div>
-                            <p className={`mt-0.5 truncate text-sm ${msg.unread ? "text-foreground" : "text-muted-foreground"}`}>
-                              {msg.message}
-                            </p>
-                          </div>
-                        </Link>
-                      ))}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className={`font-medium ${hasUnread ? "text-foreground" : "text-muted-foreground"}`}>
+                                  {name}
+                                </p>
+                                {lastTime && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    {lastTime}
+                                  </div>
+                                )}
+                              </div>
+                              <p className={`mt-0.5 truncate text-sm ${hasUnread ? "text-foreground" : "text-muted-foreground"}`}>
+                                {lastMsg}
+                              </p>
+                            </div>
+                          </Link>
+                        );
+                      }) : (
+                        <div className="p-8 text-center text-sm text-muted-foreground">
+                          Niciun mesaj
+                        </div>
+                      )}
                     </div>
                   </ScrollArea>
                   <div className="border-t border-border bg-muted/30 px-4 py-3">
