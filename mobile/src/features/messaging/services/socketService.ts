@@ -13,6 +13,18 @@ class SocketService {
   private connectListeners: Array<() => void> = [];
   private pendingListeners: Array<{ event: string; callback: (...args: any[]) => void }> = [];
 
+  private normalizeSocketBaseUrl(url: string): string {
+    if (url.startsWith('wss://')) {
+      return `https://${url.slice('wss://'.length)}`;
+    }
+
+    if (url.startsWith('ws://')) {
+      return `http://${url.slice('ws://'.length)}`;
+    }
+
+    return url;
+  }
+
   /**
    * Connect to WebSocket server
    */
@@ -22,17 +34,21 @@ class SocketService {
       return;
     }
 
-    const baseUrl = ENV.WS_URL.endsWith('/chat') ? ENV.WS_URL : `${ENV.WS_URL}/chat`;
+    const normalizedBaseUrl = this.normalizeSocketBaseUrl(ENV.WS_URL);
+    const baseUrl = normalizedBaseUrl.endsWith('/chat')
+      ? normalizedBaseUrl
+      : `${normalizedBaseUrl}/chat`;
     console.log('[WebSocket] Connecting to:', baseUrl);
 
     this.socket = io(baseUrl, {
       auth: {
         token: accessToken,
       },
-      transports: ['websocket'],
+      path: '/socket.io',
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
+      timeout: 20000,
     });
 
     this.socket.on('connect', () => {
