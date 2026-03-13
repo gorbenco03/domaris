@@ -129,7 +129,7 @@ export default function PropertyInsightsPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Building className="h-4 w-4" />
-              {property.rooms} camere · {property.surfaceSqm} m²
+              {property.rooms} camere · {property.surfaceSqm ?? property.surface ?? property.totalArea ?? 0} m²
             </div>
             <div className="flex items-center gap-2 text-sm font-semibold text-primary">
               <DollarSign className="h-4 w-4" />

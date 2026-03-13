@@ -26,10 +26,16 @@ export interface Notification {
   userId: number;
   type: NotificationType;
   title: string;
-  message: string;
+  message?: string;
+  body?: string;
   data?: Record<string, unknown>;
   isRead: boolean;
   createdAt: string;
+}
+
+/** Get notification display text (API may send message or body) */
+export function getNotificationText(n: Notification): string {
+  return n.message || n.body || '';
 }
 
 export interface NotificationPreferences {

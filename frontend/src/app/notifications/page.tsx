@@ -274,7 +274,7 @@ export default function NotificationsPage() {
                           )}
                         </div>
                         <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
-                          {notif.message}
+                          {notif.message || (notif as any).body || ""}
                         </p>
                         <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />

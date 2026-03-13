@@ -12,34 +12,67 @@ import { api } from './api';
 export type ViewingStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
 
 export interface ViewingProperty {
-  id: number;
-  title: string;
+  id: number | string;
+  title?: string;
   address?: string;
   city?: string;
   image?: string;
+  mainImage?: string;
 }
 
 export interface ViewingParticipant {
-  id: number;
-  name: string;
+  id: number | string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   avatar?: string;
   phone?: string;
   email?: string;
+  isVerified?: boolean;
+}
+
+/** Build display name from viewing participant */
+export function getViewingParticipantName(p?: ViewingParticipant | null): string {
+  if (!p) return 'Utilizator';
+  if (p.name) return p.name;
+  const parts = [p.firstName, p.lastName].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : 'Utilizator';
+}
+
+/** Get viewing property image (API may send image or mainImage) */
+export function getViewingPropertyImage(p?: ViewingProperty | null): string | null {
+  if (!p) return null;
+  return p.image || p.mainImage || null;
+}
+
+/** Get the scheduled date from a viewing (API uses confirmedDate, scheduledAt, or proposedDates) */
+export function getViewingDate(v?: Viewing | null): string | null {
+  if (!v) return null;
+  return v.scheduledAt || v.confirmedDate || v.createdAt || null;
 }
 
 export interface Viewing {
   id: string;
-  property: ViewingProperty;
-  requester: ViewingParticipant;
-  owner: ViewingParticipant;
-  scheduledAt: string;
-  duration: number; // minutes
+  property?: ViewingProperty | null;
+  requester?: ViewingParticipant | null;
+  owner?: ViewingParticipant | null;
+  // API may use different field names for the date
+  scheduledAt?: string;
+  confirmedDate?: string;
+  duration?: number;
   status: ViewingStatus;
   notes?: string;
+  requesterNote?: string;
+  ownerNote?: string;
+  cancellationReason?: string;
+  // API may nest differently
+  otherParty?: ViewingParticipant | null;
+  role?: 'REQUESTER' | 'OWNER';
   feedback?: {
     rating: number;
     comment?: string;
     interested?: boolean;
+    wouldRecommend?: boolean;
   };
   createdAt: string;
   updatedAt: string;

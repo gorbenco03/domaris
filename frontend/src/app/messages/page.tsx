@@ -38,6 +38,13 @@ import {
   markAsRead,
   archiveConversation,
   unarchiveConversation,
+  getParticipantName,
+  getParticipantInitials,
+  getLastMessageText,
+  getLastMessageTime,
+  getMessageText,
+  getMessageTime,
+  isMessageRead,
   ConversationListItem,
   Message,
 } from "@/lib/messagingApi";
@@ -82,14 +89,15 @@ function MessagesContent() {
             ? {
                 ...c,
                 lastMessage: {
-                  content: message.content,
-                  createdAt: message.createdAt,
-                  senderId: message.senderId,
+                  content: getMessageText(message),
+                  text: getMessageText(message),
+                  createdAt: getMessageTime(message),
+                  sentAt: getMessageTime(message),
                 },
                 unreadCount:
                   message.conversationId === selectedConversation
-                    ? c.unreadCount
-                    : c.unreadCount + 1,
+                    ? (c.unreadCount || 0)
+                    : (c.unreadCount || 0) + 1,
               }
             : c
         )
@@ -103,7 +111,7 @@ function MessagesContent() {
       if (String(data.userId) === String(user?.id)) return;
       const conv = conversations.find((c) => c.id === selectedConversation);
       if (data.isTyping) {
-        setTypingUser(conv?.otherParticipant.name || "...");
+        setTypingUser(conv ? getParticipantName(conv.otherParticipant) : "...");
       } else {
         setTypingUser(null);
       }
@@ -229,7 +237,7 @@ function MessagesContent() {
 
   const filteredConversations = conversations.filter(
     (c) =>
-      (c.otherParticipant?.name || "")
+      getParticipantName(c.otherParticipant)
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
       (c.property?.title || "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -338,15 +346,10 @@ function MessagesContent() {
                       <div className="relative">
                         <Avatar>
                           <AvatarImage
-                            src={
-                              conversation.otherParticipant?.avatar || undefined
-                            }
+                            src={conversation.otherParticipant?.avatar || undefined}
                           />
                           <AvatarFallback className="bg-primary text-primary-foreground">
-                            {(conversation.otherParticipant?.name || "U")
-                              .split(" ")
-                              .map((n: string) => n[0] || "")
-                              .join("")}
+                            {getParticipantInitials(conversation.otherParticipant)}
                           </AvatarFallback>
                         </Avatar>
                         {conversation.otherParticipant?.isOnline && (
@@ -363,17 +366,21 @@ function MessagesContent() {
                                 : "font-semibold"
                             )}
                           >
-                            {conversation.otherParticipant?.name || "Utilizator"}
+                            {getParticipantName(conversation.otherParticipant)}
                           </p>
                           <span className="text-xs text-muted-foreground">
-                            {conversation.lastMessage?.createdAt
-                              ? (() => { try { return formatDistanceToNow(new Date(conversation.lastMessage.createdAt), { locale: ro }); } catch { return ""; } })()
-                              : ""}
+                            {(() => {
+                              const t = getLastMessageTime(conversation.lastMessage);
+                              if (!t) return "";
+                              try { return formatDistanceToNow(new Date(t), { locale: ro }); } catch { return ""; }
+                            })()}
                           </span>
                         </div>
-                        <p className="truncate text-sm text-muted-foreground">
-                          {conversation.property?.title || "Proprietate"}
-                        </p>
+                        {conversation.property?.title && (
+                          <p className="truncate text-sm text-muted-foreground">
+                            {conversation.property.title}
+                          </p>
+                        )}
                         <p
                           className={cn(
                             "truncate text-sm",
@@ -382,7 +389,7 @@ function MessagesContent() {
                               : "text-muted-foreground"
                           )}
                         >
-                          {conversation.lastMessage?.content || ""}
+                          {getLastMessageText(conversation.lastMessage)}
                         </p>
                       </div>
                       {(conversation.unreadCount || 0) > 0 && (
@@ -422,9 +429,9 @@ function MessagesContent() {
                       href={`/property/${activeConversation.property.id}`}
                       className="flex items-center gap-3 border-b border-border bg-muted/50 px-4 py-2 transition-colors hover:bg-muted"
                     >
-                      {activeConversation.property.image ? (
+                      {(activeConversation.property.image || (activeConversation.property as any).mainImage) ? (
                         <img
-                          src={activeConversation.property.image}
+                          src={activeConversation.property.image || (activeConversation.property as any).mainImage}
                           alt=""
                           className="h-10 w-14 shrink-0 rounded-md object-cover"
                         />
@@ -461,21 +468,15 @@ function MessagesContent() {
                       </button>
                       <Avatar className="h-9 w-9">
                         <AvatarImage
-                          src={
-                            activeConversation.otherParticipant?.avatar ||
-                            undefined
-                          }
+                          src={activeConversation.otherParticipant?.avatar || undefined}
                         />
                         <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                          {(activeConversation.otherParticipant?.name || "U")
-                            .split(" ")
-                            .map((n: string) => n[0] || "")
-                            .join("")}
+                          {getParticipantInitials(activeConversation.otherParticipant)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="text-sm font-semibold text-foreground">
-                          {activeConversation.otherParticipant?.name || "Utilizator"}
+                          {getParticipantName(activeConversation.otherParticipant)}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {typingUser
@@ -549,11 +550,11 @@ function MessagesContent() {
                                 {message.type === "IMAGE" ? (
                                   <div className="flex items-center gap-2 text-sm">
                                     <ImageIcon className="h-4 w-4" />
-                                    <span>{message.content}</span>
+                                    <span>{getMessageText(message)}</span>
                                   </div>
                                 ) : (
                                   <p className="whitespace-pre-wrap">
-                                    {message.content}
+                                    {getMessageText(message)}
                                   </p>
                                 )}
                                 <div
@@ -565,18 +566,17 @@ function MessagesContent() {
                                   )}
                                 >
                                   <span>
-                                    {new Date(
-                                      message.createdAt
-                                    ).toLocaleTimeString("ro-RO", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
+                                    {(() => {
+                                      const t = getMessageTime(message);
+                                      if (!t) return "";
+                                      try { return new Date(t).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+                                    })()}
                                   </span>
                                   {isOwn && (
                                     <CheckCheck
                                       className={cn(
                                         "h-3 w-3",
-                                        message.isRead && "text-blue-500"
+                                        isMessageRead(message) && "text-blue-500"
                                       )}
                                     />
                                   )}

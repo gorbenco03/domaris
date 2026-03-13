@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
-import { getPropertyDetail, PropertyListing, searchProperties, trackPropertyView } from "@/lib/propertiesApi";
+import { getPropertyDetail, PropertyListing, searchProperties, trackPropertyView, getPropertyPrice, getPropertySurface, getPropertyLocation, getPropertyOwnerName, getPropertyOwnerAvatar } from "@/lib/propertiesApi";
 import { getUserReviews, getUserReviewStats, createReview, toggleHelpful, Review, ReviewStats } from "@/lib/reviewsApi";
 import { getListingValuation, AVMResponse } from "@/lib/aiApi";
 import { checkIsFavorite, toggleFavorite } from "@/lib/favoritesApi";
@@ -285,8 +285,8 @@ export default function PropertyDetailPage() {
     }
   };
 
-  const pricePerSqm = property && property.surfaceSqm > 0
-    ? Math.round(property.priceEur / property.surfaceSqm)
+  const pricePerSqm = property && getPropertySurface(property) > 0
+    ? Math.round(getPropertyPrice(property) / getPropertySurface(property))
     : null;
 
   // Loading state
@@ -437,13 +437,13 @@ export default function PropertyDetailPage() {
               </h1>
               <div className="mb-6 flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-5 w-5 text-accent" />
-                <span>{property.address || `${property.neighborhood || ""}, ${property.city}`}</span>
+                <span>{property.address || getPropertyLocation(property)}</span>
               </div>
 
               {/* Price */}
               <div className="mb-8">
                 <p className="text-4xl font-bold text-primary">
-                  {(property.priceEur ?? 0).toLocaleString()} €
+                  {getPropertyPrice(property).toLocaleString()} €
                   {property.transactionType === "RENT" && <span className="text-lg font-normal text-muted-foreground">/lună</span>}
                 </p>
                 {pricePerSqm && (
@@ -462,7 +462,7 @@ export default function PropertyDetailPage() {
                 </div>
                 <div className="text-center">
                   <Maximize2 className="mx-auto mb-2 h-8 w-8 text-accent" />
-                  <p className="text-2xl font-bold text-foreground">{property.surfaceSqm} m²</p>
+                  <p className="text-2xl font-bold text-foreground">{getPropertySurface(property)} m²</p>
                   <p className="text-sm uppercase text-muted-foreground">Suprafață</p>
                 </div>
                 <div className="text-center">
@@ -606,14 +606,14 @@ export default function PropertyDetailPage() {
                       properties={[{
                         id: property.id,
                         title: property.title,
-                        price: `${(property.priceEur ?? 0).toLocaleString()} €`,
-                        location: `${property.neighborhood || ""}, ${property.city}`,
+                        price: `${getPropertyPrice(property).toLocaleString()} €`,
+                        location: getPropertyLocation(property),
                         lat: property.lat,
                         lng: property.lng,
                         image: propertyImages[0] || "",
                         rooms: property.rooms,
                         baths: property.bathrooms || 1,
-                        area: property.surfaceSqm,
+                        area: getPropertySurface(property),
                         priceType: property.transactionType === "RENT" ? "rent" as const : "sale" as const,
                       }]}
                       onViewDetails={() => {}}
@@ -873,13 +873,13 @@ export default function PropertyDetailPage() {
                 <div className="rounded-2xl border border-border bg-card p-6">
                   <div className="flex items-center gap-4">
                     <div className="relative h-14 w-14 overflow-hidden rounded-full bg-muted">
-                      {property.ownerAvatar && (
-                        <img src={property.ownerAvatar} alt={property.ownerName || ""} className="h-full w-full object-cover" />
+                      {getPropertyOwnerAvatar(property) && (
+                        <img src={getPropertyOwnerAvatar(property)!} alt={getPropertyOwnerName(property)} className="h-full w-full object-cover" />
                       )}
                     </div>
                     <div>
                       <Link href={`/user/${property.ownerId}`} className="flex items-center gap-2 hover:underline">
-                        <span className="font-semibold text-foreground">{property.ownerName || "Proprietar"}</span>
+                        <span className="font-semibold text-foreground">{getPropertyOwnerName(property)}</span>
                         <BadgeCheck className="h-4 w-4 text-primary" />
                       </Link>
                       <p className="text-sm text-muted-foreground">Proprietar verificat</p>

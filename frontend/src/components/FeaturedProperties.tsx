@@ -6,7 +6,7 @@ import { Sparkles, Clock, TrendingDown, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { searchProperties, PropertyListing } from "@/lib/propertiesApi";
+import { searchProperties, PropertyListing, getPropertyPrice, getPropertySurface, getPropertyMainImage, getPropertyLocation } from "@/lib/propertiesApi";
 
 type FilterType = "recent" | "sale" | "rent";
 
@@ -127,14 +127,14 @@ export const FeaturedProperties = () => {
             <PropertyCard
               key={property.id}
               id={property.id}
-              image={property.images?.[0]?.url || ""}
-              price={`${(property.priceEur ?? 0).toLocaleString()} €`}
+              image={getPropertyMainImage(property)}
+              price={`${getPropertyPrice(property).toLocaleString()} €`}
               priceType={property.transactionType === "RENT" ? "rent" : "sale"}
               title={property.title}
-              location={`${property.neighborhood ? property.neighborhood + ", " : ""}${property.city}`}
+              location={getPropertyLocation(property)}
               rooms={property.rooms}
               baths={property.bathrooms || 1}
-              area={property.surfaceSqm}
+              area={getPropertySurface(property)}
               tags={[property.transactionType === "RENT" ? "De închiriat" : "De vânzare"]}
             />
           ))}

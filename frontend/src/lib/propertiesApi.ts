@@ -13,16 +13,22 @@ export interface PropertyListing {
   id: number;
   title: string;
   description: string;
-  priceEur: number;
+  // Price: backend may send price or priceEur
+  priceEur?: number;
+  price?: number;
   currency: string;
   city: string;
   neighborhood?: string;
+  area?: string;
   address?: string;
   transactionType: 'RENT' | 'SALE';
   propertyType: string;
   rooms: number;
   bathrooms?: number;
-  surfaceSqm: number;
+  // Surface: backend may send surfaceSqm, surface, or totalArea
+  surfaceSqm?: number;
+  surface?: number;
+  totalArea?: number;
   floor?: number;
   totalFloors?: number;
   yearBuilt?: number;
@@ -33,12 +39,22 @@ export interface PropertyListing {
   status: PropertyStatus;
   listingStatus?: string;
   publicFrom?: string;
-  images: PropertyImage[];
+  // Images: backend may send images array or mainImage string
+  images?: PropertyImage[];
+  mainImage?: string;
+  // Owner: backend may send flat ownerName or nested owner object
   ownerId: number;
   ownerName?: string;
   ownerAvatar?: string;
-  viewCount: number;
-  favoriteCount: number;
+  owner?: {
+    id: number | string;
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    isVerified?: boolean;
+  };
+  viewCount?: number;
+  favoriteCount?: number;
   isPromoted?: boolean;
   lat?: number;
   lng?: number;
@@ -49,7 +65,52 @@ export interface PropertyListing {
 export interface PropertyImage {
   id: number;
   url: string;
-  isPrimary: boolean;
+  isPrimary?: boolean;
+  isMain?: boolean;
+}
+
+// ============================================================================
+// HELPER FUNCTIONS — normalize API response differences
+// ============================================================================
+
+/** Get property price (API may send priceEur or price) */
+export function getPropertyPrice(p: PropertyListing): number {
+  return p.priceEur ?? p.price ?? 0;
+}
+
+/** Get property surface area (API may send surfaceSqm, surface, or totalArea) */
+export function getPropertySurface(p: PropertyListing): number {
+  return p.surfaceSqm ?? p.surface ?? p.totalArea ?? 0;
+}
+
+/** Get property main image URL */
+export function getPropertyMainImage(p: PropertyListing): string {
+  if (p.images && p.images.length > 0) {
+    const primary = p.images.find(img => img.isPrimary || img.isMain);
+    return primary?.url || p.images[0]?.url || '';
+  }
+  return p.mainImage || '';
+}
+
+/** Get property owner display name */
+export function getPropertyOwnerName(p: PropertyListing): string {
+  if (p.ownerName) return p.ownerName;
+  if (p.owner) {
+    const parts = [p.owner.firstName, p.owner.lastName].filter(Boolean);
+    if (parts.length > 0) return parts.join(' ');
+  }
+  return 'Proprietar';
+}
+
+/** Get property owner avatar */
+export function getPropertyOwnerAvatar(p: PropertyListing): string | null {
+  return p.ownerAvatar || p.owner?.avatar || null;
+}
+
+/** Get property neighborhood/area display */
+export function getPropertyLocation(p: PropertyListing): string {
+  const parts = [p.neighborhood || p.area, p.city].filter(Boolean);
+  return parts.join(', ');
 }
 
 export type PropertyStatus = 'DRAFT' | 'ACTIVE' | 'RENTED' | 'SOLD' | 'HIDDEN';

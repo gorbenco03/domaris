@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/popover";
 import { useAuth } from "@/contexts/AuthContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getNotifications, markAllNotificationsAsRead, Notification, NotificationType } from "@/lib/notificationsApi";
-import { getConversations, ConversationListItem } from "@/lib/messagingApi";
+import { getNotifications, markAllNotificationsAsRead, getNotificationText, Notification, NotificationType } from "@/lib/notificationsApi";
+import { getConversations, getParticipantName, getParticipantInitials, getLastMessageText, getLastMessageTime, ConversationListItem } from "@/lib/messagingApi";
 import { formatDistanceToNow } from "date-fns";
 import { ro } from "date-fns/locale";
 
@@ -168,12 +168,13 @@ export const Navbar = () => {
                   <ScrollArea className="max-h-[320px]">
                     <div className="divide-y divide-border">
                       {recentConversations.length > 0 ? recentConversations.map((conv) => {
-                        const name = conv.otherParticipant?.name || "Utilizator";
-                        const initials = name.split(" ").map((n: string) => n[0] || "").join("").slice(0, 2);
+                        const name = getParticipantName(conv.otherParticipant);
+                        const initials = getParticipantInitials(conv.otherParticipant);
                         const hasUnread = (conv.unreadCount || 0) > 0;
-                        const lastMsg = conv.lastMessage?.content || "Conversație nouă";
-                        const lastTime = conv.lastMessage?.createdAt
-                          ? formatDistanceToNow(new Date(conv.lastMessage.createdAt), { addSuffix: false, locale: ro })
+                        const lastMsg = getLastMessageText(conv.lastMessage) || "Conversație nouă";
+                        const timeStr = getLastMessageTime(conv.lastMessage);
+                        const lastTime = timeStr
+                          ? (() => { try { return formatDistanceToNow(new Date(timeStr), { addSuffix: false, locale: ro }); } catch { return ""; } })()
                           : "";
                         return (
                           <Link
@@ -284,7 +285,7 @@ export const Navbar = () => {
                                 )}
                               </div>
                               <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
-                                {notif.message}
+                                {getNotificationText(notif)}
                               </p>
                               <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />

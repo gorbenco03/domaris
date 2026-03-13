@@ -42,6 +42,9 @@ import {
   updateViewingStatus,
   rescheduleViewing,
   submitViewingFeedback,
+  getViewingParticipantName,
+  getViewingPropertyImage,
+  getViewingDate,
   Viewing,
   ViewingStatus,
 } from "@/lib/viewingsApi";
@@ -290,7 +293,11 @@ export default function ViewingsPage() {
               const status = statusConfig[normalizedStatus] || statusConfig.PENDING;
               const StatusIcon = status.icon;
               const owner = isOwner(viewing);
-              const otherPerson = (owner ? viewing.requester : viewing.owner) || { id: 0, name: "Utilizator", avatar: undefined, phone: undefined };
+              const otherPerson = viewing.otherParty || (owner ? viewing.requester : viewing.owner) || null;
+              const otherPersonName = getViewingParticipantName(otherPerson);
+              const propertyImg = getViewingPropertyImage(viewing.property);
+              const viewingDateStr = getViewingDate(viewing);
+              const viewingDate = viewingDateStr && !isNaN(new Date(viewingDateStr).getTime()) ? new Date(viewingDateStr) : null;
               const isPending = normalizedStatus === "PENDING";
               const isConfirmed = normalizedStatus === "CONFIRMED";
               const isCompleted = normalizedStatus === "COMPLETED";
@@ -304,9 +311,9 @@ export default function ViewingsPage() {
                   <div className="flex gap-4">
                     {/* Property Image */}
                     <div className="h-24 w-32 shrink-0 overflow-hidden rounded-lg bg-muted">
-                      {viewing.property?.image ? (
+                      {propertyImg ? (
                         <img
-                          src={viewing.property.image}
+                          src={propertyImg}
                           alt=""
                           className="h-full w-full object-cover"
                         />
@@ -407,26 +414,21 @@ export default function ViewingsPage() {
 
                       {/* Date and time */}
                       <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
-                        {viewing.scheduledAt && !isNaN(new Date(viewing.scheduledAt).getTime()) ? (
+                        {viewingDate ? (
                           <>
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Calendar className="h-4 w-4" />
-                              {format(new Date(viewing.scheduledAt), "d MMMM yyyy", {
-                                locale: ro,
-                              })}
+                              {format(viewingDate, "d MMMM yyyy", { locale: ro })}
                             </div>
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Clock className="h-4 w-4" />
-                              {format(new Date(viewing.scheduledAt), "HH:mm")}
+                              {format(viewingDate, "HH:mm")}
                               {(viewing.duration ?? 0) > 0 && (
                                 <span className="ml-1">({viewing.duration} min)</span>
                               )}
                             </div>
                             <span className="text-muted-foreground">
-                              ({formatDistanceToNow(new Date(viewing.scheduledAt), {
-                                addSuffix: true,
-                                locale: ro,
-                              })})
+                              ({formatDistanceToNow(viewingDate, { addSuffix: true, locale: ro })})
                             </span>
                           </>
                         ) : (
@@ -438,13 +440,13 @@ export default function ViewingsPage() {
                       <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{owner ? "Solicitant:" : "Proprietar:"}</span>
                         <span className="font-medium text-foreground">
-                          {otherPerson.name}
+                          {otherPersonName}
                         </span>
-                        {otherPerson.phone && (
+                        {otherPerson?.phone && (
                           <span className="text-xs">· {otherPerson.phone}</span>
                         )}
                         <Link
-                          href={`/messages?chat=${otherPerson.id}`}
+                          href={`/messages?chat=${otherPerson?.id || ""}`}
                           className="ml-auto flex items-center gap-1 text-primary hover:underline"
                         >
                           <MessageCircle className="h-3.5 w-3.5" />

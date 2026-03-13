@@ -45,6 +45,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   getMyProperties,
   deleteProperty,
+  getPropertyPrice,
+  getPropertySurface,
+  getPropertyMainImage,
   updatePropertyStatus,
   getPropertyAnalytics,
   PropertyListing,
@@ -223,8 +226,8 @@ export default function MyPropertiesPage() {
                   <div className="flex flex-col gap-4 sm:flex-row">
                     {/* Image */}
                     <Link href={`/property/${property.id}`} className="relative h-36 w-full shrink-0 overflow-hidden rounded-xl bg-muted sm:w-48">
-                      {property.images?.[0]?.url ? (
-                        <img src={property.images[0].url} alt={property.title} className="h-full w-full object-cover" />
+                      {getPropertyMainImage(property) ? (
+                        <img src={getPropertyMainImage(property)} alt={property.title} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full items-center justify-center">
                           <Home className="h-8 w-8 text-muted-foreground" />
@@ -280,14 +283,14 @@ export default function MyPropertiesPage() {
 
                         <div className="mt-2 flex items-center gap-4">
                           <span className="text-xl font-bold text-primary">
-                            {(property.priceEur ?? 0).toLocaleString()} €
+                            {getPropertyPrice(property).toLocaleString()} €
                             {property.transactionType === "RENT" && (
                               <span className="text-sm font-normal text-muted-foreground">/lună</span>
                             )}
                           </span>
                           <div className="flex items-center gap-3 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" /> {property.rooms}</span>
-                            <span className="flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" /> {property.surfaceSqm} m²</span>
+                            <span className="flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" /> {getPropertySurface(property)} m²</span>
                           </div>
                         </div>
                       </div>

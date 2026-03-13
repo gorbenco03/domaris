@@ -58,7 +58,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PropertyTypeFilters, PropertyType, SearchFilters, emptyFilters } from "@/components/search/PropertyTypeFilters";
 import { QuickFilters, QuickFilterId } from "@/components/search/FilterChips";
-import { searchProperties, PropertyListing, PropertySearchParams } from "@/lib/propertiesApi";
+import { searchProperties, PropertyListing, PropertySearchParams, getPropertyPrice, getPropertySurface, getPropertyMainImage, getPropertyLocation } from "@/lib/propertiesApi";
 import { getSearchSuggestions, SearchSuggestion, getMapData, MapProperty } from "@/lib/searchApi";
 import { createSavedSearch } from "@/lib/savedSearchesApi";
 import { useAuth } from "@/contexts/AuthContext";
@@ -402,19 +402,23 @@ function SearchContent() {
 
   // Map properties for PropertyMap component
   const mapDisplayProperties = viewMode === "map"
-    ? (mapProperties.length > 0 ? mapProperties : properties).map(p => ({
-        id: 'id' in p ? (p as PropertyListing).id : (p as MapProperty).id,
-        title: 'title' in p ? (p as PropertyListing).title : `${(p as MapProperty).rooms} camere`,
-        price: `${(('priceEur' in p ? p.priceEur : 0) ?? 0).toLocaleString()} €`,
-        location: 'city' in p ? `${(p as PropertyListing).neighborhood || ""}, ${(p as PropertyListing).city}` : "",
-        lat: p.lat || 44.4268,
-        lng: p.lng || 26.1025,
-        image: 'images' in p ? ((p as PropertyListing).images?.[0]?.url || "") : "",
-        rooms: p.rooms,
-        baths: 'bathrooms' in p ? ((p as PropertyListing).bathrooms || 1) : 1,
-        area: 'surfaceSqm' in p ? (p as PropertyListing).surfaceSqm : 0,
-        priceType: (p.transactionType === "RENT" ? "rent" : "sale") as "rent" | "sale",
-      }))
+    ? (mapProperties.length > 0 ? mapProperties : properties).map(p => {
+        const isPropListing = 'title' in p;
+        const prop = isPropListing ? (p as PropertyListing) : null;
+        return {
+          id: prop ? prop.id : (p as MapProperty).id,
+          title: prop ? prop.title : `${(p as MapProperty).rooms} camere`,
+          price: `${(prop ? getPropertyPrice(prop) : 0).toLocaleString()} €`,
+          location: prop ? getPropertyLocation(prop) : "",
+          lat: p.lat || 47.0105,
+          lng: p.lng || 28.8638,
+          image: prop ? getPropertyMainImage(prop) : "",
+          rooms: p.rooms,
+          baths: prop ? (prop.bathrooms || 1) : 1,
+          area: prop ? getPropertySurface(prop) : 0,
+          priceType: (p.transactionType === "RENT" ? "rent" : "sale") as "rent" | "sale",
+        };
+      })
     : [];
 
   return (
@@ -670,14 +674,14 @@ function SearchContent() {
                       <PropertyCard
                         key={property.id}
                         id={property.id}
-                        image={property.images?.[0]?.url || ""}
-                        price={`${(property.priceEur ?? 0).toLocaleString()} €`}
+                        image={getPropertyMainImage(property)}
+                        price={`${getPropertyPrice(property).toLocaleString()} €`}
                         priceType={property.transactionType === "RENT" ? "rent" : "sale"}
                         title={property.title}
-                        location={`${property.neighborhood || ""}, ${property.city}`}
+                        location={getPropertyLocation(property)}
                         rooms={property.rooms}
                         baths={property.bathrooms || 1}
-                        area={property.surfaceSqm}
+                        area={getPropertySurface(property)}
                         tags={property.transactionType === "RENT" ? ["De închiriat"] : ["De vânzare"]}
                       />
                     ))}
