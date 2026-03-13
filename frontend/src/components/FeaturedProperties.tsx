@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PropertyCard } from "./PropertyCard";
 import { Sparkles, Clock, TrendingDown, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -33,38 +34,22 @@ const FilterChip = ({ icon, label, isActive, onClick }: FilterChipProps) => (
 );
 
 export const FeaturedProperties = () => {
-  const [properties, setProperties] = useState<PropertyListing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>("recent");
 
-  useEffect(() => {
-    const fetchProperties = async () => {
-      setIsLoading(true);
-      try {
-        const params: Record<string, unknown> = {
-          limit: 6,
-          sortBy: "createdAt",
-          sortOrder: "DESC",
-        };
-
-        if (activeFilter === "sale") {
-          params.transactionType = "sale";
-        } else if (activeFilter === "rent") {
-          params.transactionType = "rent";
-        }
-
-        const response = await searchProperties(params as any);
-        setProperties(response.data || []);
-      } catch (err) {
-        console.error("Failed to fetch featured properties:", err);
-        setProperties([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProperties();
-  }, [activeFilter]);
+  const { data: properties = [], isLoading } = useQuery<PropertyListing[]>({
+    queryKey: ['featured-properties', activeFilter],
+    queryFn: async () => {
+      const params: Record<string, unknown> = {
+        limit: 6,
+        sortBy: "createdAt",
+        sortOrder: "DESC",
+      };
+      if (activeFilter === "sale") params.transactionType = "sale";
+      else if (activeFilter === "rent") params.transactionType = "rent";
+      const response = await searchProperties(params as any);
+      return response.data || [];
+    },
+  });
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-16">

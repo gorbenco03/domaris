@@ -64,7 +64,7 @@ function MessagesContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  
   const [filterTab, setFilterTab] = useState<"all" | "unread" | "archived">("all");
   const [typingUser, setTypingUser] = useState<string | null>(null);
 
@@ -185,16 +185,32 @@ function MessagesContent() {
     const text = content || newMessage.trim();
     if (!text || !selectedConversation) return;
 
-    setIsSending(true);
+    // Optimistic: show message instantly
+    const optimisticId = `opt-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: optimisticId,
+      conversationId: selectedConversation,
+      senderId: Number(user?.id) || 0,
+      content: text,
+      text: text,
+      type,
+      sentAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      isFromMe: true,
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    if (!content) setNewMessage("");
+    emitTyping(false);
+
+    // Send to API in background
     try {
       const sent = await sendMessageApi(selectedConversation, text, type);
-      setMessages((prev) => [...prev, sent]);
-      if (!content) setNewMessage("");
-      emitTyping(false);
+      // Replace optimistic message with real one
+      setMessages((prev) => prev.map((m) => m.id === optimisticId ? sent : m));
     } catch {
+      // Remove optimistic message on failure
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       toast.error("Nu am putut trimite mesajul.");
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -634,13 +650,9 @@ function MessagesContent() {
                         size="icon"
                         className="h-9 w-9 shrink-0 bg-accent text-accent-foreground hover:bg-accent/90"
                         onClick={() => handleSendMessage()}
-                        disabled={!newMessage.trim() || isSending}
+                        disabled={!newMessage.trim()}
                       >
-                        {isSending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-5 w-5" />
-                        )}
+                        <Send className="h-5 w-5" />
                       </Button>
                     </div>
                   </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Bell, User, MessageSquare, Calendar, Home, ChevronDown, LogOut, Clock, ArrowRight, Heart, Shield, CreditCard, Megaphone, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getNotifications, markAllNotificationsAsRead, getNotificationText, Notification, NotificationType } from "@/lib/notificationsApi";
 import { getConversations, getParticipantName, getParticipantInitials, getLastMessageText, getLastMessageTime, ConversationListItem } from "@/lib/messagingApi";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { ro } from "date-fns/locale";
 
@@ -52,41 +52,36 @@ const notificationColors: Record<NotificationType, string> = {
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [recentConversations, setRecentConversations] = useState<ConversationListItem[]>([]);
+  const queryClient = useQueryClient();
 
-  // Fetch notifications + conversations on mount and every 30s
-  const fetchData = useCallback(async () => {
-    if (!isAuthenticated) return;
-    try {
-      const [notifData, convData] = await Promise.all([
-        getNotifications().catch(() => []),
-        getConversations({ limit: 5 }).catch(() => []),
-      ]);
-      setNotifications(notifData.slice(0, 5));
-      setRecentConversations(convData.slice(0, 5));
-    } catch (err) {
-      console.error('Failed to fetch navbar data:', err);
-    }
-  }, [isAuthenticated]);
+  // React Query: cached + background refetch every 30s
+  const { data: notifications = [] } = useQuery<Notification[]>({
+    queryKey: ['navbar-notifications'],
+    queryFn: () => getNotifications().then(d => d.slice(0, 5)).catch(() => []),
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data: recentConversations = [] } = useQuery<ConversationListItem[]>({
+    queryKey: ['navbar-conversations'],
+    queryFn: () => getConversations({ limit: 5 }).then(d => d.slice(0, 5)).catch(() => []),
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
 
   const handleMarkAllAsRead = async () => {
     try {
       await markAllNotificationsAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      queryClient.setQueryData<Notification[]>(['navbar-notifications'], (old) =>
+        (old || []).map((n: Notification) => ({ ...n, isRead: true }))
+      );
     } catch (err) {
       console.error('Failed to mark all as read:', err);
     }
   };
 
-  const unreadNotifications = notifications.filter((n) => !n.isRead).length;
-  const unreadMessages = recentConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  const unreadNotifications = notifications.filter((n: Notification) => !n.isRead).length;
+  const unreadMessages = recentConversations.reduce((sum: number, c: ConversationListItem) => sum + (c.unreadCount || 0), 0);
 
   const navLinks = [{
     label: "Apartamente",
