@@ -577,7 +577,7 @@ function Step6OwnershipVerification({
         </div>
       </div>
 
-      <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 text-sm text-amber-800 dark:text-amber-200">
+      <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-4 text-sm text-foreground">
         Încarcă un document care dovedește că ești proprietarul. Anunțul tău va primi un badge de
         <strong> „Proprietate verificată"</strong> după aprobarea echipei noastre.
         Fără document, anunțul va avea badge-ul <strong>„Neverificat"</strong>.
@@ -665,7 +665,7 @@ function Step7Preview({
             </span>
             <span className="rounded-md bg-muted px-2.5 py-1 text-xs font-medium">{typeLabel}</span>
             {!form.ownershipDoc && (
-              <span className="rounded-md bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">Neverificat</span>
+              <span className="rounded-md bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-600 dark:text-orange-400">Neverificat</span>
             )}
             {form.ownershipDoc && (
               <span className="rounded-md bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-600">Verificare în curs</span>

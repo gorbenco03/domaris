@@ -384,7 +384,7 @@ export default function PropertyDetailPage() {
 
             {/* Early Access Badge */}
             {earlyAccessLabel && (
-              <div className="absolute left-4 bottom-4 rounded-full bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
+              <div className="absolute left-4 bottom-4 rounded-full bg-orange-500 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
                 {earlyAccessLabel}
               </div>
             )}
@@ -425,7 +425,7 @@ export default function PropertyDetailPage() {
                   {property.propertyType}
                 </span>
                 {earlyAccessLabel && (
-                  <span className="rounded-md bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-600">
+                  <span className="rounded-md bg-orange-500/10 px-3 py-1 text-sm font-medium text-orange-600 dark:text-orange-400">
                     {earlyAccessLabel}
                   </span>
                 )}

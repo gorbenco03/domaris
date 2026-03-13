@@ -37,13 +37,13 @@ import { analyzeProperty, estimatePrice, PropertyAnalysis } from "@/lib/aiApi";
 
 function getScoreColor(score: number): string {
   if (score >= 80) return "text-emerald-600";
-  if (score >= 60) return "text-amber-600";
+  if (score >= 60) return "text-orange-500";
   return "text-red-600";
 }
 
 function getScoreBg(score: number): string {
   if (score >= 80) return "bg-emerald-500";
-  if (score >= 60) return "bg-amber-500";
+  if (score >= 60) return "bg-orange-500";
   return "bg-red-500";
 }
 
@@ -52,7 +52,7 @@ function getImpactStyle(impact: string) {
     case "high":
       return { color: "text-red-600", bg: "bg-red-500/10", label: "IMPACT MARE" };
     case "medium":
-      return { color: "text-amber-600", bg: "bg-amber-500/10", label: "IMPACT MEDIU" };
+      return { color: "text-orange-500", bg: "bg-orange-500/10", label: "IMPACT MEDIU" };
     default:
       return { color: "text-blue-600", bg: "bg-blue-500/10", label: "IMPACT MIC" };
   }

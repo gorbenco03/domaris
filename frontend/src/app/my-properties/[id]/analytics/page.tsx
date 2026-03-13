@@ -240,8 +240,8 @@ export default function PropertyAnalyticsPage() {
                 <div className="space-y-2">
                   {suggestions.recommendations.map((rec, i) => (
                     <div key={i} className="flex items-start gap-3 rounded-xl border border-border p-4">
-                      <div className="rounded-lg bg-amber-500/10 p-2 shrink-0">
-                        <Lightbulb className="h-4 w-4 text-amber-500" />
+                      <div className="rounded-lg bg-orange-500/10 p-2 shrink-0">
+                        <Lightbulb className="h-4 w-4 text-orange-500" />
                       </div>
                       <p className="text-sm text-muted-foreground">{rec}</p>
                     </div>
@@ -252,7 +252,7 @@ export default function PropertyAnalyticsPage() {
               {suggestions.improvements.length > 0 && (
                 <div className="space-y-2">
                   {suggestions.improvements.map((imp, i) => {
-                    const impactColor = imp.impact === 'high' ? 'text-red-500 bg-red-500/10' : imp.impact === 'medium' ? 'text-amber-500 bg-amber-500/10' : 'text-blue-500 bg-blue-500/10';
+                    const impactColor = imp.impact === 'high' ? 'text-rose-500 bg-rose-500/10' : imp.impact === 'medium' ? 'text-orange-500 bg-orange-500/10' : 'text-sky-500 bg-sky-500/10';
                     return (
                       <div key={i} className="flex items-start gap-3 rounded-xl border border-border p-4">
                         <div className={`rounded-lg p-2 shrink-0 ${impactColor.split(' ').slice(1).join(' ')}`}>

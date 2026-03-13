@@ -116,8 +116,8 @@ export default function PromotePropertyPage() {
         </div>
 
         <div className="mb-2 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
-            <Zap className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/10">
+            <Zap className="h-6 w-6 text-orange-500" />
           </div>
           <div>
             <h1 className="text-3xl font-bold">Promovează anunțul</h1>
