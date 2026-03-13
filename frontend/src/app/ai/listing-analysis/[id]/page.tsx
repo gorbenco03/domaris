@@ -100,7 +100,7 @@ export default function ListingAnalysisPage() {
           propertyType: prop.propertyType,
           transactionType: prop.transactionType,
           rooms: prop.rooms,
-          surfaceSqm: prop.surfaceSqm,
+          surfaceSqm: prop.surfaceSqm ?? prop.surface ?? prop.totalArea ?? 0,
         }).catch(() => null),
       ]);
 

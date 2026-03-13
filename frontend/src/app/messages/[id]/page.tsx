@@ -176,9 +176,9 @@ export default function ConversationPage() {
             {conversation && (
               <div className="flex flex-1 items-center gap-3">
                 <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-muted">
-                  {conversation.property.image ? (
+                  {(conversation.property?.image || (conversation.property as any)?.mainImage) ? (
                     <img
-                      src={conversation.property.image}
+                      src={conversation.property?.image || (conversation.property as any)?.mainImage}
                       alt=""
                       className="h-full w-full object-cover"
                     />
@@ -190,10 +190,10 @@ export default function ConversationPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <Link 
-                    href={`/property/${conversation.property.id}`}
+                    href={`/property/${conversation.property?.id || ""}`}
                     className="block truncate font-medium hover:text-primary"
                   >
-                    {conversation.property.title}
+                    {conversation.property?.title || "Proprietate"}
                   </Link>
                   <p className="truncate text-sm text-muted-foreground">
                     {conversation.participants.length} participanți
@@ -222,16 +222,19 @@ export default function ConversationPage() {
               <>
                 {messages.map((message, idx) => {
                   const isOwn = message.senderId === Number(user?.id);
-                  const showDate = idx === 0 || 
-                    format(new Date(messages[idx - 1].createdAt), 'yyyy-MM-dd') !== 
-                    format(new Date(message.createdAt), 'yyyy-MM-dd');
+                  const msgTime = message.createdAt || message.sentAt || "";
+                  const prevTime = idx > 0 ? (messages[idx - 1].createdAt || messages[idx - 1].sentAt || "") : "";
+                  const msgText = message.content || message.text || "";
+                  const showDate = idx === 0 || (msgTime && prevTime &&
+                    format(new Date(prevTime), 'yyyy-MM-dd') !== 
+                    format(new Date(msgTime), 'yyyy-MM-dd'));
                   
                   return (
                     <div key={message.id}>
-                      {showDate && (
+                      {showDate && msgTime && (
                         <div className="my-4 flex items-center justify-center">
                           <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                            {format(new Date(message.createdAt), "d MMMM yyyy", { locale: ro })}
+                            {format(new Date(msgTime), "d MMMM yyyy", { locale: ro })}
                           </span>
                         </div>
                       )}
@@ -256,12 +259,12 @@ export default function ConversationPage() {
                               ? "bg-primary text-primary-foreground" 
                               : "bg-muted text-foreground"
                           )}>
-                            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                            <p className="whitespace-pre-wrap break-words">{msgText}</p>
                             <p className={cn(
                               "mt-1 text-right text-xs",
                               isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
                             )}>
-                              {format(new Date(message.createdAt), "HH:mm")}
+                              {msgTime ? format(new Date(msgTime), "HH:mm") : ""}
                             </p>
                           </div>
                         </div>

@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
-import { getPropertyDetail, PropertyListing, searchProperties, trackPropertyView, getPropertyPrice, getPropertySurface, getPropertyLocation, getPropertyOwnerName, getPropertyOwnerAvatar } from "@/lib/propertiesApi";
+import { getPropertyDetail, PropertyListing, searchProperties, trackPropertyView, getPropertyPrice, getPropertySurface, getPropertyMainImage, getPropertyLocation, getPropertyOwnerName, getPropertyOwnerAvatar } from "@/lib/propertiesApi";
 import { getUserReviews, getUserReviewStats, createReview, toggleHelpful, Review, ReviewStats } from "@/lib/reviewsApi";
 import { getListingValuation, AVMResponse } from "@/lib/aiApi";
 import { checkIsFavorite, toggleFavorite } from "@/lib/favoritesApi";
@@ -907,14 +907,14 @@ export default function PropertyDetailPage() {
                   <PropertyCard
                     key={rp.id}
                     id={rp.id}
-                    image={rp.images?.[0]?.url || ""}
-                    price={`${(rp.priceEur ?? 0).toLocaleString()} €`}
+                    image={getPropertyMainImage(rp)}
+                    price={`${getPropertyPrice(rp).toLocaleString()} €`}
                     priceType={rp.transactionType === "RENT" ? "rent" : "sale"}
                     title={rp.title}
-                    location={`${rp.neighborhood || ""}, ${rp.city}`}
+                    location={getPropertyLocation(rp)}
                     rooms={rp.rooms}
                     baths={rp.bathrooms || 1}
-                    area={rp.surfaceSqm}
+                    area={getPropertySurface(rp)}
                     tags={[]}
                   />
                 ))}
