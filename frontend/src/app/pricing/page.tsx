@@ -101,16 +101,27 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>(FALLBACK_PLANS);
   const [isAnnual, setIsAnnual] = useState(false);
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [currentPlanCode, setCurrentPlanCode] = useState<string | null>(null);
 
   useEffect(() => {
     getSubscriptionPlans()
       .then((data) => {
         if (data.length > 0) setPlans(data);
       })
-      .catch(() => {
-        // Keep fallback plans
+      .catch(() => {});
+
+    // Fetch current subscription to show which plan is active
+    if (isAuthenticated) {
+      import("@/lib/monetizationApi").then(({ getUserSubscription }) => {
+        getUserSubscription()
+          .then((sub) => {
+            if (sub?.plan?.code) setCurrentPlanCode(sub.plan.code);
+            else setCurrentPlanCode("FREE");
+          })
+          .catch(() => setCurrentPlanCode("FREE"));
       });
-  }, []);
+    }
+  }, [isAuthenticated]);
 
   const handleSelectPlan = async (plan: SubscriptionPlan) => {
     if (plan.code === "FREE") return;
@@ -197,7 +208,12 @@ export default function PricingPage() {
                   : "border-border"
               )}
             >
-              {plan.isPopular && (
+              {currentPlanCode === plan.code && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-1 text-xs font-semibold text-white">
+                  Planul tău actual
+                </span>
+              )}
+              {plan.isPopular && currentPlanCode !== plan.code && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-semibold text-primary-foreground">
                   Cel mai popular
                 </span>
@@ -224,7 +240,12 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              {plan.code === "FREE" ? (
+              {currentPlanCode === plan.code ? (
+                <Button variant="outline" disabled className="w-full">
+                  <Check className="mr-2 h-4 w-4" />
+                  Plan activ
+                </Button>
+              ) : plan.code === "FREE" ? (
                 <Button variant="outline" asChild>
                   <Link href="/search">Începe gratuit</Link>
                 </Button>

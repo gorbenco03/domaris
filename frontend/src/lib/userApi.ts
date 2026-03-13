@@ -95,6 +95,8 @@ export async function updateProfile(data: UpdateProfileDto): Promise<UserProfile
 export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
   const formData = new FormData();
   formData.append('avatar', file);
+  // Some backends expect 'file' instead of 'avatar'
+  formData.append('file', file);
   
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/users/me/avatar`,
@@ -109,10 +111,14 @@ export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Upload failed' }));
-    throw { code: 'UPLOAD_ERROR', message: error.message || 'Upload failed' };
+    console.error('Avatar upload failed:', response.status, error);
+    throw { code: 'UPLOAD_ERROR', message: error.message || `Upload failed (${response.status})` };
   }
   
-  return response.json();
+  const data = await response.json();
+  // Backend may return { avatarUrl }, { avatar }, { url }, or { user: { avatar } }
+  const avatarUrl = data.avatarUrl || data.avatar || data.url || data.user?.avatar || '';
+  return { avatarUrl };
 }
 
 /**

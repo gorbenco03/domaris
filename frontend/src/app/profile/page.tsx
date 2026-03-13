@@ -1,11 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { getMyProperties } from "@/lib/propertiesApi";
 import {
   MapPin,
   Calendar,
@@ -26,6 +28,23 @@ import {
 export default function ProfilePage() {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
+  const [propertyCount, setPropertyCount] = useState<number>(0);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!isAuthenticated) return;
+      try {
+        const props = await getMyProperties();
+        setPropertyCount(Array.isArray(props) ? props.length : 0);
+      } catch {
+        setPropertyCount(0);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+    fetchStats();
+  }, [isAuthenticated]);
 
   // Redirect to auth if not authenticated
   if (!isAuthenticated) {
@@ -57,9 +76,9 @@ export default function ProfilePage() {
   }
 
   const stats = [
-    { icon: Home, value: "40", label: "Anunțuri" },
-    { icon: Eye, value: "1", label: "Vizualizări" },
-    { icon: Users, value: "0", label: "Contacte" },
+    { icon: Home, value: isLoadingStats ? "…" : String(propertyCount), label: "Anunțuri" },
+    { icon: Eye, value: "—", label: "Vizualizări" },
+    { icon: Users, value: "—", label: "Contacte" },
   ];
 
   const menuItems = [

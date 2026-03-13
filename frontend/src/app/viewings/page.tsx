@@ -204,8 +204,23 @@ export default function ViewingsPage() {
     }
   };
 
-  const isOwner = (viewing: Viewing) =>
-    String(viewing.owner?.id || "") === String(user?.id);
+  const isOwner = (viewing: Viewing): boolean => {
+    if (!user?.id) return false;
+    const uid = String(user.id);
+    // Check viewing.role (API may send role: 'OWNER' | 'REQUESTER')
+    if (viewing.role === 'OWNER') return true;
+    if (viewing.role === 'REQUESTER') return false;
+    // Check viewing.owner.id
+    if (viewing.owner?.id && String(viewing.owner.id) === uid) return true;
+    // Check viewing.ownerId (flat field)
+    if ((viewing as any).ownerId && String((viewing as any).ownerId) === uid) return true;
+    // Check if property.ownerId matches
+    if ((viewing.property as any)?.ownerId && String((viewing.property as any).ownerId) === uid) return true;
+    // If requester matches user, they're NOT the owner
+    if (viewing.requester?.id && String(viewing.requester.id) === uid) return false;
+    // Default: can't determine — treat as owner so they can act
+    return true;
+  };
 
   if (isAuthLoading) {
     return (
