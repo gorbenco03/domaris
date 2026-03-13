@@ -454,6 +454,31 @@ export default function ViewingsPage() {
                         </Link>
                       </div>
 
+                      {/* Prominent confirm/reject buttons for owner when PENDING */}
+                      {owner && isPending && (
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusChange(viewing.id, "CONFIRMED")}
+                            disabled={actionLoading === viewing.id}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            {actionLoading === viewing.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                            Confirmă vizionarea
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleStatusChange(viewing.id, "REJECTED")}
+                            disabled={actionLoading === viewing.id}
+                            className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                          >
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Respinge
+                          </Button>
+                        </div>
+                      )}
+
                       {viewing.notes && (
                         <p className="mt-2 text-sm text-muted-foreground">
                           Note: {viewing.notes}

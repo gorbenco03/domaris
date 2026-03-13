@@ -59,7 +59,7 @@ const timeSlots = [
 export default function PropertyDetailPage() {
   const params = useParams();
   const propertyId = params.id as string;
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   // Property data state
   const [property, setProperty] = useState<PropertyListing | null>(null);
@@ -727,173 +727,242 @@ export default function PropertyDetailPage() {
               </div>
             </div>
 
-            {/* Booking Sidebar */}
+            {/* Sidebar */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 space-y-6">
-                {/* Booking Card */}
-                <div className="rounded-2xl border border-border bg-card p-6">
-                  <h3 className="mb-6 text-lg font-semibold text-foreground">Programează vizionare</h3>
-
-                  <div className="mb-6 flex gap-4 rounded-xl bg-muted p-4">
-                    <div className="h-16 w-20 overflow-hidden rounded-lg bg-secondary">
-                      {propertyImages[0] && (
-                        <img src={propertyImages[0]} alt="" className="h-full w-full object-cover" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground line-clamp-1">{property.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        <MapPin className="mr-1 inline h-3 w-3" />
-                        {property.city}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Steps */}
-                  <div className="mb-6 flex items-center justify-center gap-2">
-                    {[1, 2, 3].map((step) => (
-                      <div key={step} className="flex items-center">
-                        <div className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors",
-                          bookingStep >= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                        )}>
-                          {step === 1 && <CalendarIcon className="h-5 w-5" />}
-                          {step === 2 && <Clock className="h-5 w-5" />}
-                          {step === 3 && <Check className="h-5 w-5" />}
+                {/* OWNER VIEW — if this is the user's own property */}
+                {isAuthenticated && user && String(property.ownerId) === String(user.id) ? (
+                  <>
+                    {/* Owner Dashboard Card */}
+                    <div className="rounded-2xl border border-border bg-card p-6">
+                      <div className="mb-4 flex items-center gap-2">
+                        <div className="rounded-lg bg-primary/10 p-2">
+                          <Sparkles className="h-5 w-5 text-primary" />
                         </div>
-                        {step < 3 && <div className={cn("h-0.5 w-8 transition-colors", bookingStep > step ? "bg-primary" : "bg-muted")} />}
+                        <h3 className="text-lg font-semibold text-foreground">Proprietatea ta</h3>
                       </div>
-                    ))}
-                  </div>
-                  <div className="mb-6 flex justify-between text-xs text-muted-foreground">
-                    <span>Data</span><span>Ora</span><span>Confirmare</span>
-                  </div>
 
-                  {bookingStep === 1 && (
-                    <div className="space-y-4">
-                      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <CalendarIcon className="h-4 w-4" /> Alege data vizionării
-                      </p>
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDateSelect}
-                        className="rounded-xl border pointer-events-auto"
-                        disabled={(date) => date < new Date()}
-                      />
-                    </div>
-                  )}
-
-                  {bookingStep === 2 && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-                          <Clock className="h-4 w-4" /> Alege ora vizionării
-                        </p>
-                        <button onClick={handleBackStep} className="text-sm text-primary hover:underline">Schimbă data</button>
-                      </div>
-                      {selectedDate && (
-                        <div className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground">
-                          {format(selectedDate, "EEEE, d MMMM yyyy", { locale: ro })}
+                      {/* Quick stats */}
+                      <div className="mb-5 grid grid-cols-2 gap-3">
+                        <div className="rounded-xl bg-muted/50 p-3 text-center">
+                          <p className="text-2xl font-bold text-foreground">{property.viewCount ?? 0}</p>
+                          <p className="text-xs text-muted-foreground">Vizualizări</p>
                         </div>
-                      )}
-                      <div className="grid grid-cols-3 gap-2">
-                        {timeSlots.map((time) => (
-                          <button
-                            key={time}
-                            onClick={() => handleTimeSelect(time)}
-                            className={cn(
-                              "rounded-lg border px-3 py-2.5 text-sm font-medium transition-all",
-                              selectedTime === time
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border bg-card text-foreground hover:border-primary hover:bg-primary/10"
-                            )}
-                          >
-                            {time}
-                          </button>
+                        <div className="rounded-xl bg-muted/50 p-3 text-center">
+                          <p className="text-2xl font-bold text-foreground">{property.favoriteCount ?? 0}</p>
+                          <p className="text-xs text-muted-foreground">Favorite</p>
+                        </div>
+                      </div>
+
+                      {/* Owner actions */}
+                      <div className="space-y-2">
+                        <Button className="w-full" asChild>
+                          <Link href={`/my-properties/${property.id}/analytics`}>
+                            <TrendingUp className="mr-2 h-4 w-4" />
+                            Vezi statistici detaliate
+                          </Link>
+                        </Button>
+                        <Button variant="outline" className="w-full" asChild>
+                          <Link href={`/promote/${property.id}`}>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Promovează anunțul
+                          </Link>
+                        </Button>
+                        <Button variant="outline" className="w-full" asChild>
+                          <Link href={`/edit-property/${property.id}`}>
+                            <ArrowRight className="mr-2 h-4 w-4" />
+                            Editează anunțul
+                          </Link>
+                        </Button>
+                        <Button variant="outline" className="w-full" asChild>
+                          <Link href={`/ai/listing-analysis/${property.id}`}>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Analiză AI
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Viewing requests for owner */}
+                    <div className="rounded-2xl border border-border bg-card p-6">
+                      <h3 className="mb-3 text-sm font-semibold text-foreground">Cereri de vizionare</h3>
+                      <p className="text-sm text-muted-foreground mb-3">Gestionează cererile primite pentru această proprietate.</p>
+                      <Button variant="outline" size="sm" className="w-full" asChild>
+                        <Link href="/viewings">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          Vezi toate vizionările
+                        </Link>
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* VISITOR VIEW — Booking Card */}
+                    <div className="rounded-2xl border border-border bg-card p-6">
+                      <h3 className="mb-6 text-lg font-semibold text-foreground">Programează vizionare</h3>
+
+                      <div className="mb-6 flex gap-4 rounded-xl bg-muted p-4">
+                        <div className="h-16 w-20 overflow-hidden rounded-lg bg-secondary">
+                          {propertyImages[0] && (
+                            <img src={propertyImages[0]} alt="" className="h-full w-full object-cover" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground line-clamp-1">{property.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            <MapPin className="mr-1 inline h-3 w-3" />
+                            {property.city}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Steps */}
+                      <div className="mb-6 flex items-center justify-center gap-2">
+                        {[1, 2, 3].map((step) => (
+                          <div key={step} className="flex items-center">
+                            <div className={cn(
+                              "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                              bookingStep >= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                            )}>
+                              {step === 1 && <CalendarIcon className="h-5 w-5" />}
+                              {step === 2 && <Clock className="h-5 w-5" />}
+                              {step === 3 && <Check className="h-5 w-5" />}
+                            </div>
+                            {step < 3 && <div className={cn("h-0.5 w-8 transition-colors", bookingStep > step ? "bg-primary" : "bg-muted")} />}
+                          </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                      <div className="mb-6 flex justify-between text-xs text-muted-foreground">
+                        <span>Data</span><span>Ora</span><span>Confirmare</span>
+                      </div>
 
-                  {bookingStep === 3 && (
-                    <div className="space-y-4">
-                      <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <Check className="h-4 w-4" /> Confirmă vizionarea
-                      </p>
-                      <div className="space-y-2 rounded-xl bg-muted p-4">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Data:</span>
-                          <span className="font-medium text-foreground">
-                            {selectedDate && format(selectedDate, "d MMMM yyyy", { locale: ro })}
-                          </span>
+                      {bookingStep === 1 && (
+                        <div className="space-y-4">
+                          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <CalendarIcon className="h-4 w-4" /> Alege data vizionării
+                          </p>
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={handleDateSelect}
+                            className="rounded-xl border pointer-events-auto"
+                            disabled={(date) => date < new Date()}
+                          />
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Ora:</span>
-                          <span className="font-medium text-foreground">{selectedTime}</span>
+                      )}
+
+                      {bookingStep === 2 && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                              <Clock className="h-4 w-4" /> Alege ora vizionării
+                            </p>
+                            <button onClick={handleBackStep} className="text-sm text-primary hover:underline">Schimbă data</button>
+                          </div>
+                          {selectedDate && (
+                            <div className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground">
+                              {format(selectedDate, "EEEE, d MMMM yyyy", { locale: ro })}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-3 gap-2">
+                            {timeSlots.map((time) => (
+                              <button
+                                key={time}
+                                onClick={() => handleTimeSelect(time)}
+                                className={cn(
+                                  "rounded-lg border px-3 py-2.5 text-sm font-medium transition-all",
+                                  selectedTime === time
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border bg-card text-foreground hover:border-primary hover:bg-primary/10"
+                                )}
+                              >
+                                {time}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {bookingStep === 3 && (
+                        <div className="space-y-4">
+                          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <Check className="h-4 w-4" /> Confirmă vizionarea
+                          </p>
+                          <div className="space-y-2 rounded-xl bg-muted p-4">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Data:</span>
+                              <span className="font-medium text-foreground">
+                                {selectedDate && format(selectedDate, "d MMMM yyyy", { locale: ro })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Ora:</span>
+                              <span className="font-medium text-foreground">{selectedTime}</span>
+                            </div>
+                          </div>
+                          <Button
+                            className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                            size="lg"
+                            onClick={handleConfirmBooking}
+                            disabled={isBooking}
+                          >
+                            {isBooking ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
+                            Confirmă vizionarea
+                          </Button>
+                          <button onClick={handleBackStep} className="w-full text-center text-sm text-primary hover:underline">
+                            Înapoi la selectarea orei
+                          </button>
+                        </div>
+                      )}
+
+                      {bookingStep === 1 && selectedDate && (
+                        <Button
+                          className="mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                          size="lg"
+                          onClick={() => setBookingStep(2)}
+                        >
+                          Continuă
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                      )}
+
+                      <div className="mt-4 flex gap-2">
+                        <Button variant="outline" size="lg" className="flex-1" asChild>
+                          <Link href={`/messages?chat=${property.ownerId}`}>
+                            <MessageCircle className="mr-2 h-5 w-5" />
+                            Mesaj
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Owner Card */}
+                    <div className="rounded-2xl border border-border bg-card p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="relative h-14 w-14 overflow-hidden rounded-full bg-muted">
+                          {getPropertyOwnerAvatar(property) && (
+                            <img src={getPropertyOwnerAvatar(property)!} alt={getPropertyOwnerName(property)} className="h-full w-full object-cover" />
+                          )}
+                        </div>
+                        <div>
+                          <Link href={`/user/${property.ownerId}`} className="flex items-center gap-2 hover:underline">
+                            <span className="font-semibold text-foreground">{getPropertyOwnerName(property)}</span>
+                            <BadgeCheck className="h-4 w-4 text-primary" />
+                          </Link>
+                          <p className="text-sm text-muted-foreground">Proprietar verificat</p>
                         </div>
                       </div>
-                      <Button
-                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                        size="lg"
-                        onClick={handleConfirmBooking}
-                        disabled={isBooking}
-                      >
-                        {isBooking ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
-                        Confirmă vizionarea
-                      </Button>
-                      <button onClick={handleBackStep} className="w-full text-center text-sm text-primary hover:underline">
-                        Înapoi la selectarea orei
-                      </button>
+                      <div className="mt-4 flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1">
+                          <Phone className="mr-2 h-4 w-4" /> Sună
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1">
+                          <Mail className="mr-2 h-4 w-4" /> Email
+                        </Button>
+                      </div>
                     </div>
-                  )}
-
-                  {bookingStep === 1 && selectedDate && (
-                    <Button
-                      className="mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                      size="lg"
-                      onClick={() => setBookingStep(2)}
-                    >
-                      Continuă
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  )}
-
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="lg" className="flex-1" asChild>
-                      <Link href={`/messages?chat=${property.ownerId}`}>
-                        <MessageCircle className="mr-2 h-5 w-5" />
-                        Mesaj
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Owner Card */}
-                <div className="rounded-2xl border border-border bg-card p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="relative h-14 w-14 overflow-hidden rounded-full bg-muted">
-                      {getPropertyOwnerAvatar(property) && (
-                        <img src={getPropertyOwnerAvatar(property)!} alt={getPropertyOwnerName(property)} className="h-full w-full object-cover" />
-                      )}
-                    </div>
-                    <div>
-                      <Link href={`/user/${property.ownerId}`} className="flex items-center gap-2 hover:underline">
-                        <span className="font-semibold text-foreground">{getPropertyOwnerName(property)}</span>
-                        <BadgeCheck className="h-4 w-4 text-primary" />
-                      </Link>
-                      <p className="text-sm text-muted-foreground">Proprietar verificat</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Phone className="mr-2 h-4 w-4" /> Sună
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Mail className="mr-2 h-4 w-4" /> Email
-                    </Button>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
