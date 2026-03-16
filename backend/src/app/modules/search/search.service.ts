@@ -16,7 +16,7 @@ import { Listing } from '../../db/entities/listing.entity.js';
 import { ListingImage } from '../../db/entities/listingImage.entity.js';
 import { User } from '../../db/entities/user.entity.js';
 import { SubscriptionService } from '../monetization/services/subscription.service.js';
-import { Op, literal, fn, col } from 'sequelize';
+import { Op, literal, fn, col, where } from 'sequelize';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -222,13 +222,13 @@ export class SearchService {
     // City filter - simple ILIKE search (works well for Moldovan cities)
     if (filters.city) {
       this.logger.log(`City filter: "${filters.city}"`);
-      whereConditions.push({ city: { [Op.iLike]: `%${filters.city}%` } });
+      whereConditions.push(this.buildAccentInsensitiveContainsCondition('city', filters.city));
     }
 
     // Neighborhood filter - simple ILIKE search
     if (filters.neighborhood) {
       this.logger.log(`Neighborhood filter: "${filters.neighborhood}"`);
-      whereConditions.push({ neighborhood: { [Op.iLike]: `%${filters.neighborhood}%` } });
+      whereConditions.push(this.buildAccentInsensitiveContainsCondition('neighborhood', filters.neighborhood));
     }
 
     // Bounding box for map
@@ -733,6 +733,31 @@ export class SearchService {
       .replace(/\s+/g, ' ')
       .trim()
       .substring(0, 100);
+  }
+
+  private normalizeForAccentInsensitiveMatch(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/ș|ş/g, 's')
+      .replace(/ț|ţ/g, 't')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private buildAccentInsensitiveContainsCondition(field: string, value: string) {
+    return where(
+      fn(
+        'translate',
+        fn('lower', fn('coalesce', col(field), '')),
+        'ăâîșşțţ',
+        'aaisstt',
+      ),
+      {
+        [Op.like]: `%${this.normalizeForAccentInsensitiveMatch(value)}%`,
+      },
+    );
   }
 
   private buildOrderClause(sortBy?: string, hasQuery?: string): [string, string][] {
