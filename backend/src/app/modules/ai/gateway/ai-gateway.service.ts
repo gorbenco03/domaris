@@ -180,96 +180,378 @@ export class AIGatewayService {
 
   async chatWithProfile(input: ChatWithProfileInput): Promise<ChatWithProfileResponse> {
     const startTime = Date.now();
-    const { clientProfile, messageHistory } = input;
+    const state = this.getOrCreateState(input.conversationId, input.userId);
+    this.restoreStateFromProfile(state, input.clientProfile, input.messageHistory);
 
-    // Build preferences from client profile
-    const preferences: UserPreferences = {
+    try {
+      const routerResult = await this.intentRouter.route(input.message, state);
+      const intent = routerResult.intent;
+      this.updatePreferencesFromSlots(state, intent);
+
+      const intentProfileUpdate = this.extractProfileUpdate(intent, input.message, input.clientProfile);
+      const hasMinimumCriteriaNow = this.hasMinimumCriteriaWithUpdate(
+        input.clientProfile,
+        intentProfileUpdate,
+      );
+
+      if (!input.clientProfile.classificationComplete && !hasMinimumCriteriaNow) {
+        const classificationResponse = await this.handleClassificationChat(
+          input,
+          state.preferences,
+          startTime,
+        );
+
+        this.captureShownProperties(state, classificationResponse.properties);
+        state.messages.push({
+          role: 'assistant',
+          content: classificationResponse.message,
+          timestamp: new Date(),
+          metadata: {
+            suggestedActions: classificationResponse.suggestedActions,
+            propertyCards: classificationResponse.properties,
+            toolsUsed: classificationResponse.toolsUsed,
+          },
+        });
+
+        const classificationProfileUpdate = this.buildFinalProfileUpdate(
+          input.clientProfile,
+          classificationResponse.intent,
+          classificationResponse.properties,
+          classificationResponse.toolsUsed,
+          state,
+          this.mergeProfileUpdates(intentProfileUpdate, classificationResponse.clientProfileUpdate),
+        );
+
+        this.logDecision({
+          requestId: uuidv4(),
+          userId: input.userId,
+          conversationId: input.conversationId,
+          tierUsed: classificationResponse.intent.tier,
+          intent: classificationResponse.intent.type,
+          toolsCalled: classificationResponse.toolsUsed,
+          latencyMs: Date.now() - startTime,
+          cached: false,
+          timestamp: new Date(),
+        });
+
+        return {
+          ...classificationResponse,
+          conversationId: input.conversationId,
+          clientProfileUpdate: classificationProfileUpdate,
+        };
+      }
+
+      if (!input.clientProfile.classificationComplete && hasMinimumCriteriaNow) {
+        intentProfileUpdate.classificationComplete = true;
+        intentProfileUpdate.conversationPhase = input.clientProfile.lastShownListingIds?.length
+          ? 'results_shown'
+          : 'ready_to_search';
+      }
+
+      let response: AgentResponse;
+      if (intent.tier === 0 && !intent.requiresLLM && ['greeting', 'thanks', 'help'].includes(intent.type)) {
+        response = await this.handleTier0(state, intent, {
+          message: input.message,
+          conversationId: input.conversationId,
+          userId: input.userId,
+          contextOptions: input.contextOptions,
+        });
+      } else if (routerResult.shouldEscalate || intent.tier === 2) {
+        response = await this.handleProfileTier2(state, intent, input, input.clientProfile);
+      } else {
+        response = await this.handleProfileTier1(state, intent, input, input.clientProfile);
+      }
+
+      this.captureShownProperties(state, response.properties);
+      state.messages.push({
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date(),
+        metadata: {
+          suggestedActions: response.suggestedActions,
+          propertyCards: response.properties,
+          toolsUsed: response.toolsUsed,
+        },
+      });
+      state.lastIntent = intent;
+      state.updatedAt = new Date();
+
+      const profileUpdate = this.buildFinalProfileUpdate(
+        input.clientProfile,
+        intent,
+        response.properties,
+        response.toolsUsed,
+        state,
+        intentProfileUpdate,
+      );
+
+      this.logDecision({
+        requestId: uuidv4(),
+        userId: input.userId,
+        conversationId: input.conversationId,
+        tierUsed: intent.tier,
+        intent: intent.type,
+        toolsCalled: response.toolsUsed,
+        latencyMs: Date.now() - startTime,
+        cached: false,
+        timestamp: new Date(),
+      });
+
+      return {
+        ...response,
+        conversationId: input.conversationId,
+        clientProfileUpdate: profileUpdate,
+        debug: {
+          tier: intent.tier,
+          latencyMs: Date.now() - startTime,
+          cached: false,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error(`Profile chat error: ${error.message}`, error.stack);
+
+      return {
+        conversationId: input.conversationId,
+        message: 'Îmi pare rău, a apărut o eroare. Te rog să încerci din nou.',
+        intent: { type: 'unclear', confidence: 0, slots: {}, requiresLLM: false, tier: 0 },
+        toolsUsed: [],
+        debug: {
+          tier: 0,
+          latencyMs: Date.now() - startTime,
+          cached: false,
+        },
+      };
+    }
+  }
+
+  private restoreStateFromProfile(
+    state: ConversationState,
+    clientProfile: ClientProfile,
+    messageHistory: ConversationMessage[],
+  ): void {
+    state.preferences = this.buildPreferencesFromClientProfile(clientProfile);
+    state.messages = [...messageHistory];
+    state.lastShownProperties = this.extractLastShownProperties(messageHistory);
+    state.shownListingIds = [
+      ...(clientProfile.lastShownListingIds || []),
+      ...(state.lastShownProperties?.map(property => property.id) || []),
+    ].filter((value, index, arr) => arr.indexOf(value) === index);
+    state.updatedAt = new Date();
+  }
+
+  private buildPreferencesFromClientProfile(clientProfile: ClientProfile): UserPreferences {
+    return {
       transactionType: clientProfile.transactionType,
+      propertyType: clientProfile.propertyType,
       cities: clientProfile.preferences?.cities,
       neighborhoods: clientProfile.preferences?.neighborhoods,
       priceMin: clientProfile.budget?.min,
       priceMax: clientProfile.budget?.max,
-      roomsMin: clientProfile.preferences?.rooms || clientProfile.preferences?.roomsMin,
-      roomsMax: clientProfile.preferences?.roomsMax,
+      roomsMin: clientProfile.preferences?.rooms ?? clientProfile.preferences?.roomsMin,
+      roomsMax: clientProfile.preferences?.rooms ?? clientProfile.preferences?.roomsMax,
       surfaceMin: clientProfile.preferences?.surfaceMin,
       surfaceMax: clientProfile.preferences?.surfaceMax,
       mustHave: clientProfile.preferences?.amenities,
+      dealbreakers: clientProfile.dealbreakers,
       isFurnished: clientProfile.preferences?.isFurnished,
       petFriendly: clientProfile.preferences?.petFriendly,
+      floorMin: clientProfile.preferences?.floorMin,
+      floorMax: clientProfile.preferences?.floorMax,
+      yearBuiltMin: clientProfile.preferences?.yearBuiltMin,
+      yearBuiltMax: clientProfile.preferences?.yearBuiltMax,
       confidence: {},
       lastUpdated: new Date(),
     };
+  }
 
-    // If classification is NOT complete, use LLM for conversational classification
-    if (!clientProfile.classificationComplete) {
-      return this.handleClassificationChat(input, preferences, startTime);
+  private extractLastShownProperties(messageHistory: ConversationMessage[]): any[] | undefined {
+    for (let index = messageHistory.length - 1; index >= 0; index--) {
+      const message = messageHistory[index];
+      const propertyCards = message.metadata?.propertyCards;
+      if (Array.isArray(propertyCards) && propertyCards.length > 0) {
+        return propertyCards;
+      }
     }
 
-    // Classification complete - skip IntentRouter, go direct to LLM with tools
-    // This saves one GPT API call and lets the LLM decide the right tool itself
-    const state = this.getOrCreateState(input.conversationId, input.userId);
-    state.preferences = preferences;
-    state.messages = messageHistory;
+    return undefined;
+  }
 
-    // Add user message
-    state.messages.push({
-      role: 'user',
-      content: input.message,
-      timestamp: new Date(),
-    });
+  private captureShownProperties(state: ConversationState, properties?: any[]): void {
+    if (!properties?.length) {
+      return;
+    }
 
-    // Quick Tier 0 check for trivial intents (greeting, thanks) — no GPT needed
-    const normalizedMsg = input.message.toLowerCase().trim();
-    const isTrivial = /^(bună|salut|hello|hi|hey|buna ziua|mulțumesc|multumesc|mersi|thanks|ms|ajutor|help)\b/i.test(normalizedMsg);
+    state.lastShownProperties = properties;
+    state.shownListingIds = [
+      ...state.shownListingIds,
+      ...properties.map(property => property.id),
+    ].filter((value, index, arr) => arr.indexOf(value) === index).slice(-30);
+  }
 
-    let response: AgentResponse;
-    const intent: Intent = {
-      type: 'search',
-      confidence: 0.8,
-      slots: {},
-      requiresLLM: true,
-      tier: 1,
-    };
+  private mergeProfileUpdates(
+    ...updates: Array<Partial<ClientProfile> | undefined>
+  ): Partial<ClientProfile> | undefined {
+    const merged: Partial<ClientProfile> = {};
 
-    if (isTrivial) {
-      const routerResult = await this.intentRouter.route(input.message, state);
-      response = await this.handleTier0(state, routerResult.intent, { ...input, contextOptions: input.contextOptions });
-      Object.assign(intent, routerResult.intent);
+    for (const update of updates) {
+      if (!update) continue;
+
+      if (update.transactionType) merged.transactionType = update.transactionType;
+      if (update.propertyType) merged.propertyType = update.propertyType;
+      if (update.purpose) merged.purpose = update.purpose;
+      if (update.urgency) merged.urgency = update.urgency;
+      if (update.conversationPhase) merged.conversationPhase = update.conversationPhase;
+      if (update.classificationComplete !== undefined) {
+        merged.classificationComplete = update.classificationComplete;
+      }
+
+      if (update.budget) {
+        merged.budget = {
+          ...(merged.budget || {}),
+          ...update.budget,
+          currency: update.budget.currency || merged.budget?.currency || 'EUR',
+        };
+      }
+
+      if (update.preferences) {
+        merged.preferences = {
+          ...(merged.preferences || {}),
+          ...update.preferences,
+          cities: this.mergeStringArrays(merged.preferences?.cities, update.preferences.cities),
+          neighborhoods: this.mergeStringArrays(merged.preferences?.neighborhoods, update.preferences.neighborhoods),
+          amenities: this.mergeStringArrays(merged.preferences?.amenities, update.preferences.amenities),
+        };
+      }
+
+      if (update.dealbreakers) {
+        merged.dealbreakers = this.mergeStringArrays(merged.dealbreakers, update.dealbreakers);
+      }
+
+      if (update.answeredQuestions) {
+        merged.answeredQuestions = this.mergeStringArrays(
+          merged.answeredQuestions,
+          update.answeredQuestions,
+        ) || [];
+      }
+
+      if (update.lastShownListingIds) {
+        merged.lastShownListingIds = [
+          ...(merged.lastShownListingIds || []),
+          ...update.lastShownListingIds,
+        ].filter((value, index, arr) => arr.indexOf(value) === index).slice(-20);
+      }
+
+      if (update.lastSearchFilters) {
+        merged.lastSearchFilters = {
+          ...(merged.lastSearchFilters || {}),
+          ...update.lastSearchFilters,
+        };
+      }
+    }
+
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
+
+  private buildFinalProfileUpdate(
+    currentProfile: ClientProfile,
+    intent: Intent,
+    properties: any[] | undefined,
+    toolsUsed: string[],
+    state: ConversationState,
+    baseUpdate?: Partial<ClientProfile>,
+  ): Partial<ClientProfile> | undefined {
+    const profileUpdate = this.mergeProfileUpdates(baseUpdate) || {};
+    const propertyIds = properties?.map(property => property.id) || [];
+
+    if (propertyIds.length > 0) {
+      profileUpdate.lastShownListingIds = propertyIds;
+    }
+
+    if (toolsUsed.includes('search_properties')) {
+      profileUpdate.classificationComplete = true;
+      profileUpdate.lastSearchFilters = this.buildSearchFilterSnapshot(intent, state.preferences);
+    }
+
+    const hasMinimumCriteria = this.hasMinimumCriteriaWithUpdate(currentProfile, profileUpdate);
+
+    if (toolsUsed.includes('get_property_details') || intent.type === 'details' || intent.type === 'schedule') {
+      profileUpdate.conversationPhase = 'property_followup';
+    } else if (propertyIds.length > 0 || toolsUsed.includes('search_properties')) {
+      profileUpdate.conversationPhase = 'results_shown';
+    } else if (!hasMinimumCriteria) {
+      profileUpdate.conversationPhase = 'discovery';
+    } else if (intent.type === 'refine') {
+      profileUpdate.conversationPhase = 'refining';
     } else {
-      response = await this.handleProfileTier1(state, intent, input, clientProfile);
+      profileUpdate.conversationPhase = 'ready_to_search';
     }
 
-    state.messages.push({
-      role: 'assistant',
-      content: response.message,
-      timestamp: new Date(),
-    });
+    if (hasMinimumCriteria) {
+      profileUpdate.classificationComplete = true;
+    }
 
-    // Extract profile updates from slots
-    const profileUpdate = this.extractProfileUpdate(intent, input.message);
+    return Object.keys(profileUpdate).length > 0 ? profileUpdate : undefined;
+  }
 
-    this.logDecision({
-      requestId: uuidv4(),
-      userId: input.userId,
-      conversationId: input.conversationId,
-      tierUsed: intent.tier,
-      intent: intent.type,
-      toolsCalled: response.toolsUsed,
-      latencyMs: Date.now() - startTime,
-      cached: false,
-      timestamp: new Date(),
-    });
-
-    return {
-      ...response,
-      conversationId: input.conversationId,
-      clientProfileUpdate: Object.keys(profileUpdate).length > 0 ? profileUpdate : undefined,
-      debug: {
-        tier: intent.tier,
-        latencyMs: Date.now() - startTime,
-        cached: false,
-      },
+  private buildSearchFilterSnapshot(
+    intent: Intent,
+    preferences: UserPreferences,
+  ): Record<string, any> {
+    const snapshot = {
+      transactionType: intent.slots.transactionType || preferences.transactionType,
+      city: intent.slots.city || preferences.cities?.[0],
+      neighborhood: intent.slots.neighborhood || preferences.neighborhoods?.[0],
+      priceMin: intent.slots.priceMin ?? preferences.priceMin,
+      priceMax: intent.slots.priceMax ?? preferences.priceMax,
+      roomsMin: intent.slots.roomsMin ?? intent.slots.rooms ?? preferences.roomsMin,
+      roomsMax: intent.slots.roomsMax ?? intent.slots.rooms ?? preferences.roomsMax,
+      surfaceMin: intent.slots.surfaceMin ?? preferences.surfaceMin,
+      surfaceMax: intent.slots.surfaceMax ?? preferences.surfaceMax,
+      propertyType: intent.slots.propertyType || preferences.propertyType,
+      isFurnished: intent.slots.isFurnished ?? preferences.isFurnished,
+      petFriendly: intent.slots.petFriendly ?? preferences.petFriendly,
+      floorMin: intent.slots.floorMin ?? preferences.floorMin,
+      floorMax: intent.slots.floorMax ?? preferences.floorMax,
+      yearBuiltMin: intent.slots.yearBuiltMin ?? preferences.yearBuiltMin,
+      yearBuiltMax: intent.slots.yearBuiltMax ?? preferences.yearBuiltMax,
+      amenities: intent.slots.amenities?.length ? intent.slots.amenities : preferences.mustHave,
+      sortBy: intent.slots.sortBy || 'relevance',
     };
+
+    return Object.fromEntries(
+      Object.entries(snapshot).filter(([, value]) => value !== undefined && value !== null),
+    );
+  }
+
+  private hasMinimumCriteriaWithUpdate(
+    currentProfile: ClientProfile,
+    update?: Partial<ClientProfile>,
+  ): boolean {
+    const transactionType = update?.transactionType || currentProfile.transactionType;
+    const cities = update?.preferences?.cities || currentProfile.preferences?.cities;
+    const budgetMin = update?.budget?.min ?? currentProfile.budget?.min;
+    const budgetMax = update?.budget?.max ?? currentProfile.budget?.max;
+
+    return Boolean(
+      transactionType &&
+      cities?.length &&
+      (budgetMin !== undefined || budgetMax !== undefined),
+    );
+  }
+
+  private mergeStringArrays(
+    existing?: string[],
+    incoming?: string[],
+  ): string[] | undefined {
+    const merged = [...(existing || []), ...(incoming || [])]
+      .map(value => value?.trim())
+      .filter(Boolean);
+
+    if (merged.length === 0) {
+      return undefined;
+    }
+
+    return [...new Set(merged)];
   }
 
   private async handleClassificationChat(
@@ -294,7 +576,7 @@ export class AIGatewayService {
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
-      ...messageHistory.slice(-10).map(m => ({
+      ...messageHistory.slice(-6).map(m => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
@@ -305,8 +587,8 @@ export class AIGatewayService {
         model: this.cheapModel,
         messages,
         response_format: { type: 'json_object' },
-        temperature: 0.7,
-        max_tokens: 800,
+        temperature: 0.35,
+        max_tokens: 450,
       });
 
       const result = JSON.parse(completion.choices[0].message.content || '{}');
@@ -356,7 +638,7 @@ export class AIGatewayService {
             conversationId: input.conversationId,
             userId: input.userId,
             preferences,
-            shownListingIds: [],
+            shownListingIds: input.clientProfile.lastShownListingIds || [],
           },
         );
 
@@ -374,7 +656,7 @@ export class AIGatewayService {
         intent: {
           type: result.readyToSearch ? 'search' : 'unclear',
           confidence: 0.8,
-          slots: result.extracted || {},
+          slots: result.readyToSearch ? (result.searchParams || {}) : {},
           requiresLLM: true,
           tier: 1,
         },
@@ -412,7 +694,7 @@ export class AIGatewayService {
     const toolsUsed: string[] = [];
     let properties: any[] | undefined;
 
-    const recentMessages = state.messages.slice(-8);
+    const recentMessages = state.messages.slice(-6);
     const systemPrompt = this.buildProfileAwarePrompt(clientProfile, input.contextOptions);
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -429,8 +711,8 @@ export class AIGatewayService {
         messages,
         tools: getToolsForOpenAI(),
         tool_choice: 'auto',
-        temperature: 0.7,
-        max_tokens: 800,
+        temperature: 0.35,
+        max_tokens: 500,
       });
 
       const choice = completion.choices[0];
@@ -461,7 +743,6 @@ export class AIGatewayService {
             state.shownListingIds.push(...(properties || []).map(p => p.id));
           }
 
-          // Also capture get_property_details results as a single-item property list
           if (tc.name === 'get_property_details' && result.result && !result.error) {
             const detail = result.result;
             properties = [{
@@ -483,10 +764,21 @@ export class AIGatewayService {
             }];
           }
 
-          // Capture schedule_viewing listing so the CORRECT property card is shown
           if (tc.name === 'schedule_viewing' && result.result?.scheduledListing) {
             properties = [result.result.scheduledListing];
           }
+        }
+
+        const fastToolResponse = this.buildFastToolResponse(intent, properties, toolResults);
+        if (fastToolResponse) {
+          return {
+            conversationId: state.conversationId,
+            message: fastToolResponse,
+            properties,
+            intent,
+            toolsUsed,
+            suggestedActions: this.getSuggestedActions(intent, properties),
+          };
         }
 
         const toolMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -502,8 +794,8 @@ export class AIGatewayService {
         const responseCompletion = await this.openai.chat.completions.create({
           model: this.cheapModel,
           messages: toolMessages,
-          temperature: 0.7,
-          max_tokens: 600,
+          temperature: 0.35,
+          max_tokens: 350,
         });
 
         return {
@@ -542,7 +834,7 @@ export class AIGatewayService {
     const toolsUsed: string[] = [];
     let properties: any[] | undefined;
 
-    const recentMessages = state.messages.slice(-10);
+    const recentMessages = state.messages.slice(-8);
     const systemPrompt = this.buildProfileAwarePrompt(clientProfile, input.contextOptions, true);
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -559,8 +851,8 @@ export class AIGatewayService {
         messages,
         tools: getToolsForOpenAI(),
         tool_choice: 'auto',
-        temperature: 0.7,
-        max_tokens: 1000,
+        temperature: 0.35,
+        max_tokens: 700,
       });
 
       const choice = completion.choices[0];
@@ -594,18 +886,39 @@ export class AIGatewayService {
           if (tc.name === 'get_property_details' && result.result && !result.error) {
             const dp = result.result;
             properties = [{
-              id: dp.id, title: dp.title, city: dp.city, neighborhood: dp.neighborhood,
-              priceEur: dp.priceEur, transactionType: dp.transactionType, rooms: dp.rooms,
-              surfaceSqm: dp.surfaceSqm, floor: dp.floor, totalFloors: dp.totalFloors,
-              yearBuilt: dp.yearBuilt, isFurnished: dp.isFurnished,
-              amenities: dp.amenities || [], imageUrl: dp.images?.[0]?.url, isPromoted: false,
+              id: dp.id,
+              title: dp.title,
+              city: dp.city,
+              neighborhood: dp.neighborhood,
+              priceEur: dp.priceEur,
+              transactionType: dp.transactionType,
+              rooms: dp.rooms,
+              surfaceSqm: dp.surfaceSqm,
+              floor: dp.floor,
+              totalFloors: dp.totalFloors,
+              yearBuilt: dp.yearBuilt,
+              isFurnished: dp.isFurnished,
+              amenities: dp.amenities || [],
+              imageUrl: dp.images?.[0]?.url,
+              isPromoted: false,
             }];
           }
 
-          // Capture schedule_viewing listing so the CORRECT property card is shown
           if (tc.name === 'schedule_viewing' && result.result?.scheduledListing) {
             properties = [result.result.scheduledListing];
           }
+        }
+
+        const fastToolResponse = this.buildFastToolResponse(intent, properties, toolResults);
+        if (fastToolResponse) {
+          return {
+            conversationId: state.conversationId,
+            message: fastToolResponse,
+            properties,
+            intent,
+            toolsUsed,
+            suggestedActions: this.getSuggestedActions(intent, properties),
+          };
         }
 
         const toolMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -621,8 +934,8 @@ export class AIGatewayService {
         const responseCompletion = await this.openai.chat.completions.create({
           model: this.strongModel,
           messages: toolMessages,
-          temperature: 0.7,
-          max_tokens: 800,
+          temperature: 0.35,
+          max_tokens: 450,
         });
 
         return {
@@ -648,35 +961,71 @@ export class AIGatewayService {
     }
   }
 
-  private extractProfileUpdate(intent: Intent, message: string): Partial<ClientProfile> {
+  private extractProfileUpdate(
+    intent: Intent,
+    _message: string,
+    _currentProfile?: ClientProfile,
+  ): Partial<ClientProfile> {
     const update: Partial<ClientProfile> = {};
     const slots = intent.slots;
 
     if (slots.transactionType) update.transactionType = slots.transactionType;
+    if (slots.propertyType) {
+      update.propertyType = slots.propertyType as ClientProfile['propertyType'];
+    }
     if (slots.city) {
       update.preferences = { ...update.preferences, cities: [slots.city] };
     }
     if (slots.neighborhood) {
       update.preferences = { ...update.preferences, neighborhoods: [slots.neighborhood] };
     }
-    if (slots.priceMin || slots.priceMax) {
+    if (slots.priceMin !== undefined || slots.priceMax !== undefined) {
       update.budget = { currency: 'EUR' };
-      if (slots.priceMin) update.budget.min = slots.priceMin;
-      if (slots.priceMax) update.budget.max = slots.priceMax;
+      if (slots.priceMin !== undefined) update.budget.min = slots.priceMin;
+      if (slots.priceMax !== undefined) update.budget.max = slots.priceMax;
     }
-    if (slots.rooms) {
+    if (slots.rooms !== undefined) {
       update.preferences = { ...update.preferences, rooms: slots.rooms };
     }
-    if (slots.propertyType) {
-      update.propertyType = slots.propertyType as any;
+    if (slots.roomsMin !== undefined) {
+      update.preferences = { ...update.preferences, roomsMin: slots.roomsMin };
+    }
+    if (slots.roomsMax !== undefined) {
+      update.preferences = { ...update.preferences, roomsMax: slots.roomsMax };
+    }
+    if (slots.surfaceMin !== undefined) {
+      update.preferences = { ...update.preferences, surfaceMin: slots.surfaceMin };
+    }
+    if (slots.surfaceMax !== undefined) {
+      update.preferences = { ...update.preferences, surfaceMax: slots.surfaceMax };
+    }
+    if (slots.isFurnished !== undefined) {
+      update.preferences = { ...update.preferences, isFurnished: slots.isFurnished };
+    }
+    if (slots.petFriendly !== undefined) {
+      update.preferences = { ...update.preferences, petFriendly: slots.petFriendly };
+    }
+    if (slots.floorMin !== undefined) {
+      update.preferences = { ...update.preferences, floorMin: slots.floorMin };
+    }
+    if (slots.floorMax !== undefined) {
+      update.preferences = { ...update.preferences, floorMax: slots.floorMax };
+    }
+    if (slots.yearBuiltMin !== undefined) {
+      update.preferences = { ...update.preferences, yearBuiltMin: slots.yearBuiltMin };
+    }
+    if (slots.yearBuiltMax !== undefined) {
+      update.preferences = { ...update.preferences, yearBuiltMax: slots.yearBuiltMax };
+    }
+    if (slots.amenities?.length) {
+      update.preferences = { ...update.preferences, amenities: slots.amenities };
+    }
+    if (slots.dealbreakers?.length) {
+      update.dealbreakers = slots.dealbreakers;
     }
 
     return update;
   }
-
-  // ========================================================================
-  // TIER HANDLERS
-  // ========================================================================
 
   private async handleTier0(
     state: ConversationState,
@@ -708,7 +1057,6 @@ Ce te interesează?`;
 
       case 'search':
       case 'refine':
-        // Execute search tool
         const searchResult = await this.toolExecutor.execute(
           {
             id: uuidv4(),
@@ -735,7 +1083,12 @@ Ce te interesează?`;
           state.shownListingIds.push(...(properties?.map(p => p.id) || []));
 
           if (properties && properties.length > 0) {
-            message = this.formatSearchResponse(properties, searchResult.result.total, intent.slots);
+            message = this.formatSearchResponse(
+              properties,
+              searchResult.result.total,
+              intent.slots,
+              searchResult.result.hasMore,
+            );
           } else {
             message = 'Nu am găsit proprietăți care să corespundă criteriilor. Încearcă să ajustezi filtrele.';
           }
@@ -743,7 +1096,6 @@ Ce te interesează?`;
         break;
 
       case 'mortgage':
-        // Handle simple mortgage calculation
         if (intent.slots.priceMax) {
           const mortgageResult = await this.toolExecutor.execute(
             {
@@ -796,7 +1148,6 @@ Vrei să caut proprietăți în acest buget?`;
     intent: Intent,
     input: ChatInput,
   ): Promise<AgentResponse> {
-    // Tier 1 uses cheap model with tools for more complex operations
     if (!this.openai) {
       return this.handleTier0(state, intent, input);
     }
@@ -804,9 +1155,7 @@ Vrei să caut proprietăți în acest buget?`;
     const toolsUsed: string[] = [];
     let properties: any[] | undefined;
 
-    // Build context from recent messages
     const recentMessages = state.messages.slice(-6);
-
     const systemPrompt = this.buildSystemPrompt(state, input.contextOptions);
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -829,7 +1178,6 @@ Vrei să caut proprietăți în acest buget?`;
 
       const choice = completion.choices[0];
 
-      // Handle tool calls
       if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
         const toolResults: ToolResult[] = [];
 
@@ -851,19 +1199,16 @@ Vrei să caut proprietăți în acest buget?`;
           toolResults.push(result);
           toolsUsed.push(tc.name);
 
-          // Collect properties from search results
           if (tc.name === 'search_properties' && result.result?.properties) {
             properties = result.result.properties;
             state.shownListingIds.push(...(properties || []).map(p => p.id));
           }
 
-          // Capture schedule_viewing listing so the CORRECT property card is shown
           if (tc.name === 'schedule_viewing' && result.result?.scheduledListing) {
             properties = [result.result.scheduledListing];
           }
         }
 
-        // Generate response with tool results
         const toolMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
           ...messages,
           choice.message,
@@ -891,7 +1236,6 @@ Vrei să caut proprietăți în acest buget?`;
         };
       }
 
-      // No tool calls - direct response
       return {
         conversationId: state.conversationId,
         message: this.cleanResponse(choice.message.content || ''),
@@ -910,7 +1254,6 @@ Vrei să caut proprietăți în acest buget?`;
     intent: Intent,
     input: ChatInput,
   ): Promise<AgentResponse> {
-    // Tier 2 uses strong model for complex reasoning, trade-off analysis, explanations
     if (!this.openai) {
       return this.handleTier1(state, intent, input);
     }
@@ -941,7 +1284,6 @@ Vrei să caut proprietăți în acest buget?`;
 
       const choice = completion.choices[0];
 
-      // Handle tool calls (same as Tier 1)
       if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
         const toolResults: ToolResult[] = [];
 
@@ -971,15 +1313,24 @@ Vrei să caut proprietăți în acest buget?`;
           if (tc.name === 'get_property_details' && result.result && !result.error) {
             const d2 = result.result;
             properties = [{
-              id: d2.id, title: d2.title, city: d2.city, neighborhood: d2.neighborhood,
-              priceEur: d2.priceEur, transactionType: d2.transactionType, rooms: d2.rooms,
-              surfaceSqm: d2.surfaceSqm, floor: d2.floor, totalFloors: d2.totalFloors,
-              yearBuilt: d2.yearBuilt, isFurnished: d2.isFurnished,
-              amenities: d2.amenities || [], imageUrl: d2.images?.[0]?.url, isPromoted: false,
+              id: d2.id,
+              title: d2.title,
+              city: d2.city,
+              neighborhood: d2.neighborhood,
+              priceEur: d2.priceEur,
+              transactionType: d2.transactionType,
+              rooms: d2.rooms,
+              surfaceSqm: d2.surfaceSqm,
+              floor: d2.floor,
+              totalFloors: d2.totalFloors,
+              yearBuilt: d2.yearBuilt,
+              isFurnished: d2.isFurnished,
+              amenities: d2.amenities || [],
+              imageUrl: d2.images?.[0]?.url,
+              isPromoted: false,
             }];
           }
 
-          // Capture schedule_viewing listing so the CORRECT property card is shown
           if (tc.name === 'schedule_viewing' && result.result?.scheduledListing) {
             properties = [result.result.scheduledListing];
           }
@@ -1024,10 +1375,6 @@ Vrei să caut proprietăți în acest buget?`;
       return this.handleTier1(state, intent, input);
     }
   }
-
-  // ========================================================================
-  // AVM / PRICE RECOMMENDATION
-  // ========================================================================
 
   async getValuation(input: AVMInput): Promise<{ valuation: AVMResult; explanation: AVMExplanation }> {
     const valuation = await this.valuationEngine.valuate(input);
@@ -1126,6 +1473,30 @@ Vrei să caut proprietăți în acest buget?`;
     if (slots.roomsMax !== undefined) prefs.roomsMax = slots.roomsMax;
     if (slots.surfaceMin !== undefined) prefs.surfaceMin = slots.surfaceMin;
     if (slots.surfaceMax !== undefined) prefs.surfaceMax = slots.surfaceMax;
+    if (slots.propertyType) {
+      prefs.propertyType = slots.propertyType as UserPreferences['propertyType'];
+      prefs.confidence['propertyType'] = intent.confidence;
+    }
+    if (slots.isFurnished !== undefined) {
+      prefs.isFurnished = slots.isFurnished;
+      prefs.confidence['isFurnished'] = intent.confidence;
+    }
+    if (slots.petFriendly !== undefined) {
+      prefs.petFriendly = slots.petFriendly;
+      prefs.confidence['petFriendly'] = intent.confidence;
+    }
+    if (slots.floorMin !== undefined) prefs.floorMin = slots.floorMin;
+    if (slots.floorMax !== undefined) prefs.floorMax = slots.floorMax;
+    if (slots.yearBuiltMin !== undefined) prefs.yearBuiltMin = slots.yearBuiltMin;
+    if (slots.yearBuiltMax !== undefined) prefs.yearBuiltMax = slots.yearBuiltMax;
+    if (slots.amenities?.length) {
+      prefs.mustHave = this.mergeStringArrays(prefs.mustHave, slots.amenities);
+      prefs.confidence['amenities'] = intent.confidence;
+    }
+    if (slots.dealbreakers?.length) {
+      prefs.dealbreakers = this.mergeStringArrays(prefs.dealbreakers, slots.dealbreakers);
+      prefs.confidence['dealbreakers'] = intent.confidence;
+    }
 
     prefs.lastUpdated = new Date();
   }
@@ -1237,40 +1608,29 @@ NU folosi markdown (fără **, *, #, etc.) - text simplu.`;
     if (!clientProfile.purpose) notYetAsked.push('purpose (scopul: personal, investiție, relocare, familie)');
     if (!clientProfile.urgency) notYetAsked.push('urgency (urgența: imediat, 1 lună, 3 luni, fără grabă)');
 
-    return `Ești RIVA, consultant imobiliar de elită pentru platforma RIVA din Republica Moldova.
+    return `Ești RIVA, consultant imobiliar pentru Republica Moldova.
 ${language === 'en' ? 'Respond in English.' : 'Răspunde ÎNTOTDEAUNA în română.'}
 
-ROLUL TĂU ACUM: Clasificarea clientului prin conversație naturală.
-NU arăta proprietăți până nu ai suficiente date (minim: transactionType + oraș + buget).
+Scopul tău este să completezi rapid profilul clientului, fără să pari formular.
+Poți porni căutarea imediat ce ai minim: transactionType + city + budget.
 
-CE ȘTII DEJA DESPRE CLIENT:
+Date cunoscute:
 ${alreadyKnown.length > 0 ? alreadyKnown.join('\n') : 'Nimic încă.'}
 
-CE MAI TREBUIE SĂ AFLI:
-${notYetAsked.length > 0 ? notYetAsked.join('\n') : 'Ai toate datele minime - poți căuta!'}
+Informații care mai pot fi utile:
+${notYetAsked.length > 0 ? notYetAsked.join('\n') : 'Ai deja datele minime necesare pentru căutare.'}
 
-REGULI:
-1. Pune MAXIM 1-2 întrebări per mesaj, natural, ca un consultant real
-2. NU repeta întrebări la care ai deja răspuns
-3. Extrage informații chiar și din răspunsuri indirecte
-4. Fii empatic și profesional
-5. Dacă utilizatorul dă informații voluntar (ex: "caut apartament 2 camere în Botanica sub 400€"), extrage TOATE datele dintr-o dată
-6. Când ai minim transactionType + oraș + buget, setează readyToSearch=true și include searchParams
-7. Încearcă să afli cât mai multe detalii relevante ÎNAINTE de a căuta:
-   - Câte camere dorește? (1, 2, 3+)
-   - Ce suprafață (mp) ar fi ideală?
-   - Ce etaj preferă? (nu la parter, etajele 2-5, ultimul etaj, nu contează)
-   - Ce facilități sunt importante? (parcare, balcon, terasă, debara, încălzire autonomă/centrală, ascensor, aer condiționat)
-   - Mobilat sau nemobilat?
-   - Animale de companie?
-   - Într-un bloc nou sau vechi? (anul construcției)
-   - Care este scopul (personal/investiție/relocare/familie)?
-   - Cât de urgent este? (imediat/1 lună/3 luni/fără grabă)
-   - Ce zone/cartiere preferă? (Botanica, Centru, Buiucani, Ciocana, Rîșcani, Telecentru)
-   - Există dealbreakers? (ex: fără parter, fără ultimul etaj, doar bloc nou)
-8. NU pune toate întrebările deodată - distribuie-le natural pe parcursul conversației (1-2 per mesaj)
+Reguli:
+- Sună ca un consultant real, nu ca un formular
+- Scrie scurt: 1-3 propoziții
+- Pune o singură întrebare principală; doar dacă e foarte logic, poți adăuga încă una scurtă
+- Nu repeta ce știi deja
+- Dacă utilizatorul spune criterii clare, extrage tot dintr-un foc
+- Dacă utilizatorul este nehotărât, întreabă următorul lucru cu impact mare: tranzacție, oraș, buget, camere, zonă
+- După ce ai datele minime, setează readyToSearch=true chiar dacă nu ai toate preferințele fine
+- quickReplies trebuie să fie concrete și scurte, exact pe întrebarea pusă
 
-RĂSPUNDE STRICT în acest format JSON:
+Răspunde STRICT în acest JSON:
 {
   "response": "textul răspunsului tău natural (fără markdown)",
   "extracted": {
@@ -1301,23 +1661,17 @@ RĂSPUNDE STRICT în acest format JSON:
   "quickReplies": ["Da, închiriez", "Nu, vreau să cumpăr"]
 }
 
-IMPORTANT despre quickReplies:
-- quickReplies sunt butoane de răspuns rapid care apar sub mesajul tău
-- Scrie texte CONCRETE și SPECIFICE contextului întrebării tale, NU generice
-- Exemple BUNE: ["Închiriez", "Cumpăr"], ["1 cameră", "2 camere", "3+ camere"], ["Da, mobilat", "Nu contează"], ["Sub 300€", "300-500€", "Peste 500€"]
-- NICIODATĂ nu scrie "Opțiune 1", "Opțiune 2" sau variante generice!
-- Oferă 2-4 opțiuni relevante bazate pe întrebarea pe care o pui
-
-Când readyToSearch=true, include searchParams:
+Important:
+- quickReplies: 2-4 opțiuni reale, fără texte generice
+- extracted conține doar noutățile din mesajul curent
+- nu folosi markdown în response
+- când readyToSearch=true, include searchParams de forma:
 "searchParams": {
   "transactionType": "RENT",
   "city": "Chișinău",
   "priceMax": 400,
   "rooms": 2
-}
-
-IMPORTANT: Trimite DOAR câmpurile care au valori noi din mesajul curent. Nu retrimite ce ai extras deja.
-NU folosi markdown în "response" - text simplu.`;
+}`;
   }
 
   private buildProfileAwarePrompt(
@@ -1343,29 +1697,38 @@ NU folosi markdown în "response" - text simplu.`;
     if (clientProfile.preferences?.rooms) profileContext.push(`Camere: ${clientProfile.preferences.rooms}`);
     if (clientProfile.purpose) profileContext.push(`Scop: ${clientProfile.purpose}`);
     if (clientProfile.urgency) profileContext.push(`Urgență: ${clientProfile.urgency}`);
+    if (clientProfile.conversationPhase) profileContext.push(`Faza: ${clientProfile.conversationPhase}`);
 
     return `Ești RIVA, un consultant imobiliar de elită pentru platforma RIVA din Republica Moldova.
 
 Principii:
 - ${toneGuide[tone]}
 - ${language === 'en' ? 'Respond in English.' : 'Răspunde în română.'}
-- Fii concis - răspunsuri clare și la obiect
+- Fii concis - 2 până la 4 propoziții clare
 - Nu inventa date despre proprietăți - folosește doar rezultatele tool-urilor
+- Sună ca un consultant care înțelege piața și vrea să economisească timpul clientului
 ${isStrong ? '- Poți oferi raționamente complexe și comparații detaliate' : ''}
 
 PROFILUL CLIENTULUI (deja clasificat - doar pentru contextul tău, NU pentru filtre):
-${profileContext.join('\n')}
+${profileContext.length ? profileContext.join('\n') : 'Context limitat.'}
+
+COMPORTAMENT PE FAZE:
+- discovery / ready_to_search: pui o singură întrebare utilă sau confirmi clar următorul pas
+- results_shown: scoți în evidență 2-3 opțiuni bune și de ce se potrivesc
+- refining: confirmi pe scurt ce s-a schimbat și ce efect are
+- property_followup: răspunzi despre proprietatea selectată și propui detalii sau vizionare
 
 REGULI CĂUTARE (FOARTE IMPORTANT):
 - Când apelezi search_properties, trimite DOAR filtrele pe care clientul le-a menționat EXPLICIT în mesajul curent
 - NU trimite automat isFurnished, petFriendly, neighborhood, priceMin sau alte filtre din profil dacă clientul NU le-a cerut acum
 - Sistemul aplică automat filtrele de bază (transactionType, city, priceMax) din profil - tu nu trebuie să le trimiți
 - Dacă clientul zice "arată-mi toate" sau "toate proprietățile", trimite search_properties cu cât MAI PUȚINE filtre posibil (doar transactionType și city)
-- Folosește limit:10 sau mai mult ca să arăți mai multe rezultate
+- Nu cere clarificări suplimentare dacă poți răspunde deja util
 
 Când recomanzi proprietăți:
-- Menționează de ce se potrivesc profilului clientului (1-2 motive scurte)
-- Sugerează acțiuni: salvează, programează vizionare, compară
+- Spune de ce se potrivesc în 1-2 motive scurte
+- Dacă există matchReasons în tool results, reutilizează-le natural
+- Încheie cu un singur pas următor clar
 
 REGULI VIZIONARE (FOARTE IMPORTANT):
 - Când clientul vrea să programeze o vizionare, NU programa automat!
@@ -1394,22 +1757,50 @@ NU folosi markdown (fără **, *, #, etc.) - text simplu.`;
     properties: any[],
     total: number,
     slots: any,
+    hasMore?: boolean,
   ): string {
     const location = [slots.neighborhood, slots.city].filter(Boolean).join(', ') || 'zona căutată';
     const count = properties.length;
 
-    let response = `Am găsit ${total} proprietăți în ${location}. Iată ${count} opțiuni:\n\n`;
-
-    properties.slice(0, 5).forEach((p, i) => {
-      const price = p.transactionType === 'RENT' ? `${p.priceEur}€/lună` : `${p.priceEur.toLocaleString()}€`;
-      response += `${i + 1}. ${p.title}\n   ${p.rooms} camere, ${p.surfaceSqm}mp - ${price}\n`;
-    });
-
-    if (total > count) {
-      response += `\nMai sunt ${total - count} proprietăți disponibile. Vrei să vezi mai multe sau să rafinăm căutarea?`;
+    if (count === 0) {
+      return `Momentan nu am găsit potriviri bune în ${location}. Pot să lărgim puțin bugetul, zona sau numărul de camere ca să găsim variante mai bune.`;
     }
 
-    return response;
+    const intro = total > count
+      ? `Am selectat ${count} opțiuni bune din ${total} rezultate în ${location}.`
+      : `Am găsit ${count} opțiuni bune în ${location}.`;
+
+    const preview = properties.slice(0, 3).map((property, index) => {
+      const price = property.transactionType === 'RENT'
+        ? `${property.priceEur}€/lună`
+        : `${property.priceEur.toLocaleString()}€`;
+      const reasons = Array.isArray(property.matchReasons)
+        ? property.matchReasons.slice(0, 2).join(', ')
+        : '';
+      return `${index + 1}. ${property.title} — ${price}, ${property.rooms} camere, ${property.surfaceSqm} mp${reasons ? `, ${reasons}` : ''}.`;
+    }).join('\n');
+
+    const nextStep = hasMore || total > count
+      ? 'Dacă vrei, îți mai arăt variante sau restrângem căutarea.'
+      : 'Spune-mi dacă vrei să comparăm două opțiuni sau să intrăm în detalii pe una.';
+
+    return `${intro}\n\n${preview}\n\n${nextStep}`;
+  }
+
+  private formatPropertyFollowupResponse(property: any): string {
+    const price = property.transactionType === 'RENT'
+      ? `${property.priceEur}€/lună`
+      : `${property.priceEur.toLocaleString()}€`;
+
+    const highlights = [
+      property.rooms ? `${property.rooms} camere` : undefined,
+      property.surfaceSqm ? `${property.surfaceSqm} mp` : undefined,
+      property.floor !== undefined ? `etaj ${property.floor}${property.totalFloors ? ` din ${property.totalFloors}` : ''}` : undefined,
+      property.isFurnished ? 'mobilat' : undefined,
+      Array.isArray(property.amenities) && property.amenities.length ? property.amenities[0] : undefined,
+    ].filter(Boolean).slice(0, 3);
+
+    return `${property.title} este la ${price} și are ${highlights.join(', ')}. Dacă vrei, îți spun pe scurt avantajele, eventualele compromisuri sau pregătim o vizionare.`;
   }
 
   private cleanResponse(text: string): string {
@@ -1422,15 +1813,75 @@ NU folosi markdown (fără **, *, #, etc.) - text simplu.`;
       .trim();
   }
 
+  private buildFastToolResponse(
+    intent: Intent,
+    properties: any[] | undefined,
+    toolResults: ToolResult[],
+  ): string | undefined {
+    const uniqueTools = [...new Set(toolResults.map(result => result.name))];
+    if (uniqueTools.length !== 1) {
+      return undefined;
+    }
+
+    const toolName = uniqueTools[0];
+    const primaryResult = toolResults.find(result => result.name === toolName)?.result;
+
+    if (toolName === 'search_properties') {
+      return this.formatSearchResponse(
+        properties || [],
+        primaryResult?.total || properties?.length || 0,
+        intent.slots,
+        primaryResult?.hasMore,
+      );
+    }
+
+    if (toolName === 'get_property_details' && properties?.[0]) {
+      return this.formatPropertyFollowupResponse(properties[0]);
+    }
+
+    if (toolName === 'schedule_viewing') {
+      if (typeof primaryResult?.message === 'string') {
+        return this.cleanResponse(primaryResult.message);
+      }
+      if (properties?.[0]) {
+        return `Perfect, am pregătit vizionarea pentru ${properties[0].title}. Dacă vrei, îți spun și ce merită verificat la vizită.`;
+      }
+    }
+
+    return undefined;
+  }
+
   private getSuggestedActions(intent: Intent, properties?: any[]): AgentResponse['suggestedActions'] {
     const actions: AgentResponse['suggestedActions'] = [];
 
     if (properties && properties.length > 0) {
-      actions.push(
-        { type: 'save_search', label: 'Salvează căutarea' },
-        { type: 'refine', label: 'Rafinează filtrele' },
-      );
+      if (properties[0]) {
+        actions.push({
+          type: 'quick_reply',
+          label: 'Spune-mi mai multe despre prima',
+          payload: { message: `Spune-mi mai multe despre ${properties[0].title}` },
+        });
+      }
       if (properties.length >= 2) {
+        actions.push({
+          type: 'quick_reply',
+          label: 'Compară primele opțiuni',
+          payload: { message: 'Compară-mi primele opțiuni' },
+        });
+      }
+      actions.push(
+        {
+          type: 'quick_reply',
+          label: 'Arată-mi și altele',
+          payload: { message: 'Arată-mi și alte variante' },
+        },
+        {
+          type: 'quick_reply',
+          label: 'Rafinează căutarea',
+          payload: { message: 'Vreau să rafinăm căutarea' },
+        },
+      );
+      if (properties.length >= 3) {
         actions.push({
           type: 'compare',
           label: 'Compară opțiunile',
@@ -1440,10 +1891,29 @@ NU folosi markdown (fără **, *, #, etc.) - text simplu.`;
     }
 
     if (intent.type === 'search' && (!properties || properties.length === 0)) {
-      actions.push({ type: 'refine', label: 'Ajustează criteriile' });
+      actions.push(
+        {
+          type: 'quick_reply',
+          label: 'Lărgim bugetul',
+          payload: { message: 'Poți să-mi arăți opțiuni cu un buget puțin mai mare?' },
+        },
+        {
+          type: 'quick_reply',
+          label: 'Schimbăm zona',
+          payload: { message: 'Hai să căutăm și în altă zonă' },
+        },
+      );
     }
 
-    return actions.length > 0 ? actions : undefined;
+    if (intent.type === 'details') {
+      actions.push({
+        type: 'quick_reply',
+        label: 'Vreau o vizionare',
+        payload: { message: 'Vreau să programez o vizionare' },
+      });
+    }
+
+    return actions.length > 0 ? actions.slice(0, 4) : undefined;
   }
 
   // ========================================================================

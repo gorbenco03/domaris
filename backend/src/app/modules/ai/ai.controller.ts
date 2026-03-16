@@ -18,6 +18,7 @@ import {
   Body,
   Param,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -346,6 +347,19 @@ export class AIController {
     return this.aiConversationService.getConversations(user.id);
   }
 
+  @Get('conversations/active')
+  @Public()
+  @ApiOperation({
+    summary: 'Get or create active conversation',
+    description: 'Returns the most recent active conversation or creates a new one.',
+  })
+  async getActiveConversation(
+    @CurrentUser() user?: { id: number },
+    @Query('anonymousId') anonymousId?: string,
+  ) {
+    return this.aiConversationService.getOrCreateActive(user?.id, anonymousId);
+  }
+
   @Get('conversations/:id')
   @Public()
   @ApiOperation({
@@ -406,19 +420,6 @@ export class AIController {
   ) {
     if (!user?.id) return { error: 'Not authenticated' };
     return this.aiConversationService.archiveConversation(id, user.id);
-  }
-
-  @Get('conversations/active')
-  @Public()
-  @ApiOperation({
-    summary: 'Get or create active conversation',
-    description: 'Returns the most recent active conversation or creates a new one.',
-  })
-  async getActiveConversation(
-    @CurrentUser() user?: { id: number },
-    @Body() body?: { anonymousId?: string },
-  ) {
-    return this.aiConversationService.getOrCreateActive(user?.id, body?.anonymousId);
   }
 
   // ========================================================================

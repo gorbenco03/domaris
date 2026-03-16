@@ -13,12 +13,14 @@ export interface AiMessageMetadata {
     tier?: number;
     toolsUsed?: string[];
     propertiesShown?: number[];
+    propertyCards?: Array<Record<string, any>>;
     suggestedActions?: Array<{
         type: string;
         label: string;
         payload?: Record<string, any>;
     }>;
     clientProfileUpdate?: Record<string, any>;
+    conversationPhase?: string;
     latencyMs?: number;
 }
 

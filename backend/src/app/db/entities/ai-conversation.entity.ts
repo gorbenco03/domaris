@@ -15,6 +15,7 @@ export interface ClientProfile {
     propertyType?: 'APARTMENT' | 'HOUSE' | 'STUDIO' | 'COMMERCIAL' | 'LAND';
     purpose?: 'personal' | 'investment' | 'relocation' | 'family';
     urgency?: 'immediate' | '1_month' | '3_months' | 'no_rush';
+    conversationPhase?: 'discovery' | 'ready_to_search' | 'results_shown' | 'refining' | 'property_followup';
     budget?: { min?: number; max?: number; currency: string };
     preferences?: {
         rooms?: number;
@@ -29,11 +30,15 @@ export interface ClientProfile {
         petFriendly?: boolean;
         floorMin?: number;
         floorMax?: number;
+        yearBuiltMin?: number;
+        yearBuiltMax?: number;
     };
     dealbreakers?: string[];
     classificationComplete: boolean;
     classificationScore: number; // 0-100
     answeredQuestions: string[];
+    lastShownListingIds?: number[];
+    lastSearchFilters?: Record<string, any>;
 }
 
 @Table({
@@ -65,9 +70,11 @@ export class AiConversation extends ExtModel {
     @Column({
         type: DataType.JSONB,
         defaultValue: {
+            conversationPhase: 'discovery',
             classificationComplete: false,
             classificationScore: 0,
             answeredQuestions: [],
+            lastShownListingIds: [],
         },
     })
     clientProfile!: ClientProfile;

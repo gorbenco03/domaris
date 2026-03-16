@@ -38,9 +38,49 @@ export interface PropertySuggestion {
   neighborhood?: string;
   priceEur: number;
   transactionType: string;
+  propertyType?: string;
   rooms: number;
   surfaceSqm: number;
+  floor?: number;
+  totalFloors?: number;
+  yearBuilt?: number;
+  isFurnished?: boolean;
+  petFriendly?: boolean;
+  amenities?: string[];
   imageUrl?: string;
+  matchScore?: number;
+  matchReasons?: string[];
+}
+
+export interface AIClientProfile {
+  classificationComplete: boolean;
+  classificationScore: number;
+  conversationPhase?: string;
+  transactionType?: string;
+  propertyType?: string;
+  purpose?: string;
+  urgency?: string;
+  budget?: { min?: number; max?: number; currency?: string };
+  preferences?: {
+    rooms?: number;
+    roomsMin?: number;
+    roomsMax?: number;
+    surfaceMin?: number;
+    surfaceMax?: number;
+    cities?: string[];
+    neighborhoods?: string[];
+    amenities?: string[];
+    isFurnished?: boolean;
+    petFriendly?: boolean;
+    floorMin?: number;
+    floorMax?: number;
+    yearBuiltMin?: number;
+    yearBuiltMax?: number;
+  };
+  dealbreakers?: string[];
+  answeredQuestions?: string[];
+  lastShownListingIds?: number[];
+  lastSearchFilters?: Record<string, unknown>;
 }
 
 export interface AgentChatRequest {
@@ -162,8 +202,13 @@ export interface AIConversationSummary {
   id: number;
   title: string;
   status: 'active' | 'archived' | 'closed';
+  clientProfile: AIClientProfile;
   lastMessageAt: string;
   messageCount: number;
+  lastMessage?: {
+    content: string;
+    role: string;
+  } | null;
   createdAt: string;
 }
 
@@ -176,6 +221,15 @@ export interface AIMessage {
     tier?: number;
     toolsUsed?: string[];
     propertiesShown?: number[];
+    propertyCards?: PropertySuggestion[];
+    suggestedActions?: Array<{
+      type: string;
+      label: string;
+      payload?: Record<string, unknown>;
+    }>;
+    clientProfileUpdate?: Record<string, unknown>;
+    conversationPhase?: string;
+    latencyMs?: number;
   };
   createdAt: string;
 }
@@ -184,8 +238,28 @@ export interface AIConversationDetail {
   id: number;
   title: string;
   status: string;
+  clientProfile: AIClientProfile;
+  lastMessageAt: string;
+  messageCount: number;
   messages: AIMessage[];
   createdAt: string;
+}
+
+export interface AISendConversationMessageResponse {
+  userMessage: AIMessage;
+  assistantMessage: AIMessage;
+  properties?: PropertySuggestion[];
+  clientProfile: AIClientProfile;
+  suggestedActions?: Array<{
+    type: string;
+    label: string;
+    payload?: Record<string, unknown>;
+  }>;
+  debug?: {
+    tier: number;
+    latencyMs: number;
+    cached: boolean;
+  };
 }
 
 // ============================================================================
@@ -339,11 +413,16 @@ export async function getAIConversation(id: number): Promise<AIConversationDetai
 /**
  * Create new AI conversation
  */
-export async function createAIConversation(): Promise<AIConversationDetail> {
+export async function createAIConversation(anonymousId?: string): Promise<AIConversationDetail> {
   return api.fetch('/ai/conversations', {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify(anonymousId ? { anonymousId } : {}),
   });
+}
+
+export async function getAIActiveConversation(anonymousId?: string): Promise<AIConversationDetail> {
+  const query = anonymousId ? `?anonymousId=${encodeURIComponent(anonymousId)}` : '';
+  return api.fetch(`/ai/conversations/active${query}`);
 }
 
 /**
@@ -352,11 +431,7 @@ export async function createAIConversation(): Promise<AIConversationDetail> {
 export async function sendAIConversationMessage(
   conversationId: number,
   message: string
-): Promise<{
-  userMessage: AIMessage;
-  assistantMessage: AIMessage;
-  properties?: PropertySuggestion[];
-}> {
+): Promise<AISendConversationMessageResponse> {
   return api.fetch(`/ai/conversations/${conversationId}/messages`, {
     method: 'POST',
     body: JSON.stringify({ message }),
@@ -397,6 +472,7 @@ export const aiApi = {
   getAIConversations,
   getAIConversation,
   createAIConversation,
+  getAIActiveConversation,
   sendAIConversationMessage,
   archiveAIConversation,
 };

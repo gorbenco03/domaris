@@ -13,6 +13,7 @@ export interface PropertyResult {
   rooms: number;
   area: number;
   score?: number;
+  reasons?: string[];
 }
 
 interface AIChatPropertyCardProps {
@@ -60,6 +61,11 @@ export const AIChatPropertyCard = ({ property }: AIChatPropertyCardProps) => {
           <MapPin className="h-3 w-3 shrink-0" />
           <span className="line-clamp-1">{property.location}</span>
         </div>
+        {property.reasons && property.reasons.length > 0 && (
+          <div className="line-clamp-2 text-[11px] text-accent">
+            {property.reasons.join(" • ")}
+          </div>
+        )}
         <div className="flex items-center gap-3 border-t border-border pt-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <BedDouble className="h-3 w-3" />

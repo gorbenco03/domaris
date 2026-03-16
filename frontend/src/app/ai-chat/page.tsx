@@ -3,152 +3,239 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Bot, PanelLeftClose, PanelLeft } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-
 import { Button } from "@/components/ui/button";
-import { 
-  AIChatMessage, 
-  AIChatInput, 
-  AIChatSidebar, 
+import {
+  AIChatMessage,
+  AIChatInput,
+  AIChatSidebar,
   AIChatTypingIndicator,
   AIMessage,
   AIConversation,
   PropertyResult,
-  QuickAction
+  QuickAction,
 } from "@/components/ai-chat";
-import { 
-  agentChat, 
-  getAIConversations, 
+import {
+  getAIConversations,
+  getAIActiveConversation,
   getAIConversation,
   createAIConversation,
-  sendAIConversationMessage 
+  sendAIConversationMessage,
+  type AIConversationDetail as ApiConversationDetail,
+  type AIConversationSummary as ApiConversationSummary,
+  type AIMessage as ApiConversationMessage,
+  type PropertySuggestion,
 } from "@/lib/aiApi";
 import { cn } from "@/lib/utils";
+
+const AI_ANONYMOUS_ID_KEY = "riva_ai_anonymous_id";
+const PHASE_LABELS: Record<string, string> = {
+  discovery: "Descoperire",
+  ready_to_search: "Gata de căutare",
+  results_shown: "Rezultate afișate",
+  refining: "Rafinare",
+  property_followup: "Follow-up proprietate",
+};
+
+const getOrCreateAnonymousId = () => {
+  if (typeof window === "undefined") return undefined;
+
+  const existing = window.localStorage.getItem(AI_ANONYMOUS_ID_KEY);
+  if (existing) return existing;
+
+  const next = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  window.localStorage.setItem(AI_ANONYMOUS_ID_KEY, next);
+  return next;
+};
 
 export default function AIChatPage() {
   const [conversations, setConversations] = useState<AIConversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<number | null>(null);
   const [messages, setMessages] = useState<AIMessage[]>([]);
+  const [activeConversationPhase, setActiveConversationPhase] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const anonymousIdRef = useRef<string | undefined>(undefined);
 
-  // Load conversations on mount
+  const mapProperties = useCallback((properties?: PropertySuggestion[]): PropertyResult[] | undefined => {
+    return properties?.map((property) => ({
+      id: property.id,
+      title: property.title,
+      price: `${(property.priceEur ?? 0).toLocaleString()}€`,
+      priceType: property.transactionType === "RENT" ? "rent" : "sale",
+      location: `${property.city}${property.neighborhood ? `, ${property.neighborhood}` : ""}`,
+      rooms: property.rooms,
+      area: property.surfaceSqm,
+      image: property.imageUrl,
+      score:
+        property.matchScore !== undefined
+          ? Math.max(1, Math.min(10, Math.round(property.matchScore / 10)))
+          : undefined,
+      reasons: property.matchReasons,
+    }));
+  }, []);
+
+  const mapQuickActions = useCallback(
+    (
+      actions?: Array<{
+        label: string;
+        payload?: Record<string, unknown>;
+      }>
+    ): QuickAction[] | undefined =>
+      actions?.map((action) => ({
+        label: action.label,
+        action:
+          typeof action.payload?.message === "string"
+            ? (action.payload.message as string)
+            : action.label,
+      })),
+    []
+  );
+
+  const mapConversationMessage = useCallback(
+    (message: ApiConversationMessage): AIMessage => ({
+      id: String(message.id),
+      role: message.role === "user" ? "user" : "assistant",
+      content: message.content,
+      timestamp: new Date(message.createdAt),
+      conversationPhase: message.metadata?.conversationPhase,
+      properties: mapProperties(message.metadata?.propertyCards),
+      quickActions: mapQuickActions(message.metadata?.suggestedActions),
+    }),
+    [mapProperties, mapQuickActions]
+  );
+
+  const toConversationSummary = useCallback(
+    (conversation: ApiConversationSummary | ApiConversationDetail): AIConversation => ({
+      id: conversation.id,
+      title: conversation.title || "Conversație nouă",
+      lastMessage: "lastMessage" in conversation ? conversation.lastMessage?.content || "" : "",
+      updatedAt: conversation.lastMessageAt || conversation.createdAt,
+      messageCount: conversation.messageCount || 0,
+    }),
+    []
+  );
+
+  const upsertConversation = useCallback((conversation: AIConversation) => {
+    setConversations((prev) => {
+      const next = prev.filter((item) => item.id !== conversation.id);
+      return [conversation, ...next];
+    });
+  }, []);
+
   useEffect(() => {
-    const loadConversations = async () => {
+    const loadInitialState = async () => {
+      const anonymousId = getOrCreateAnonymousId();
+      anonymousIdRef.current = anonymousId;
+
       try {
         const result = await getAIConversations();
-        const mapped = result.data.map(c => ({
-          id: c.id,
-          title: c.title,
-          lastMessage: "",
-          updatedAt: c.lastMessageAt || c.createdAt,
-          messageCount: c.messageCount || 0
-        }));
-        setConversations(mapped);
+        setConversations(result.data.map(toConversationSummary));
       } catch (err) {
         console.error("Failed to load conversations:", err);
       }
-    };
-    loadConversations();
-  }, []);
 
-  // Scroll to bottom when messages change
+      try {
+        const activeConversation = await getAIActiveConversation(anonymousId);
+        setActiveConvId(activeConversation.id);
+        setMessages(activeConversation.messages.map(mapConversationMessage));
+        setActiveConversationPhase(activeConversation.clientProfile?.conversationPhase);
+        upsertConversation(toConversationSummary(activeConversation));
+      } catch (err) {
+        console.error("Failed to load active conversation:", err);
+      }
+    };
+
+    void loadInitialState();
+  }, [mapConversationMessage, toConversationSummary, upsertConversation]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
 
+  const createConversationAndLoad = useCallback(async () => {
+    const anonymousId = anonymousIdRef.current || getOrCreateAnonymousId();
+    anonymousIdRef.current = anonymousId;
+
+    const conversation = await createAIConversation(anonymousId);
+    setActiveConvId(conversation.id);
+    setMessages(conversation.messages.map(mapConversationMessage));
+    setActiveConversationPhase(conversation.clientProfile?.conversationPhase);
+    upsertConversation(toConversationSummary(conversation));
+    return conversation.id;
+  }, [mapConversationMessage, toConversationSummary, upsertConversation]);
+
   const handleSend = useCallback(
     async (content: string) => {
-      const userMsg: AIMessage = {
-        id: `user-${Date.now()}`,
-        role: "user",
-        content,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
 
+      let conversationId = activeConvId;
+
       try {
-        if (activeConvId) {
-          // Use persistent conversation
-          const response = await sendAIConversationMessage(activeConvId, content);
-          
-          const properties: PropertyResult[] | undefined = response.properties?.map(p => ({
-            id: p.id,
-            title: p.title,
-            price: `${(p.priceEur ?? 0).toLocaleString()}€`,
-            priceType: p.transactionType === 'RENT' ? 'rent' : 'sale',
-            location: `${p.city}${p.neighborhood ? `, ${p.neighborhood}` : ''}`,
-            rooms: p.rooms,
-            area: p.surfaceSqm,
-            image: p.imageUrl
-          }));
-
-          const assistantMessage: AIMessage = {
-            id: `assistant-${Date.now()}`,
-            role: "assistant",
-            content: response.assistantMessage.content,
-            timestamp: new Date(response.assistantMessage.createdAt),
-            properties,
-          };
-
-          setMessages((prev) => [...prev, assistantMessage]);
-        } else {
-          // Use stateless agent chat
-          const response = await agentChat({ message: content });
-          
-          const properties: PropertyResult[] | undefined = response.properties?.map(p => ({
-            id: p.id,
-            title: p.title,
-            price: `${(p.priceEur ?? 0).toLocaleString()}€`,
-            priceType: p.transactionType === 'RENT' ? 'rent' : 'sale',
-            location: `${p.city}${p.neighborhood ? `, ${p.neighborhood}` : ''}`,
-            rooms: p.rooms,
-            area: p.surfaceSqm,
-            image: p.imageUrl
-          }));
-
-          const quickActions: QuickAction[] | undefined = response.suggestedActions?.map(a => ({
-            label: a.label,
-            action: a.label
-          }));
-
-          const assistantMessage: AIMessage = {
-            id: `assistant-${Date.now()}`,
-            role: "assistant",
-            content: response.message,
-            timestamp: new Date(),
-            properties,
-            quickActions,
-          };
-
-          setMessages((prev) => [...prev, assistantMessage]);
-
-          // Create new conversation if this is first message
-          if (messages.length === 0) {
-            try {
-              const newConv = await createAIConversation();
-              const mapped: AIConversation = {
-                id: newConv.id,
-                title: content.length > 40 ? content.slice(0, 40) + "..." : content,
-                lastMessage: response.message.slice(0, 50) + "...",
-                updatedAt: newConv.createdAt,
-                messageCount: 2,
-              };
-              setConversations((prev) => [mapped, ...prev]);
-              setActiveConvId(newConv.id);
-            } catch {
-              // Conversation creation failed, continue without persistence
-            }
-          }
+        if (!conversationId) {
+          conversationId = await createConversationAndLoad();
         }
+
+        const tempUserMsg: AIMessage = {
+          id: `temp-${Date.now()}`,
+          role: "user",
+          content,
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, tempUserMsg]);
+
+        const response = await sendAIConversationMessage(conversationId, content);
+
+        const assistantMessage: AIMessage = {
+          id: String(response.assistantMessage.id),
+          role: "assistant",
+          content: response.assistantMessage.content,
+          timestamp: new Date(response.assistantMessage.createdAt),
+          conversationPhase:
+            response.clientProfile?.conversationPhase
+            || response.assistantMessage.metadata?.conversationPhase,
+          properties: mapProperties(
+            response.properties || response.assistantMessage.metadata?.propertyCards
+          ),
+          quickActions: mapQuickActions(
+            response.suggestedActions || response.assistantMessage.metadata?.suggestedActions
+          ),
+        };
+
+        setMessages((prev) => {
+          const withoutTemp = prev.filter((message) => message.id !== tempUserMsg.id);
+          return [
+            ...withoutTemp,
+            {
+              id: String(response.userMessage.id),
+              role: "user",
+              content: response.userMessage.content,
+              timestamp: new Date(response.userMessage.createdAt),
+            },
+            assistantMessage,
+          ];
+        });
+        setActiveConversationPhase(
+          response.clientProfile?.conversationPhase
+          || response.assistantMessage.metadata?.conversationPhase
+        );
+
+        upsertConversation({
+          id: conversationId,
+          title: conversations.find((item) => item.id === conversationId)?.title
+            || (content.length > 40 ? `${content.slice(0, 40)}...` : content),
+          lastMessage: response.assistantMessage.content.slice(0, 100),
+          updatedAt: response.assistantMessage.createdAt,
+          messageCount:
+            (conversations.find((item) => item.id === conversationId)?.messageCount || 0) + 2,
+        });
       } catch (err) {
         console.error("AI Chat error:", err);
         setMessages((prev) => [
-          ...prev,
+          ...prev.filter((message) => !message.id.startsWith("temp-")),
           {
             id: `error-${Date.now()}`,
             role: "assistant",
@@ -160,48 +247,55 @@ export default function AIChatPage() {
         setIsLoading(false);
       }
     },
-    [messages, activeConvId]
+    [activeConvId, conversations, createConversationAndLoad, mapProperties, mapQuickActions, upsertConversation]
   );
 
-  const handleQuickAction = useCallback(
-    (action: string) => {
-      handleSend(action);
-    },
-    [handleSend]
-  );
+  const handleQuickAction = useCallback((action: string) => {
+    void handleSend(action);
+  }, [handleSend]);
 
-  const handleNewChat = () => {
-    setActiveConvId(null);
-    setMessages([]);
-  };
+  const handleNewChat = useCallback(() => {
+    setIsLoading(true);
 
-  const handleSelectConversation = async (id: number) => {
+    const run = async () => {
+      try {
+        await createConversationAndLoad();
+      } catch (err) {
+        console.error("Failed to create conversation:", err);
+        setActiveConvId(null);
+        setActiveConversationPhase(undefined);
+        setMessages([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void run();
+  }, [createConversationAndLoad]);
+
+  const handleSelectConversation = useCallback(async (id: number) => {
     setActiveConvId(id);
     setIsLoading(true);
-    
+
     try {
-      const conv = await getAIConversation(id);
-      const mapped: AIMessage[] = conv.messages.map(m => ({
-        id: String(m.id),
-        role: m.role as "user" | "assistant",
-        content: m.content,
-        timestamp: new Date(m.createdAt),
-      }));
-      setMessages(mapped);
+      const conversation = await getAIConversation(id);
+      setMessages(conversation.messages.map(mapConversationMessage));
+      setActiveConversationPhase(conversation.clientProfile?.conversationPhase);
+      upsertConversation(toConversationSummary(conversation));
     } catch (err) {
       console.error("Failed to load conversation:", err);
+      setActiveConversationPhase(undefined);
       setMessages([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [mapConversationMessage, toConversationSummary, upsertConversation]);
 
   return (
     <div className="flex h-screen flex-col bg-background">
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <div
           className={cn(
             "hidden transition-all duration-300 md:block",
@@ -218,15 +312,13 @@ export default function AIChatPage() {
           )}
         </div>
 
-        {/* Main chat area */}
         <div className="flex flex-1 flex-col">
-          {/* Toolbar */}
           <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-2">
             <Button
               variant="ghost"
               size="icon"
               className="hidden h-8 w-8 md:flex"
-              onClick={() => setSidebarOpen((v) => !v)}
+              onClick={() => setSidebarOpen((value) => !value)}
             >
               {sidebarOpen ? (
                 <PanelLeftClose className="h-4 w-4" />
@@ -240,24 +332,30 @@ export default function AIChatPage() {
               </div>
               <div>
                 <h1 className="text-sm font-semibold text-foreground">RIVA AI</h1>
-                <p className="text-[10px] text-muted-foreground">Asistent imobiliar inteligent</p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                  <p className="text-[10px] text-muted-foreground">Asistent imobiliar inteligent</p>
+                  {activeConversationPhase && (
+                    <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      {PHASE_LABELS[activeConversationPhase] || activeConversationPhase}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto">
             <div className="mx-auto max-w-3xl px-4 py-6">
               {messages.length === 0 ? (
                 <EmptyState onQuickAction={handleQuickAction} />
               ) : (
                 <div className="space-y-6">
-                  {messages.map((msg, i) => (
+                  {messages.map((message, index) => (
                     <AIChatMessage
-                      key={msg.id}
-                      message={msg}
+                      key={message.id}
+                      message={message}
                       onQuickAction={handleQuickAction}
-                      isLatest={i === messages.length - 1 && msg.role === "assistant"}
+                      isLatest={index === messages.length - 1 && message.role === "assistant"}
                     />
                   ))}
                   {isLoading && <AIChatTypingIndicator />}
@@ -266,7 +364,6 @@ export default function AIChatPage() {
             </div>
           </div>
 
-          {/* Input */}
           <AIChatInput onSend={handleSend} isLoading={isLoading} />
         </div>
       </div>

@@ -68,6 +68,10 @@ export class IntentRouter {
     state: ConversationState | null,
   ): RouterResult {
     const slots: ExtractedSlots = {};
+    const referencedListingId = this.resolveListingReference(message, state);
+    if (referencedListingId) {
+      slots.listingId = referencedListingId;
+    }
 
     // Greetings
     if (/^(bună|salut|hello|hi|hey|buna ziua|neata|servus)\b/i.test(message)) {
@@ -101,8 +105,46 @@ export class IntentRouter {
       return this.makeResult('refine', 0.9, slots, 0);
     }
 
+    // Property details for shown listings
+    if (
+      slots.listingId &&
+      /(detalii|mai multe|mai mult|spune-mi|povestește|povesteste|despre|asta|acesta|aceasta|prima|primul|a doua|a treia|ultima|ultimul)/i.test(message)
+    ) {
+      return this.makeResult('details', 0.92, slots, 0);
+    }
+
+    // Compare intent
+    if (/compar|compara|vs|versus|diferenț|diferent/i.test(message)) {
+      return this.makeResult('compare', 0.88, slots, 0);
+    }
+
     // Extract structured data with regex
     this.extractSlotsFromText(message, slots);
+
+    if (
+      state &&
+      (
+        slots.neighborhood ||
+        slots.priceMax ||
+        slots.priceMin ||
+        slots.rooms ||
+        slots.roomsMin ||
+        slots.roomsMax ||
+        slots.surfaceMin ||
+        slots.surfaceMax ||
+        slots.propertyType ||
+        slots.isFurnished !== undefined ||
+        slots.petFriendly !== undefined ||
+        slots.floorMin !== undefined ||
+        slots.floorMax !== undefined ||
+        slots.yearBuiltMin !== undefined ||
+        slots.yearBuiltMax !== undefined ||
+        (slots.amenities && slots.amenities.length > 0) ||
+        (slots.dealbreakers && slots.dealbreakers.length > 0)
+      )
+    ) {
+      return this.makeResult('refine', 0.86, slots, 0);
+    }
 
     // If we have location or price, it's likely a search
     if (slots.city || slots.priceMax || slots.priceMin || slots.rooms) {
@@ -182,6 +224,9 @@ SLOTS to extract (only if mentioned):
 - surfaceMin, surfaceMax: sqm
 - propertyType: APARTMENT, HOUSE, STUDIO
 - isFurnished, petFriendly: boolean
+- floorMin, floorMax: preferred floor range
+- yearBuiltMin, yearBuiltMax: construction year preferences
+- dealbreakers: array of exclusions like "fara parter"
 - amenities: array of strings
 - listingId: if referencing specific property
 
@@ -321,17 +366,73 @@ Respond in JSON:
       slots.transactionType = 'SALE';
     }
 
+    this.extractPropertyType(message, slots);
+
+    // Explicit listing ID
+    const listingIdMatch = message.match(/(?:id|proprietat(?:ea|e)?|anunț(?:ul)?|anunt(?:ul)?)\s*[:#]?\s*(\d{1,8})/i);
+    if (listingIdMatch) {
+      slots.listingId = parseInt(listingIdMatch[1], 10);
+    }
+
     // Boolean features
-    if (/mobilat|mobilată|furnished/i.test(message)) {
-      slots.amenities = slots.amenities || [];
-      if (!/nemobilat|nemobilată|unfurnished/i.test(message)) {
-        // Will be handled as isFurnished in search
+    if (/nemobilat|nemobilată|unfurnished/i.test(message)) {
+      slots.isFurnished = false;
+    } else if (/mobilat|mobilată|furnished/i.test(message)) {
+      slots.isFurnished = true;
+    }
+
+    if (/fără animale|fara animale|nu acceptă animale|nu accepta animale/i.test(message)) {
+      slots.petFriendly = false;
+    } else if (/animale|pets?|câini|pisici|pet-friendly|pet friendly/i.test(message)) {
+      slots.petFriendly = true;
+    }
+
+    // Floor preferences
+    const floorRangeMatch = message.match(/etaj(?:ele|ul)?\s*(\d+)\s*[-–]\s*(\d+)/i);
+    if (floorRangeMatch) {
+      slots.floorMin = parseInt(floorRangeMatch[1], 10);
+      slots.floorMax = parseInt(floorRangeMatch[2], 10);
+    } else {
+      const floorExactMatch = message.match(/etaj(?:ul)?\s*(\d+)/i);
+      if (floorExactMatch) {
+        const floor = parseInt(floorExactMatch[1], 10);
+        slots.floorMin = floor;
+        slots.floorMax = floor;
       }
     }
 
-    if (/animale|pets?|câini|pisici/i.test(message)) {
-      slots.amenities = slots.amenities || [];
-      slots.amenities.push('petFriendly');
+    if (/fără parter|fara parter|nu la parter/i.test(message)) {
+      slots.floorMin = Math.max(slots.floorMin || 0, 1);
+      slots.dealbreakers = slots.dealbreakers || [];
+      if (!slots.dealbreakers.includes('fara parter')) {
+        slots.dealbreakers.push('fara parter');
+      }
+    }
+
+    if (/fără ultim(?:ul)? etaj|fara ultim(?:ul)? etaj|nu la ultimul etaj/i.test(message)) {
+      slots.dealbreakers = slots.dealbreakers || [];
+      if (!slots.dealbreakers.includes('fara ultimul etaj')) {
+        slots.dealbreakers.push('fara ultimul etaj');
+      }
+    }
+
+    // Year built / block age
+    const newerThanMatch = message.match(/după|dupa\s*(19\d{2}|20\d{2})/i);
+    if (newerThanMatch) {
+      slots.yearBuiltMin = parseInt(newerThanMatch[1], 10);
+    }
+
+    const olderThanMatch = message.match(/înainte de|inainte de|mai vechi de\s*(19\d{2}|20\d{2})/i);
+    if (olderThanMatch) {
+      slots.yearBuiltMax = parseInt(olderThanMatch[1], 10);
+    }
+
+    if (/bloc nou|constructie nouă|construcție nouă|constructie noua|construcție noua/i.test(message)) {
+      slots.yearBuiltMin = slots.yearBuiltMin || 2010;
+      slots.dealbreakers = slots.dealbreakers || [];
+      if (!slots.dealbreakers.includes('bloc nou')) {
+        slots.dealbreakers.push('bloc nou');
+      }
     }
 
     // Amenities
@@ -354,6 +455,34 @@ Respond in JSON:
         }
       }
     }
+  }
+
+  private resolveListingReference(
+    message: string,
+    state: ConversationState | null,
+  ): number | undefined {
+    const candidates = state?.lastShownProperties?.length
+      ? state.lastShownProperties.map(property => property.id)
+      : state?.shownListingIds || [];
+
+    if (!candidates.length) {
+      return undefined;
+    }
+
+    if (/prima|primul|first/i.test(message)) {
+      return candidates[0];
+    }
+    if (/a doua|al doilea|second/i.test(message)) {
+      return candidates[1];
+    }
+    if (/a treia|al treilea|third/i.test(message)) {
+      return candidates[2];
+    }
+    if (/ultima|ultimul|last/i.test(message)) {
+      return candidates[candidates.length - 1];
+    }
+
+    return undefined;
   }
 
   private extractPropertyType(message: string, slots: ExtractedSlots): void {

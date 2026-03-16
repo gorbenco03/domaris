@@ -18,6 +18,12 @@ interface ExecutionContext {
   shownListingIds: number[];
 }
 
+interface ScoredListing {
+  listing: Listing & { isPromoted?: boolean };
+  score: number;
+  reasons: string[];
+}
+
 @Injectable()
 export class ToolExecutor {
   private readonly logger = new Logger(ToolExecutor.name);
@@ -138,9 +144,13 @@ export class ToolExecutor {
       propertyType: args.propertyType,
       isFurnished: args.isFurnished,
       petFriendly: args.petFriendly,
+      floorMin: args.floorMin,
+      floorMax: args.floorMax,
+      yearBuiltMin: args.yearBuiltMin,
+      yearBuiltMax: args.yearBuiltMax,
       amenities: args.amenities,
       sortBy: args.sortBy || 'relevance',
-      limit: Math.min(args.limit || 10, 20),
+      limit: Math.max(Math.min((args.limit || 10) * 4, 40), 20),
       page: 1,
     };
 
@@ -156,27 +166,31 @@ export class ToolExecutor {
 
     const searchResult = await this.searchService.search(filters);
 
-    // Show all results - don't filter out already shown listings
-    // Users often want to see the same properties again for details/comparison
-    let properties = searchResult.data;
+    const limit = Math.min(args.limit || 5, 20);
+    const rankedListings = this.rankListings(searchResult.data, args, context);
+    const topRanked = rankedListings.slice(0, limit);
 
-    // Format for LLM consumption
-    const formattedProperties = properties.slice(0, args.limit || 5).map(p => ({
-      id: p.id,
-      title: p.title,
-      city: p.city,
-      neighborhood: p.neighborhood,
-      priceEur: p.priceEur,
-      transactionType: p.transactionType,
-      rooms: p.rooms,
-      surfaceSqm: p.surfaceSqm,
-      floor: p.floor,
-      totalFloors: p.totalFloors,
-      yearBuilt: p.yearBuilt,
-      isFurnished: p.isFurnished,
-      amenities: p.amenities || [],
-      imageUrl: p.images?.[0]?.url,
-      isPromoted: (p as any).isPromoted || false,
+    const formattedProperties = topRanked.map(({ listing, score, reasons }) => ({
+      id: listing.id,
+      title: listing.title,
+      city: listing.city,
+      neighborhood: listing.neighborhood,
+      priceEur: listing.priceEur,
+      transactionType: listing.transactionType,
+      propertyType: listing.propertyType,
+      rooms: listing.rooms,
+      surfaceSqm: listing.surfaceSqm,
+      floor: listing.floor,
+      totalFloors: listing.totalFloors,
+      yearBuilt: listing.yearBuilt,
+      isFurnished: listing.isFurnished,
+      petFriendly: listing.petFriendly,
+      amenities: listing.amenities || [],
+      imageUrl: listing.images?.[0]?.url,
+      isPromoted: (listing as any).isPromoted || false,
+      buildingType: listing.buildingType,
+      matchScore: score,
+      matchReasons: reasons,
     }));
 
     return {
@@ -185,7 +199,188 @@ export class ToolExecutor {
       page: searchResult.meta.page,
       hasMore: searchResult.meta.hasNextPage,
       filtersApplied: filters,
+      rankingApplied: true,
     };
+  }
+
+  private rankListings(
+    listings: Array<Listing & { isPromoted?: boolean }>,
+    args: Record<string, any>,
+    context: ExecutionContext,
+  ): ScoredListing[] {
+    return listings
+      .map((listing) => {
+        let score = 0;
+        const reasons: string[] = [];
+
+        if (listing.isPromoted) {
+          score += 3;
+        }
+
+        if (args.neighborhood && listing.neighborhood?.toLowerCase() === String(args.neighborhood).toLowerCase()) {
+          score += 22;
+          reasons.push(`în ${listing.neighborhood}`);
+        } else if (
+          context.preferences.neighborhoods?.length &&
+          context.preferences.neighborhoods.some(
+            neighborhood => neighborhood.toLowerCase() === listing.neighborhood?.toLowerCase(),
+          )
+        ) {
+          score += 14;
+          reasons.push(`în zona preferată ${listing.neighborhood}`);
+        }
+
+        if (args.propertyType && listing.propertyType === args.propertyType) {
+          score += 12;
+          reasons.push(`tip ${listing.propertyType.toLowerCase()}`);
+        } else if (context.preferences.propertyType && listing.propertyType === context.preferences.propertyType) {
+          score += 8;
+          reasons.push(`tipul dorit`);
+        }
+
+        const requestedRooms = args.rooms ?? args.roomsMin ?? context.preferences.roomsMin;
+        if (requestedRooms !== undefined) {
+          const roomDelta = Math.abs((listing.rooms || 0) - requestedRooms);
+          if (roomDelta === 0) {
+            score += 16;
+            reasons.push(`${listing.rooms} camere`);
+          } else if (roomDelta === 1) {
+            score += 7;
+          } else {
+            score -= roomDelta * 4;
+          }
+        }
+
+        const targetSurface = args.surfaceMin ?? context.preferences.surfaceMin;
+        if (targetSurface !== undefined) {
+          if ((listing.surfaceSqm || 0) >= targetSurface) {
+            score += 8;
+            reasons.push(`${listing.surfaceSqm} mp`);
+          } else {
+            score -= Math.min(12, targetSurface - (listing.surfaceSqm || 0));
+          }
+        }
+
+        const budgetMax = args.priceMax ?? context.preferences.priceMax;
+        const budgetMin = args.priceMin ?? context.preferences.priceMin;
+        if (budgetMax !== undefined) {
+          if ((listing.priceEur || 0) <= budgetMax) {
+            const ratio = listing.priceEur / Math.max(budgetMax, 1);
+            score += ratio <= 0.85 ? 14 : ratio <= 0.95 ? 10 : 6;
+            reasons.push(`în buget`);
+          } else {
+            score -= Math.min(25, Math.ceil((listing.priceEur - budgetMax) / 25));
+          }
+        }
+        if (budgetMin !== undefined && (listing.priceEur || 0) >= budgetMin) {
+          score += 2;
+        }
+
+        if (args.isFurnished !== undefined) {
+          if (listing.isFurnished === args.isFurnished) {
+            score += 8;
+            reasons.push(args.isFurnished ? 'mobilat' : 'nemobilat');
+          } else {
+            score -= 6;
+          }
+        } else if (context.preferences.isFurnished !== undefined) {
+          if (listing.isFurnished === context.preferences.isFurnished) {
+            score += 5;
+          }
+        }
+
+        if (args.petFriendly !== undefined) {
+          if (listing.petFriendly === args.petFriendly) {
+            score += 8;
+            reasons.push(args.petFriendly ? 'acceptă animale' : 'fără animale');
+          } else {
+            score -= 8;
+          }
+        } else if (context.preferences.petFriendly !== undefined) {
+          if (listing.petFriendly === context.preferences.petFriendly) {
+            score += 4;
+          }
+        }
+
+        const amenityPool = Array.isArray(listing.amenities)
+          ? listing.amenities.map(amenity => String(amenity).toLowerCase())
+          : [];
+        const requestedAmenities = [
+          ...(Array.isArray(args.amenities) ? args.amenities : []),
+          ...(context.preferences.mustHave || []),
+        ]
+          .map(amenity => String(amenity).toLowerCase())
+          .filter((value, index, arr) => arr.indexOf(value) === index);
+
+        for (const amenity of requestedAmenities) {
+          if (amenityPool.includes(amenity)) {
+            score += 4;
+            if (reasons.length < 3) {
+              reasons.push(amenity);
+            }
+          }
+        }
+
+        if (args.floorMin !== undefined && listing.floor !== undefined && listing.floor >= args.floorMin) {
+          score += 4;
+        }
+        if (args.floorMax !== undefined && listing.floor !== undefined && listing.floor <= args.floorMax) {
+          score += 4;
+        }
+        if (context.preferences.floorMin !== undefined && listing.floor !== undefined && listing.floor >= context.preferences.floorMin) {
+          score += 2;
+        }
+        if (context.preferences.floorMax !== undefined && listing.floor !== undefined && listing.floor <= context.preferences.floorMax) {
+          score += 2;
+        }
+
+        const yearMin = args.yearBuiltMin ?? context.preferences.yearBuiltMin;
+        const yearMax = args.yearBuiltMax ?? context.preferences.yearBuiltMax;
+        if (yearMin !== undefined && listing.yearBuilt !== undefined) {
+          if (listing.yearBuilt >= yearMin) {
+            score += 5;
+            reasons.push('bloc mai nou');
+          } else {
+            score -= 8;
+          }
+        }
+        if (yearMax !== undefined && listing.yearBuilt !== undefined) {
+          if (listing.yearBuilt <= yearMax) {
+            score += 3;
+          }
+        }
+
+        const dealbreakers = [
+          ...(context.preferences.dealbreakers || []),
+          ...(Array.isArray(args.dealbreakers) ? args.dealbreakers : []),
+        ].map(value => String(value).toLowerCase());
+
+        if (dealbreakers.includes('fara parter') && listing.floor === 0) {
+          score -= 30;
+        }
+        if (dealbreakers.includes('fara ultimul etaj') && listing.floor !== undefined && listing.totalFloors !== undefined && listing.floor === listing.totalFloors) {
+          score -= 24;
+        }
+        if (dealbreakers.includes('bloc nou') && listing.yearBuilt !== undefined && listing.yearBuilt < 2010) {
+          score -= 16;
+        }
+
+        if (context.shownListingIds.includes(listing.id)) {
+          score -= 5;
+        }
+
+        return {
+          listing,
+          score,
+          reasons: reasons.slice(0, 3),
+        };
+      })
+      .sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+        return (right.listing.priceEur || 0) - (left.listing.priceEur || 0);
+      });
   }
 
   private async executeGetDetails(args: Record<string, any>): Promise<any> {

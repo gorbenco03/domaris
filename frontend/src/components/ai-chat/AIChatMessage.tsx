@@ -6,11 +6,20 @@ import { AIChatPropertyCard, PropertyResult } from "./AIChatPropertyCard";
 import { AIChatValuationWidget, ValuationResult } from "./AIChatValuationWidget";
 import { AIChatQuickActions, QuickAction } from "./AIChatQuickActions";
 
+const phaseLabels: Record<string, string> = {
+  discovery: "Descoperire",
+  ready_to_search: "Gata de căutare",
+  results_shown: "Rezultate afișate",
+  refining: "Rafinare",
+  property_followup: "Follow-up proprietate",
+};
+
 export interface AIMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  conversationPhase?: string;
   properties?: PropertyResult[];
   valuation?: ValuationResult;
   quickActions?: QuickAction[];
@@ -67,6 +76,11 @@ export const AIChatMessage = ({ message, onQuickAction, isLatest }: AIChatMessag
               : "rounded-tl-md bg-card text-card-foreground border border-border"
           )}
         >
+          {!isUser && message.conversationPhase && (
+            <div className="mb-2 inline-flex rounded-full border border-primary/15 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
+              {phaseLabels[message.conversationPhase] || message.conversationPhase}
+            </div>
+          )}
           <div className="prose prose-sm max-w-none dark:prose-invert [&_p]:mb-2 [&_p:last-child]:mb-0">
             {renderContent(message.content)}
           </div>

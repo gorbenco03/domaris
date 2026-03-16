@@ -10,7 +10,7 @@
 
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { AiConversation, ClientProfile } from '../../../db/entities/ai-conversation.entity.js';
-import { AiMessage, AiMessageMetadata } from '../../../db/entities/ai-message.entity.js';
+import { AiMessage } from '../../../db/entities/ai-message.entity.js';
 import { AIGatewayService } from '../gateway/ai-gateway.service.js';
 import { Op } from 'sequelize';
 
@@ -114,9 +114,11 @@ export class AiConversationService {
       anonymousId,
       status: 'active',
       clientProfile: {
+        conversationPhase: 'discovery',
         classificationComplete: false,
         classificationScore: 0,
         answeredQuestions: [],
+        lastShownListingIds: [],
       },
       messageCount: 0,
     });
@@ -130,6 +132,7 @@ export class AiConversationService {
       content: welcomeContent,
       metadata: {
         intent: 'greeting',
+        conversationPhase: 'discovery',
         suggestedActions: [
           { type: 'quick_reply', label: 'Vreau să închiriez' },
           { type: 'quick_reply', label: 'Vreau să cumpăr' },
@@ -193,6 +196,7 @@ export class AiConversationService {
       role: m.role as 'user' | 'assistant',
       content: m.content,
       timestamp: m.createdAt,
+      metadata: m.metadata,
     }));
 
     // 3. Send to AI Gateway with client profile context
@@ -210,11 +214,11 @@ export class AiConversationService {
     });
 
     // 4. Update client profile if AI extracted new info
+    const updatedProfile = aiResponse.clientProfileUpdate
+      ? this.mergeClientProfile(conversation.clientProfile, aiResponse.clientProfileUpdate)
+      : conversation.clientProfile;
+
     if (aiResponse.clientProfileUpdate) {
-      const updatedProfile = this.mergeClientProfile(
-        conversation.clientProfile,
-        aiResponse.clientProfileUpdate,
-      );
       await conversation.update({ clientProfile: updatedProfile });
     }
 
@@ -228,7 +232,10 @@ export class AiConversationService {
         tier: aiResponse.debug?.tier,
         toolsUsed: aiResponse.toolsUsed,
         propertiesShown: aiResponse.properties?.map((p: any) => p.id),
+        propertyCards: aiResponse.properties,
         suggestedActions: aiResponse.suggestedActions,
+        clientProfileUpdate: aiResponse.clientProfileUpdate,
+        conversationPhase: updatedProfile.conversationPhase,
         latencyMs: aiResponse.debug?.latencyMs,
       },
     });
@@ -256,9 +263,7 @@ export class AiConversationService {
         createdAt: assistantMsg.createdAt,
       },
       properties: aiResponse.properties,
-      clientProfile: aiResponse.clientProfileUpdate
-        ? this.mergeClientProfile(conversation.clientProfile, aiResponse.clientProfileUpdate)
-        : conversation.clientProfile,
+      clientProfile: updatedProfile,
       suggestedActions: aiResponse.suggestedActions,
       debug: aiResponse.debug,
     };
@@ -298,36 +303,71 @@ export class AiConversationService {
     existing: ClientProfile,
     update: Partial<ClientProfile>,
   ): ClientProfile {
-    const merged = { ...existing };
+    const merged: ClientProfile = {
+      ...existing,
+      conversationPhase: existing.conversationPhase || 'discovery',
+      classificationComplete: existing.classificationComplete || false,
+      classificationScore: existing.classificationScore || 0,
+      answeredQuestions: [...(existing.answeredQuestions || [])],
+      lastShownListingIds: [...(existing.lastShownListingIds || [])],
+      lastSearchFilters: existing.lastSearchFilters,
+    };
 
     if (update.transactionType) merged.transactionType = update.transactionType;
     if (update.propertyType) merged.propertyType = update.propertyType;
     if (update.purpose) merged.purpose = update.purpose;
     if (update.urgency) merged.urgency = update.urgency;
+    if (update.conversationPhase) merged.conversationPhase = update.conversationPhase;
 
     if (update.budget) {
       merged.budget = { ...merged.budget, ...update.budget, currency: 'EUR' };
     }
 
     if (update.preferences) {
-      merged.preferences = { ...merged.preferences, ...update.preferences };
+      merged.preferences = {
+        ...merged.preferences,
+        ...update.preferences,
+        cities: this.mergeStringArrays(merged.preferences?.cities, update.preferences.cities),
+        neighborhoods: this.mergeStringArrays(merged.preferences?.neighborhoods, update.preferences.neighborhoods),
+        amenities: this.mergeStringArrays(merged.preferences?.amenities, update.preferences.amenities),
+      };
     }
 
     if (update.dealbreakers) {
-      merged.dealbreakers = [
-        ...new Set([...(merged.dealbreakers || []), ...update.dealbreakers]),
-      ];
+      merged.dealbreakers = this.mergeStringArrays(merged.dealbreakers, update.dealbreakers);
     }
 
     if (update.answeredQuestions) {
-      merged.answeredQuestions = [
-        ...new Set([...(merged.answeredQuestions || []), ...update.answeredQuestions]),
-      ];
+      merged.answeredQuestions = this.mergeStringArrays(
+        merged.answeredQuestions,
+        update.answeredQuestions,
+      ) || [];
+    }
+
+    if (update.lastShownListingIds) {
+      merged.lastShownListingIds = [
+        ...new Set([...(merged.lastShownListingIds || []), ...update.lastShownListingIds]),
+      ].slice(-20);
+    }
+
+    if (update.lastSearchFilters) {
+      merged.lastSearchFilters = {
+        ...(merged.lastSearchFilters || {}),
+        ...update.lastSearchFilters,
+      };
     }
 
     // Recalculate classification score
     merged.classificationScore = this.calculateClassificationScore(merged);
-    merged.classificationComplete = merged.classificationScore >= 70;
+    merged.classificationComplete =
+      update.classificationComplete === true ||
+      merged.classificationComplete === true ||
+      this.hasMinimumSearchCriteria(merged) ||
+      merged.classificationScore >= 70;
+
+    if (!update.conversationPhase) {
+      merged.conversationPhase = this.deriveConversationPhase(merged);
+    }
 
     return merged;
   }
@@ -349,6 +389,7 @@ export class AiConversationService {
     if (profile.preferences?.floorMin !== undefined || profile.preferences?.floorMax !== undefined) score += 5;
     if (profile.preferences?.isFurnished !== undefined) score += 4;
     if (profile.preferences?.petFriendly !== undefined) score += 3;
+    if (profile.preferences?.yearBuiltMin || profile.preferences?.yearBuiltMax) score += 4;
 
     // Nice to have
     if (profile.purpose) score += 4;
@@ -356,6 +397,38 @@ export class AiConversationService {
     if (profile.dealbreakers?.length) score += 5;
 
     return Math.min(100, score);
+  }
+
+  private hasMinimumSearchCriteria(profile: ClientProfile): boolean {
+    return Boolean(
+      profile.transactionType &&
+      profile.preferences?.cities?.length &&
+      (profile.budget?.max !== undefined || profile.budget?.min !== undefined),
+    );
+  }
+
+  private deriveConversationPhase(profile: ClientProfile): ClientProfile['conversationPhase'] {
+    if (!this.hasMinimumSearchCriteria(profile)) {
+      return 'discovery';
+    }
+
+    if (profile.lastShownListingIds?.length) {
+      return 'results_shown';
+    }
+
+    return 'ready_to_search';
+  }
+
+  private mergeStringArrays(
+    existing?: string[],
+    update?: string[],
+  ): string[] | undefined {
+    const merged = [...(existing || []), ...(update || [])]
+      .map(value => value?.trim())
+      .filter(Boolean);
+
+    if (merged.length === 0) return undefined;
+    return [...new Set(merged)];
   }
 
   // ========================================================================

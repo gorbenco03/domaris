@@ -10,6 +10,7 @@ export interface ConversationMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp?: Date;
+  metadata?: Record<string, any>;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
 }
@@ -21,6 +22,7 @@ export interface ConversationState {
   preferences: UserPreferences;
   lastIntent: Intent | null;
   shownListingIds: number[];
+  lastShownProperties?: any[];
   currentPlan: AgentPlan | null;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +31,7 @@ export interface ConversationState {
 
 export interface UserPreferences {
   transactionType?: 'RENT' | 'SALE';
+  propertyType?: 'APARTMENT' | 'HOUSE' | 'STUDIO' | 'COMMERCIAL' | 'LAND';
   cities?: string[];
   neighborhoods?: string[];
   priceMin?: number;
@@ -43,6 +46,8 @@ export interface UserPreferences {
   isFurnished?: boolean;
   floorMin?: number;
   floorMax?: number;
+  yearBuiltMin?: number;
+  yearBuiltMax?: number;
   confidence: Record<string, number>; // confidence per field
   lastUpdated: Date;
 }
@@ -104,8 +109,15 @@ export interface ExtractedSlots {
   surfaceMax?: number;
   amenities?: string[];
   propertyType?: string;
+  isFurnished?: boolean;
+  petFriendly?: boolean;
+  floorMin?: number;
+  floorMax?: number;
+  yearBuiltMin?: number;
+  yearBuiltMax?: number;
+  dealbreakers?: string[];
   listingId?: number;
-  sortBy?: 'price_asc' | 'price_desc' | 'newest' | 'relevance';
+  sortBy?: 'price_asc' | 'price_desc' | 'date_desc' | 'relevance';
 }
 
 // ============================================================================
@@ -174,7 +186,7 @@ export interface AgentResponse {
 }
 
 export interface SuggestedAction {
-  type: 'refine' | 'save_search' | 'schedule' | 'compare' | 'contact';
+  type: 'quick_reply' | 'refine' | 'save_search' | 'schedule' | 'compare' | 'contact';
   label: string;
   payload?: Record<string, any>;
 }
