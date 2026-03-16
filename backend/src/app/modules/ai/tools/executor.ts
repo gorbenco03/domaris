@@ -123,25 +123,34 @@ export class ToolExecutor {
 
     // Handle rooms: exact match vs range (mutually exclusive)
     let roomsFilter: { rooms?: number; roomsMin?: number; roomsMax?: number } = {};
+    const hasExplicitRooms = args.rooms != null || args.roomsMin != null || args.roomsMax != null;
+    const hasExactPreferredRooms =
+      context.preferences.roomsMin != null &&
+      context.preferences.roomsMax != null &&
+      context.preferences.roomsMin === context.preferences.roomsMax;
+
     if (args.rooms != null && args.roomsMin == null && args.roomsMax == null) {
-      roomsFilter = { roomsMin: args.rooms }; // Convert exact to range for flexibility
-    } else {
+      roomsFilter = { rooms: args.rooms };
+    } else if (args.roomsMin != null || args.roomsMax != null) {
       if (args.roomsMin != null) roomsFilter.roomsMin = args.roomsMin;
       if (args.roomsMax != null) roomsFilter.roomsMax = args.roomsMax;
+    } else if (hasExactPreferredRooms) {
+      roomsFilter = { rooms: context.preferences.roomsMin };
+    } else if (!hasExplicitRooms) {
+      if (context.preferences.roomsMin != null) roomsFilter.roomsMin = context.preferences.roomsMin;
+      if (context.preferences.roomsMax != null) roomsFilter.roomsMax = context.preferences.roomsMax;
     }
 
     const filters: SearchFilters = {
-      // Only transactionType and city get fallback from preferences
       transactionType: args.transactionType || context.preferences.transactionType,
       city: args.city || context.preferences.cities?.[0],
-      // Everything else: ONLY from GPT args, NO preference fallback
-      neighborhood: args.neighborhood,
+      neighborhood: args.neighborhood ?? context.preferences.neighborhoods?.[0],
       priceMin: args.priceMin,
-      priceMax: args.priceMax ?? context.preferences.priceMax, // keep priceMax as it's usually essential
+      priceMax: args.priceMax ?? context.preferences.priceMax,
       ...roomsFilter,
       surfaceMin: args.surfaceMin,
       surfaceMax: args.surfaceMax,
-      propertyType: args.propertyType,
+      propertyType: args.propertyType ?? context.preferences.propertyType,
       isFurnished: args.isFurnished,
       petFriendly: args.petFriendly,
       floorMin: args.floorMin,
