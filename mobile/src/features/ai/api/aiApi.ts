@@ -5,6 +5,7 @@
 
 import { apiClient } from '@/core/api/client';
 import { API_ENDPOINTS } from '@/core/api/endpoints';
+import { getAnonymousId } from '@/core/analytics/anonymousId';
 import type {
   IAIChatRequest,
   IAIChatResponse,
@@ -320,8 +321,20 @@ export interface IAiConversationSummary {
   clientProfile: {
     classificationComplete: boolean;
     classificationScore: number;
+    conversationPhase?: string;
     transactionType?: string;
+    propertyType?: string;
     budget?: { min?: number; max?: number };
+    preferences?: {
+      cities?: string[];
+      neighborhoods?: string[];
+      rooms?: number;
+      roomsMin?: number;
+      roomsMax?: number;
+      amenities?: string[];
+      isFurnished?: boolean;
+      petFriendly?: boolean;
+    };
   };
   lastMessageAt: string;
   messageCount: number;
@@ -338,11 +351,33 @@ export interface IAiMessageResponse {
     tier?: number;
     toolsUsed?: string[];
     propertiesShown?: number[];
+    propertyCards?: Array<{
+      id: number;
+      title: string;
+      city: string;
+      neighborhood?: string;
+      priceEur: number;
+      transactionType: string;
+      propertyType?: string;
+      rooms: number;
+      surfaceSqm: number;
+      floor?: number;
+      totalFloors?: number;
+      yearBuilt?: number;
+      isFurnished?: boolean;
+      petFriendly?: boolean;
+      amenities?: string[];
+      imageUrl?: string;
+      matchScore?: number;
+      matchReasons?: string[];
+    }>;
     suggestedActions?: Array<{
       type: string;
       label: string;
       payload?: Record<string, any>;
     }>;
+    clientProfileUpdate?: Record<string, any>;
+    conversationPhase?: string;
     latencyMs?: number;
   };
   createdAt: string;
@@ -369,9 +404,18 @@ export interface IAiSendMessageResponse {
     neighborhood?: string;
     priceEur: number;
     transactionType: string;
+    propertyType?: string;
     rooms: number;
     surfaceSqm: number;
+    floor?: number;
+    totalFloors?: number;
+    yearBuilt?: number;
+    isFurnished?: boolean;
+    petFriendly?: boolean;
+    amenities?: string[];
     imageUrl?: string;
+    matchScore?: number;
+    matchReasons?: string[];
   }>;
   clientProfile: any;
   suggestedActions?: Array<{
@@ -405,15 +449,27 @@ export const getConversation = async (
   return response.data;
 };
 
+export const getActiveConversation = async (
+  anonymousId?: string
+): Promise<IAiConversationDetail> => {
+  const resolvedAnonymousId = anonymousId || await getAnonymousId();
+  const response = await apiClient.get(
+    API_ENDPOINTS.AI.CONVERSATION_ACTIVE,
+    { params: resolvedAnonymousId ? { anonymousId: resolvedAnonymousId } : undefined }
+  );
+  return response.data;
+};
+
 /**
  * Create a new AI conversation
  */
 export const createConversation = async (
   anonymousId?: string
 ): Promise<IAiConversationDetail> => {
+  const resolvedAnonymousId = anonymousId || await getAnonymousId();
   const response = await apiClient.post(
     API_ENDPOINTS.AI.CONVERSATIONS,
-    { anonymousId }
+    resolvedAnonymousId ? { anonymousId: resolvedAnonymousId } : {}
   );
   return response.data;
 };
@@ -466,6 +522,7 @@ export const aiApi = {
   // Persistent AI Conversations
   getConversations,
   getConversation,
+  getActiveConversation,
   createConversation,
   sendConversationMessage,
   archiveConversation,

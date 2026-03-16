@@ -25,6 +25,8 @@ interface AiPropertyCardProps {
     rooms: number;
     surfaceSqm: number;
     imageUrl?: string;
+    matchScore?: number;
+    matchReasons?: string[];
   };
   onView: (propertyId: number) => void;
   onSchedule: (propertyId: number, title: string) => void;
@@ -46,6 +48,14 @@ const AiPropertyCard: React.FC<AiPropertyCardProps> = ({
       ? `${property.priceEur.toLocaleString('ro-RO')} \u20AC/lun\u0103`
       : `${property.priceEur.toLocaleString('ro-RO')} \u20AC`;
 
+  const scoreLabel = property.matchScore !== undefined
+    ? `${Math.max(1, Math.min(10, Math.round(property.matchScore / 10)))}/10`
+    : undefined;
+
+  const reasons = Array.isArray(property.matchReasons)
+    ? property.matchReasons.slice(0, 3)
+    : [];
+
   return (
     <View
       style={[
@@ -58,26 +68,47 @@ const AiPropertyCard: React.FC<AiPropertyCardProps> = ({
       ]}
     >
       {/* Image */}
-      {property.imageUrl ? (
-        <Image
-          source={{ uri: property.imageUrl }}
-          style={[styles.image, { borderTopLeftRadius: theme.borderRadius.lg, borderTopRightRadius: theme.borderRadius.lg }]}
-          resizeMode="cover"
-        />
-      ) : (
-        <View
-          style={[
-            styles.imagePlaceholder,
-            {
-              backgroundColor: theme.colors.border,
-              borderTopLeftRadius: theme.borderRadius.lg,
-              borderTopRightRadius: theme.borderRadius.lg,
-            },
-          ]}
-        >
-          <BedDouble size={24} color={theme.colors.textTertiary} />
-        </View>
-      )}
+      <View>
+        {property.imageUrl ? (
+          <Image
+            source={{ uri: property.imageUrl }}
+            style={[styles.image, { borderTopLeftRadius: theme.borderRadius.lg, borderTopRightRadius: theme.borderRadius.lg }]}
+            resizeMode="cover"
+          />
+        ) : (
+          <View
+            style={[
+              styles.imagePlaceholder,
+              {
+                backgroundColor: theme.colors.border,
+                borderTopLeftRadius: theme.borderRadius.lg,
+                borderTopRightRadius: theme.borderRadius.lg,
+              },
+            ]}
+          >
+            <BedDouble size={24} color={theme.colors.textTertiary} />
+          </View>
+        )}
+        {scoreLabel && (
+          <View
+            style={[
+              styles.scoreBadge,
+              {
+                backgroundColor: theme.colors.primary.main,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.scoreText,
+                { color: '#ffffff', fontSize: theme.typography.fontSize.xs },
+              ]}
+            >
+              {scoreLabel}
+            </Text>
+          </View>
+        )}
+      </View>
 
       {/* Content */}
       <View style={styles.content}>
@@ -136,6 +167,36 @@ const AiPropertyCard: React.FC<AiPropertyCardProps> = ({
             </Text>
           </View>
         </View>
+
+        {reasons.length > 0 && (
+          <View style={styles.reasonsContainer}>
+            {reasons.map((reason) => (
+              <View
+                key={reason}
+                style={[
+                  styles.reasonChip,
+                  {
+                    backgroundColor: theme.colors.primary.main + '10',
+                    borderColor: theme.colors.primary.main + '20',
+                    borderRadius: theme.borderRadius.full,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.reasonText,
+                    {
+                      color: theme.colors.primary.main,
+                      fontSize: theme.typography.fontSize.xs,
+                    },
+                  ]}
+                >
+                  {reason}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Price + Actions */}
         <View style={styles.footer}>
@@ -205,6 +266,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  scoreBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  scoreText: {
+    fontWeight: '700',
+  },
   content: {
     padding: 10,
     gap: 4,
@@ -222,6 +294,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 2,
+  },
+  reasonsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  reasonChip: {
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  reasonText: {
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',

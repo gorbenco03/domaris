@@ -11,6 +11,7 @@ interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  conversationPhase?: string;
   properties?: any[];
   suggestedActions?: Array<{
     type: string;
@@ -22,10 +23,20 @@ interface ChatMessage {
 interface ClientProfile {
   classificationComplete: boolean;
   classificationScore: number;
+  conversationPhase?: string;
   transactionType?: string;
   propertyType?: string;
   budget?: { min?: number; max?: number };
-  preferences?: { cities?: string[]; rooms?: number };
+  preferences?: {
+    cities?: string[];
+    neighborhoods?: string[];
+    rooms?: number;
+    roomsMin?: number;
+    roomsMax?: number;
+    amenities?: string[];
+    isFurnished?: boolean;
+    petFriendly?: boolean;
+  };
 }
 
 interface UseAiChatReturn {
@@ -58,7 +69,8 @@ export function useAiChat(): UseAiChatReturn {
       role: msg.role,
       content: msg.content,
       timestamp: new Date(msg.createdAt),
-      properties: undefined,
+      conversationPhase: msg.metadata?.conversationPhase,
+      properties: msg.metadata?.propertyCards,
       suggestedActions: msg.metadata?.suggestedActions,
     }));
   }, []);
@@ -73,15 +85,7 @@ export function useAiChat(): UseAiChatReturn {
       if (id) {
         conversation = await aiApi.getConversation(id);
       } else {
-        // Try to get conversations list, use most recent active one
-        const { data } = await aiApi.getConversations();
-        const activeConv = data.find(c => c.status === 'active');
-
-        if (activeConv) {
-          conversation = await aiApi.getConversation(activeConv.id);
-        } else {
-          conversation = await aiApi.createConversation();
-        }
+        conversation = await aiApi.getActiveConversation();
       }
 
       setConversationId(conversation.id);
@@ -147,7 +151,10 @@ export function useAiChat(): UseAiChatReturn {
             role: 'assistant' as const,
             content: response.assistantMessage.content,
             timestamp: new Date(response.assistantMessage.createdAt),
-            properties: response.properties,
+            conversationPhase:
+              response.clientProfile?.conversationPhase
+              || response.assistantMessage.metadata?.conversationPhase,
+            properties: response.properties || response.assistantMessage.metadata?.propertyCards,
             suggestedActions: response.suggestedActions || response.assistantMessage.metadata?.suggestedActions,
           },
         ];

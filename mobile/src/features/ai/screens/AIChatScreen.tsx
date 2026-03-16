@@ -45,6 +45,14 @@ const cleanMarkdown = (text: string): string => {
     .trim();
 };
 
+const phaseLabels: Record<string, string> = {
+  discovery: 'Descoperire',
+  ready_to_search: 'Gata de căutare',
+  results_shown: 'Rezultate afișate',
+  refining: 'Rafinare',
+  property_followup: 'Follow-up proprietate',
+};
+
 const AIChatScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
@@ -111,6 +119,9 @@ const AIChatScreen: React.FC = () => {
 
   const classificationScore = clientProfile?.classificationScore || 0;
   const showClassificationBar = !clientProfile?.classificationComplete && classificationScore > 0;
+  const currentPhaseLabel = clientProfile?.conversationPhase
+    ? (phaseLabels[clientProfile.conversationPhase] || clientProfile.conversationPhase)
+    : undefined;
 
   if (isLoading) {
     return (
@@ -201,6 +212,29 @@ const AIChatScreen: React.FC = () => {
                 ? 'Consultant imobiliar'
                 : 'Te cunosc mai bine...'}
             </Text>
+            {currentPhaseLabel && (
+              <View
+                style={[
+                  styles.phaseChip,
+                  {
+                    backgroundColor: theme.colors.primary.main + '12',
+                    borderColor: theme.colors.primary.main + '30',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.phaseChipText,
+                    {
+                      color: theme.colors.primary.main,
+                      fontSize: theme.typography.fontSize.xs,
+                    },
+                  ]}
+                >
+                  {currentPhaseLabel}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         <View style={styles.headerActions}>
@@ -285,6 +319,30 @@ const AIChatScreen: React.FC = () => {
                       },
                     ]}
                   >
+                    {message.conversationPhase && (
+                      <View
+                        style={[
+                          styles.phaseChip,
+                          styles.messagePhaseChip,
+                          {
+                            backgroundColor: theme.colors.primary.main + '12',
+                            borderColor: theme.colors.primary.main + '30',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.phaseChipText,
+                            {
+                              color: theme.colors.primary.main,
+                              fontSize: theme.typography.fontSize.xs,
+                            },
+                          ]}
+                        >
+                          {phaseLabels[message.conversationPhase] || message.conversationPhase}
+                        </Text>
+                      </View>
+                    )}
                     <Text
                       style={[
                         styles.messageText,
@@ -325,7 +383,13 @@ const AIChatScreen: React.FC = () => {
                                 borderColor: theme.colors.primary.main + '30',
                               },
                             ]}
-                            onPress={() => handleQuickReply(action.label)}
+                            onPress={() =>
+                              handleQuickReply(
+                                typeof action.payload?.message === 'string'
+                                  ? action.payload.message
+                                  : action.label,
+                              )
+                            }
                           >
                             <Text
                               style={[
@@ -578,6 +642,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerSubtitle: {},
+  phaseChip: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  messagePhaseChip: {
+    marginTop: 0,
+    marginBottom: 8,
+  },
+  phaseChipText: {
+    fontWeight: '600',
+  },
   headerActions: {
     flexDirection: 'row',
     gap: 4,
