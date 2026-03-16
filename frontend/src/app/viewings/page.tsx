@@ -111,8 +111,8 @@ export default function ViewingsPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const params = filter !== "all" ? { status: filter } : undefined;
-        const data = await getViewings(params);
+        // Fetch all viewings and filter client-side (API may not support status filter)
+        const data = await getViewings();
         setViewings(data);
       } catch (err) {
         console.error("Failed to fetch viewings:", err);
@@ -122,7 +122,7 @@ export default function ViewingsPage() {
       }
     };
     if (!isAuthLoading) fetchViewings();
-  }, [isAuthenticated, isAuthLoading, filter]);
+  }, [isAuthenticated, isAuthLoading]);
 
   const handleStatusChange = async (
     viewingId: string,
@@ -253,6 +253,11 @@ export default function ViewingsPage() {
     );
   }
 
+  // Client-side filtering (API may not support status query param)
+  const filteredViewings = filter === "all"
+    ? viewings
+    : viewings.filter(v => (v.status?.toUpperCase() || "") === filter);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -301,9 +306,9 @@ export default function ViewingsPage() {
               Încearcă din nou
             </Button>
           </div>
-        ) : viewings.length > 0 ? (
+        ) : filteredViewings.length > 0 ? (
           <div className="space-y-4">
-            {viewings.map((viewing) => {
+            {filteredViewings.map((viewing) => {
               const normalizedStatus = (viewing.status?.toUpperCase() || "PENDING") as ViewingStatus;
               const status = statusConfig[normalizedStatus] || statusConfig.PENDING;
               const StatusIcon = status.icon;
@@ -454,9 +459,12 @@ export default function ViewingsPage() {
                       {/* Other person info */}
                       <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{owner ? "Solicitant:" : "Proprietar:"}</span>
-                        <span className="font-medium text-foreground">
+                        <Link
+                          href={`/user/${otherPerson?.id || ""}`}
+                          className="font-medium text-foreground hover:text-primary hover:underline"
+                        >
                           {otherPersonName}
-                        </span>
+                        </Link>
                         {otherPerson?.phone && (
                           <span className="text-xs">· {otherPerson.phone}</span>
                         )}

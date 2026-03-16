@@ -179,7 +179,7 @@ export default function ProfilePage() {
             Premium
           </h2>
           <Link
-            href="/premium"
+            href="/pricing"
             className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted"
           >
             <div className="flex items-center gap-4">

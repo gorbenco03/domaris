@@ -20,7 +20,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { getPropertyDetail, getPropertyAnalytics, PropertyListing } from "@/lib/propertiesApi";
 import { analyzeProperty, PropertyAnalysis } from "@/lib/aiApi";
-import { toast } from "sonner";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -60,15 +59,17 @@ export default function PropertyAnalyticsPage() {
       setError(null);
 
       try {
-        const [p, stats] = await Promise.all([
-          getPropertyDetail(id),
-          getPropertyAnalytics(id, period),
-        ]);
+        const p = await getPropertyDetail(id);
         setProperty(p);
-        setAnalytics(stats);
+        // Stats endpoint may 404 — that's OK, show zeros
+        try {
+          const stats = await getPropertyAnalytics(id, period);
+          setAnalytics(stats);
+        } catch {
+          setAnalytics({ views: 0, favorites: 0, messages: 0, viewings: 0, dailyViews: [] });
+        }
       } catch {
-        setError("Nu am putut încărca statisticile.");
-        toast.error("Eroare la încărcarea statisticilor.");
+        setError("Nu am putut încărca proprietatea.");
       } finally {
         setIsLoading(false);
       }

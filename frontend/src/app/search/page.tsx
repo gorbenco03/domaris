@@ -163,6 +163,15 @@ function SearchContent() {
     return (typeParam && urlTypeMap[typeParam]) || "apartments";
   });
 
+  // Sync propertyType from URL when navigating via header links
+  useEffect(() => {
+    const typeParam = searchParams.get("type");
+    const mapped = typeParam ? urlTypeMap[typeParam] : undefined;
+    if (mapped && mapped !== propertyType) {
+      setPropertyType(mapped);
+    }
+  }, [searchParams]);
+
   // Filter state
   const [filters, setFilters] = useState<SearchFilters>(() => urlToFilters(searchParams));
   const [appliedFilters, setAppliedFilters] = useState<SearchFilters>(() => urlToFilters(searchParams));
