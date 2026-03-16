@@ -22,6 +22,7 @@ import {
   UserPreferences,
   AgentResponse,
   Intent,
+  ExtractedSlots,
   ToolCall,
   ToolResult,
   AIDecisionLog,
@@ -629,10 +630,17 @@ export class AIGatewayService {
           {
             id: uuidv4(),
             name: 'search_properties',
-            arguments: {
+            arguments: this.mergeExplicitSearchArguments({
               ...result.searchParams,
+              propertyType: result.searchParams.propertyType ?? result.extracted?.propertyType,
+              neighborhood:
+                result.searchParams.neighborhood ?? result.extracted?.preferences?.neighborhoods?.[0],
+              rooms:
+                result.searchParams.rooms ??
+                result.extracted?.preferences?.rooms ??
+                result.extracted?.preferences?.roomsMin,
               limit: input.contextOptions?.maxResults || 5,
-            },
+            }),
           },
           {
             conversationId: input.conversationId,
@@ -1292,7 +1300,7 @@ Vrei să caut proprietăți în acest buget?`;
           const tc: ToolCall = {
             id: toolCall.id,
             name: fn2.name,
-            arguments: JSON.parse(fn2.arguments || '{}'),
+            arguments: this.normalizeToolArguments(fn2.name, JSON.parse(fn2.arguments || '{}'), intent.slots),
           };
 
           const result = await this.toolExecutor.execute(tc, {
@@ -1854,6 +1862,85 @@ NU folosi markdown (fără **, *, #, etc.) - text simplu.`;
     }
 
     return undefined;
+  }
+
+  private normalizeToolArguments(
+    toolName: string,
+    args: Record<string, any>,
+    slots: ExtractedSlots,
+  ): Record<string, any> {
+    if (toolName !== 'search_properties') {
+      return args;
+    }
+
+    return this.mergeExplicitSearchArguments(args, slots);
+  }
+
+  private mergeExplicitSearchArguments(
+    args: Record<string, any>,
+    slots?: ExtractedSlots,
+  ): Record<string, any> {
+    const merged = { ...args };
+    if (!slots) {
+      return merged;
+    }
+
+    const explicitFields: Array<
+      'transactionType' |
+      'city' |
+      'neighborhood' |
+      'priceMin' |
+      'priceMax' |
+      'rooms' |
+      'roomsMin' |
+      'roomsMax' |
+      'surfaceMin' |
+      'surfaceMax' |
+      'amenities' |
+      'propertyType' |
+      'isFurnished' |
+      'petFriendly' |
+      'floorMin' |
+      'floorMax' |
+      'yearBuiltMin' |
+      'yearBuiltMax' |
+      'sortBy'
+    > = [
+      'transactionType',
+      'city',
+      'neighborhood',
+      'priceMin',
+      'priceMax',
+      'rooms',
+      'roomsMin',
+      'roomsMax',
+      'surfaceMin',
+      'surfaceMax',
+      'amenities',
+      'propertyType',
+      'isFurnished',
+      'petFriendly',
+      'floorMin',
+      'floorMax',
+      'yearBuiltMin',
+      'yearBuiltMax',
+      'sortBy',
+    ];
+
+    for (const field of explicitFields) {
+      const value = slots[field];
+      if (value !== undefined && value !== null) {
+        merged[field] = value;
+      }
+    }
+
+    if (slots.rooms !== undefined && slots.rooms !== null) {
+      delete merged.roomsMin;
+      delete merged.roomsMax;
+      merged.rooms = slots.rooms;
+    }
+
+    return merged;
   }
 
   private getSuggestedActions(intent: Intent, properties?: any[]): AgentResponse['suggestedActions'] {
