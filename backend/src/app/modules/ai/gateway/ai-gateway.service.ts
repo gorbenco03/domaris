@@ -1824,9 +1824,14 @@ NU folosi markdown (fără **, *, #, etc.) - text simplu.`;
     }
 
     const toolName = uniqueTools[0];
-    const primaryResult = toolResults.find(result => result.name === toolName)?.result;
+    const primaryToolResult = toolResults.find(result => result.name === toolName);
+    const primaryResult = primaryToolResult?.result;
 
     if (toolName === 'search_properties') {
+      if (primaryToolResult?.error) {
+        return 'Am întâmpinat o problemă tehnică la căutare. Încearcă încă o dată, iar dacă persistă, reformulez imediat criteriile și continui.';
+      }
+
       return this.formatSearchResponse(
         properties || [],
         primaryResult?.total || properties?.length || 0,

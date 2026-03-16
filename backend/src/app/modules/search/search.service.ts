@@ -750,7 +750,7 @@ export class SearchService {
     return where(
       fn(
         'translate',
-        fn('lower', fn('coalesce', col(field), '')),
+        fn('lower', fn('coalesce', col(`Listing.${field}`), '')),
         'ăâîșşțţ',
         'aaisstt',
       ),
