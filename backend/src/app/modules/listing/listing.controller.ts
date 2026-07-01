@@ -43,6 +43,29 @@ import {
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { BadRequestException } from '@nestjs/common';
+
+const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const ALLOWED_DOC_MIMES = [
+  'image/jpeg', 'image/png', 'image/webp',
+  'application/pdf',
+];
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_DOC_SIZE = 20 * 1024 * 1024;   // 20 MB
+
+const imageFileFilter = (_req: any, file: Express.Multer.File, cb: Function) => {
+  if (!ALLOWED_IMAGE_MIMES.includes(file.mimetype)) {
+    return cb(new BadRequestException(`Unsupported file type: ${file.mimetype}. Allowed: ${ALLOWED_IMAGE_MIMES.join(', ')}`), false);
+  }
+  cb(null, true);
+};
+
+const docFileFilter = (_req: any, file: Express.Multer.File, cb: Function) => {
+  if (!ALLOWED_DOC_MIMES.includes(file.mimetype)) {
+    return cb(new BadRequestException(`Unsupported file type: ${file.mimetype}. Allowed: ${ALLOWED_DOC_MIMES.join(', ')}`), false);
+  }
+  cb(null, true);
+};
 import { ListingService } from './listing.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { CreateListingDto, UpdateListingDto } from './listing.dto.js';
@@ -321,7 +344,10 @@ export class ListingController {
   @UseGuards(AuthGuard)
   @Post(':id/photos')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'photos', maxCount: 50 }]),
+    FileFieldsInterceptor(
+      [{ name: 'photos', maxCount: 20 }],
+      { limits: { fileSize: MAX_IMAGE_SIZE }, fileFilter: imageFileFilter },
+    ),
   )
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
@@ -357,7 +383,10 @@ export class ListingController {
   @UseGuards(AuthGuard)
   @Post(':id/ownership-doc')
   @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'document', maxCount: 1 }]),
+    FileFieldsInterceptor(
+      [{ name: 'document', maxCount: 1 }],
+      { limits: { fileSize: MAX_DOC_SIZE }, fileFilter: docFileFilter },
+    ),
   )
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')

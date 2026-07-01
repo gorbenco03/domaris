@@ -35,6 +35,17 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { BadRequestException } from '@nestjs/common';
+
+const KYC_ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+const KYC_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+const kycFileFilter = (_req: any, file: Express.Multer.File, cb: Function) => {
+  if (!KYC_ALLOWED_MIMES.includes(file.mimetype)) {
+    return cb(new BadRequestException(`Unsupported file type: ${file.mimetype}`), false);
+  }
+  cb(null, true);
+};
 import { KycService } from './kyc.service';
 import {
   CurrentUserId,
@@ -57,11 +68,14 @@ export class KycController {
 
   @Post('verify-id')
   @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'docFront', maxCount: 1 },
-      { name: 'docBack', maxCount: 1 },
-      { name: 'selfie', maxCount: 1 },
-    ]),
+    FileFieldsInterceptor(
+      [
+        { name: 'docFront', maxCount: 1 },
+        { name: 'docBack', maxCount: 1 },
+        { name: 'selfie', maxCount: 1 },
+      ],
+      { limits: { fileSize: KYC_MAX_FILE_SIZE }, fileFilter: kycFileFilter },
+    ),
   )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
@@ -124,7 +138,12 @@ export class KycController {
   }
 
   @Post('property-doc')
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'file', maxCount: 1 }]))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [{ name: 'file', maxCount: 1 }],
+      { limits: { fileSize: KYC_MAX_FILE_SIZE }, fileFilter: kycFileFilter },
+    ),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Upload property ownership document (for level 3)',

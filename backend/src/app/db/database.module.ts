@@ -59,7 +59,11 @@ const parseBoolean = (value: string | boolean | undefined, fallback: boolean): b
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
         const isProduction = configService.get<string>('NODE_ENV') === 'production';
-        const shouldSynchronize = parseBoolean(configService.get<string>('DB_SYNCHRONIZE'), !isProduction);
+        // TODO: In production, run migrations manually from the migrations/ directory.
+        // synchronize is ALWAYS false in production regardless of DB_SYNCHRONIZE env var.
+        const shouldSynchronize = isProduction
+          ? false
+          : parseBoolean(configService.get<string>('DB_SYNCHRONIZE'), true);
         const useSsl = parseBoolean(configService.get<string>('DB_SSL'), isProduction);
         const rejectUnauthorized = parseBoolean(
           configService.get<string>('DB_SSL_REJECT_UNAUTHORIZED'),

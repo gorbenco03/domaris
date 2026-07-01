@@ -41,6 +41,17 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { BadRequestException } from '@nestjs/common';
+
+const AVATAR_ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const AVATAR_MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+
+const avatarFileFilter = (_req: any, file: Express.Multer.File, cb: Function) => {
+  if (!AVATAR_ALLOWED_MIMES.includes(file.mimetype)) {
+    return cb(new BadRequestException(`Unsupported file type: ${file.mimetype}. Allowed: ${AVATAR_ALLOWED_MIMES.join(', ')}`), false);
+  }
+  cb(null, true);
+};
 import { UserService } from './user.service.js';
 import {
   CompleteProfileDto,
@@ -60,6 +71,8 @@ import {
 import { AuthGuard } from '../../auth/auth.guard';
 import { AdminGuard } from '../../core/admin.guard';
 import { ConsentService } from '../../core/consent/consent.service.js';
+import { S3Service } from '../../s3/s3.service.js';
+import { v4 as uuidv4 } from 'uuid';
 
 @ApiTags('users')
 @Controller('users')
@@ -67,6 +80,7 @@ export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly consentService: ConsentService,
+    private readonly s3Service: S3Service,
   ) {}
 
   // ============================================================================
@@ -96,7 +110,9 @@ export class UserController {
 
   @UseGuards(AuthGuard)
   @Patch('me/avatar')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: AVATAR_MAX_SIZE }, fileFilter: avatarFileFilter }),
+  )
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -116,9 +132,21 @@ export class UserController {
     @CurrentUserId() userId: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    // TODO: Upload to DigitalOcean Spaces in production
-    const mockUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}&timestamp=${Date.now()}`;
-    return this.userService.updateAvatar(userId, mockUrl);
+    if (!file) {
+      throw new Error('Fișierul avatar lipsește');
+    }
+
+    const ext = file.originalname.split('.').pop()?.toLowerCase() || 'jpg';
+    const key = `avatars/${userId}/${uuidv4()}.${ext}`;
+    const contentType = file.mimetype || 'image/jpeg';
+
+    const avatarUrl = await this.s3Service.uploadPublicBuffer(
+      file.buffer,
+      key,
+      contentType,
+    );
+
+    return this.userService.updateAvatar(userId, avatarUrl);
   }
 
   @UseGuards(AuthGuard)

@@ -378,13 +378,13 @@ const EmptyState = ({ onQuickAction }: { onQuickAction: (action: string) => void
       emoji: "🔍",
       title: "Caută proprietăți",
       description: "Descrie ce cauți și găsesc opțiuni pentru tine",
-      action: "Caut un apartament cu 2 camere în București sub 500€",
+      action: "Caut un apartament cu 2 camere în Chișinău sub 500€",
     },
     {
       emoji: "💰",
       title: "Evaluare proprietate",
       description: "Află valoarea de piață a proprietății tale",
-      action: "Cât valorează un apartament de 3 camere, 75m² în Floreasca?",
+      action: "Cât valorează un apartament de 3 camere, 75m² în Botanica?",
     },
     {
       emoji: "✍️",

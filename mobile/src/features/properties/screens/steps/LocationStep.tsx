@@ -493,18 +493,18 @@ const LocationStep: React.FC<LocationStepProps> = ({
             styles.mapPlaceholder,
             {
               backgroundColor: hasCoordinates
-                ? `${theme.colors.success}15`
+                ? `${theme.colors.accent.main}15`
                 : theme.colors.divider,
               borderColor: hasCoordinates
-                ? theme.colors.success
+                ? theme.colors.accent.main
                 : theme.colors.border,
             }
           ]}
           onPress={() => setShowMapPicker(true)}
           activeOpacity={0.8}
         >
-          <Map size={32} color={hasCoordinates ? theme.colors.success : theme.colors.textTertiary} />
-          <Text style={[styles.mapText, { color: hasCoordinates ? theme.colors.success : theme.colors.textTertiary }]}>
+          <Map size={32} color={hasCoordinates ? theme.colors.accent.main : theme.colors.textTertiary} />
+          <Text style={[styles.mapText, { color: hasCoordinates ? theme.colors.accent.main : theme.colors.textTertiary }]}>
             {hasCoordinates
               ? `Locație selectată (${formData.location?.coordinates?.latitude.toFixed(4)}, ${formData.location?.coordinates?.longitude.toFixed(4)})`
               : 'Apasă pentru a selecta locația pe hartă'

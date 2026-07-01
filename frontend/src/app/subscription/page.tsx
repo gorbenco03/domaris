@@ -88,6 +88,26 @@ export default function SubscriptionPage() {
     );
   }
 
+  // Monetization disabled at v1
+  if (process.env.NEXT_PUBLIC_MONETIZATION_ENABLED !== "true") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <Crown className="mx-auto h-16 w-16 text-muted-foreground" />
+          <h1 className="mt-4 text-2xl font-bold">Abonamentele nu sunt disponibile momentan</h1>
+          <p className="mt-2 text-muted-foreground">
+            Funcția de abonament va fi disponibilă într-o versiune viitoare a platformei.
+          </p>
+          <Button asChild className="mt-6">
+            <Link href="/profile">Înapoi la profil</Link>
+          </Button>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">

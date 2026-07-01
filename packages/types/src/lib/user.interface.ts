@@ -19,7 +19,8 @@ import type {
  * Interfața principală User conform ADR-001
  */
 export interface IUser {
-  id: string;
+  // Canonical: backend emits numeric id (ADR API alignment)
+  id: number;
   email: string;
   phone?: string | null;
 
@@ -141,7 +142,8 @@ export interface IUpdateUserDto {
  * User public profile (ce văd alții)
  */
 export interface IPublicUserProfile {
-  id: string;
+  // Canonical: backend emits numeric id (ADR API alignment)
+  id: number;
   firstName: string;
   lastName: string; // Poate fi truncat pentru privacy
   avatar?: string | null;
@@ -159,7 +161,8 @@ export interface IPublicUserProfile {
  * User session data (ce primește clientul la login)
  */
 export interface IUserSession {
-  id: string;
+  // Canonical: backend emits numeric id (ADR API alignment)
+  id: number;
   email: string;
   firstName: string;
   lastName: string;

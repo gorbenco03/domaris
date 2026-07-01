@@ -9,7 +9,9 @@
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { SequelizeModule } from '@nestjs/sequelize';
 
 import { AppController } from './app.controller';
 import { AppExceptionFilter } from './core/exception.filter';
@@ -47,6 +49,21 @@ import { ReviewModule } from './modules/review/review.module.js';
       isGlobal: true,
     }),
 
+    // Rate limiting — global default: 60 req/min per IP
+    // Auth and AI endpoints get tighter limits via @Throttle() decorator
+    ThrottlerModule.forRoot([
+      {
+        name: 'global',
+        ttl: 60000,  // 1 minute window
+        limit: 60,   // 60 requests per window
+      },
+      {
+        name: 'auth',
+        ttl: 60000,  // 1 minute window
+        limit: 10,   // 10 auth attempts per window
+      },
+    ]),
+
     // Messaging - Email & SMS (global)
     MessagingModule,
 
@@ -71,6 +88,8 @@ import { ReviewModule } from './modules/review/review.module.js';
 
     // Database
     DatabaseModule,
+    // Needed by AppController for @InjectConnection() in health check
+    SequelizeModule.forFeature([]),
 
     // Feature Modules
     UserModule,
@@ -96,6 +115,11 @@ import { ReviewModule } from './modules/review/review.module.js';
     {
       provide: APP_FILTER,
       useClass: AppExceptionFilter,
+    },
+    // Global rate-limiting guard
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

@@ -15,6 +15,21 @@ export class CreateListingDto {
   @IsString()
   description: string;
 
+  // Location fields — optional, provided by map pin or address geocoding
+  @IsString()
+  @IsOptional()
+  addressText?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  lat?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  lng?: number;
+
   @IsString()
   @IsOptional()
   transactionType?: string;
@@ -105,6 +120,21 @@ export class UpdateListingDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  // Location fields
+  @IsString()
+  @IsOptional()
+  addressText?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  lat?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  lng?: number;
 
   @IsString()
   @IsOptional()

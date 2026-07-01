@@ -32,7 +32,7 @@ import {
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { MessagesStackParamList } from '@/app/navigation/types';
-import { Message, Participant, PropertyPreview } from '../types';
+import { Message, MessageStatus, Participant, PropertyPreview } from '../types';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/config/constants';
 import {
@@ -272,7 +272,7 @@ const ChatScreen: React.FC = () => {
           senderId,
           type: mapMessageType(m.type),
           content,
-          status: m.readAt ? 'read' : 'delivered',
+          status: (m.readAt ? 'read' : 'delivered') as MessageStatus,
           createdAt: new Date(m.createdAt ?? m.sentAt ?? new Date()),
         };
       }).reverse();
@@ -311,11 +311,11 @@ const ChatScreen: React.FC = () => {
   useEffect(() => {
     if (!socketService.getIsConnected()) return;
 
-    const handleReadReceipt = (data: { conversationId: number; readBy: number }) => {
+    const handleReadReceipt = (data: { conversationId: number; messageIds: number[] }) => {
       if (String(data.conversationId) !== String(activeConversationId)) return;
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.senderId === String(user?.id) ? { ...msg, status: 'read' } : msg
+          msg.senderId === String(user?.id) ? { ...msg, status: 'read' as MessageStatus } : msg
         )
       );
     };
@@ -337,7 +337,7 @@ const ChatScreen: React.FC = () => {
         const tempMessage: Message = {
           id: tempId,
           conversationId: activeConversationId,
-          senderId: user.id,
+          senderId: String(user.id),
           type: 'text',
           content,
           status: 'sending',
@@ -377,7 +377,7 @@ const ChatScreen: React.FC = () => {
             const mapped: Message = {
               id: String((sent as any).id),
               conversationId: newId,
-              senderId: user.id,
+              senderId: String(user.id),
               type: mapMessageType((sent as any).type),
               content: (sent as any).content ?? (sent as any).text ?? content,
               status: (sent as any).readAt ? 'read' : 'delivered',
@@ -399,7 +399,7 @@ const ChatScreen: React.FC = () => {
             const mapped: Message = {
               id: String((sent as any).id),
               conversationId: activeConversationId,
-              senderId: user.id,
+              senderId: String(user.id),
               type: mapMessageType((sent as any).type),
               content: (sent as any).content ?? (sent as any).text ?? content,
               status: (sent as any).readAt ? 'read' : 'delivered',
@@ -481,10 +481,10 @@ const ChatScreen: React.FC = () => {
         onPress: async () => {
           try {
             if (isArchived) {
-              await unarchiveConversationMutation.mutateAsync(conversationId);
+              await unarchiveConversationMutation.mutateAsync(activeConversationId);
               Alert.alert('Succes', 'Conversația a fost dezarhivată');
             } else {
-              await archiveConversationMutation.mutateAsync(conversationId);
+              await archiveConversationMutation.mutateAsync(activeConversationId);
               Alert.alert('Succes', 'Conversația a fost arhivată');
             }
             navigation.goBack();

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { NotificationService } from './notification.service';
 import { AuthOnly, CurrentUser } from '../../core/decorators.js';
@@ -27,6 +27,19 @@ export class NotificationController {
     async markAllAsRead(@CurrentUser() user: any) {
         await this.notificationService.markAllAsRead(user.id);
         return { success: true };
+    }
+
+    @Delete('notifications/:id')
+    @ApiOperation({ summary: 'Delete a notification' })
+    async deleteNotification(@CurrentUser() user: any, @Param('id', ParseIntPipe) id: number) {
+        await this.notificationService.delete(user.id, id);
+        return { success: true };
+    }
+
+    @Get('users/me/notification-preferences')
+    @ApiOperation({ summary: 'Get notification preferences' })
+    async getPreferences(@CurrentUser() user: any) {
+        return this.notificationService.getPreferences(user.id);
     }
 
     @Post('devices/push-token')

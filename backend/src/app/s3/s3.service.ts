@@ -86,6 +86,64 @@ export class S3Service implements OnModuleInit {
   }
 
   /**
+   * Upload un buffer (ex: fișier din memorie Multer) cu ACL privat.
+   * Folosit pentru documente KYC sensibile (CI, pașaport, selfie).
+   * Returnează key-ul obiectului (NU URL public).
+   */
+  async uploadPrivateBuffer(
+    buffer: Buffer,
+    key: string,
+    contentType: string,
+  ): Promise<string> {
+    await this.s3
+      .putObject({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+        ACL: 'private',
+      })
+      .promise();
+
+    this.logger.log(`KYC document uploaded privately: ${key}`);
+    return key;
+  }
+
+  /**
+   * Upload un buffer public (ex: avatar utilizator).
+   * Returnează URL-ul public complet.
+   */
+  async uploadPublicBuffer(
+    buffer: Buffer,
+    key: string,
+    contentType: string,
+  ): Promise<string> {
+    await this.s3
+      .putObject({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+        ACL: 'public-read',
+      })
+      .promise();
+
+    return this.getPublicUrl(key);
+  }
+
+  /**
+   * Generează un URL semnat (presigned) pentru acces temporar la un document privat.
+   * Expiră în 1 oră implicit.
+   */
+  getSignedUrl(key: string, expiresInSeconds = 3600): string {
+    return this.s3.getSignedUrl('getObject', {
+      Bucket: this.bucket,
+      Key: key,
+      Expires: expiresInSeconds,
+    });
+  }
+
+  /**
    * Upload direct dintr-un URL (ex: link imagine Facebook) către DigitalOcean Spaces.
    * Îți întoarce URL-ul public Spaces.
    */

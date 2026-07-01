@@ -28,8 +28,6 @@ import {
   useUpdateProperty, 
   useUploadPropertyPhotos 
 } from '@/features/properties/services';
-import { IPropertyListing } from '@/core/api/types';
-
 // Import Steps
 import PropertyTypeStep from './steps/PropertyTypeStep';
 import LocationStep from './steps/LocationStep';
@@ -82,7 +80,7 @@ const EditPropertyScreen: React.FC = () => {
 
   // Populate form data when property is loaded
   useEffect(() => {
-    const sourceProperty = routeProperty || property;
+    const sourceProperty = (routeProperty || property) as any;
     if (sourceProperty && !formData) {
       setFormData({
         transactionType: sourceProperty.transactionType as any,
@@ -131,6 +129,8 @@ const EditPropertyScreen: React.FC = () => {
         },
         title: sourceProperty.title,
         description: sourceProperty.description,
+        ownershipDoc: null,
+        ownershipDocType: null,
       });
     }
   }, [property, routeProperty, formData]);

@@ -1,21 +1,20 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Home, Lock, Eye, EyeOff, Loader2, Check } from "lucide-react";
+import { Home, Lock, Mail, Hash, Eye, EyeOff, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { resetPassword, ApiError } from "@/lib/api";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const token = searchParams.get("token");
 
+  const [email, setEmail] = useState(searchParams.get("email") || "");
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,16 +22,18 @@ function ResetPasswordContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Redirect if no token
-  useEffect(() => {
-    if (!token) {
-      toast.error("Link invalid sau expirat");
-      router.push("/forgot-password");
-    }
-  }, [token, router]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email.trim()) {
+      toast.error("Introdu adresa de email");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(code.trim())) {
+      toast.error("Codul trebuie să aibă 6 cifre");
+      return;
+    }
 
     if (password !== confirmPassword) {
       toast.error("Parolele nu coincid");
@@ -44,15 +45,10 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (!token) {
-      toast.error("Link invalid sau expirat");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      await resetPassword(token, password);
+      await resetPassword(email.trim(), code.trim(), password);
       setSuccess(true);
       toast.success("Parola a fost resetată cu succes!");
     } catch (error) {
@@ -63,10 +59,6 @@ function ResetPasswordContent() {
       setIsLoading(false);
     }
   };
-
-  if (!token) {
-    return null;
-  }
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -132,11 +124,45 @@ function ResetPasswordContent() {
                     Parolă nouă
                   </h2>
                   <p className="text-muted-foreground">
-                    Introdu și confirmă noua parolă pentru contul tău.
+                    Introdu codul de 6 cifre primit pe email și setează o parolă nouă.
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="nume@email.com"
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="code">Cod de verificare</Label>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="code"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="123456"
+                        className="pl-10 tracking-[0.4em]"
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="password">Parolă nouă</Label>
                     <div className="relative">

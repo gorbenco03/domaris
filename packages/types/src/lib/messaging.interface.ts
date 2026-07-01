@@ -50,34 +50,43 @@ export interface IConversationParticipant {
  */
 export interface IConversationListItem {
   id: string;
-  
-  // Cealaltă persoană din conversație
+
+  // Cealaltă persoană din conversație (canonical: singular `otherParticipant`)
   otherParticipant: {
     id: string;
     firstName: string;
     lastName: string;
-    avatar?: string;
+    avatar?: string | null;
     isVerified: boolean;
     isOnline?: boolean;
   };
-  
-  // Proprietatea discutată
+
+  // Proprietatea discutată (backend emits id, title, price, image)
   property: {
     id: string;
     title: string;
-    mainImage?: string;
+    /** Backend emits `image` (URL of first listing image). */
+    image?: string | null;
+    /** @deprecated Backend emits `image`, not `mainImage`. */
+    mainImage?: string | null;
     price: number;
-    currency: string;
+    currency?: string;
   };
-  
-  // Ultimul mesaj
+
+  // Ultimul mesaj — canonical fields are `content` + `createdAt`.
   lastMessage?: {
-    text: string;
+    /** Canonical content field. */
+    content: string;
+    /** @deprecated Backend also emits `text` (duplicate of `content`). */
+    text?: string;
     type: MessageType;
-    sentAt: Date | string;
+    /** Canonical timestamp. */
+    createdAt: Date | string;
+    /** @deprecated Backend also emits `sentAt` (duplicate of `createdAt`). */
+    sentAt?: Date | string;
     isFromMe: boolean;
-  };
-  
+  } | null;
+
   unreadCount: number;
   status: ConversationStatus;
   updatedAt: Date | string;
@@ -95,30 +104,39 @@ export interface IMessage {
   conversationId: string;
   senderId: string;
   sender?: IPublicUserProfile;
-  
+
   type: MessageType;
-  text: string;
-  
+
+  // Canonical content field (backend emits `content`).
+  content: string;
+  /** @deprecated Backend also emits `text` as a duplicate of `content`. Use `content`. */
+  text?: string;
+
   // Pentru media messages
   mediaUrl?: string;
   mediaThumbnail?: string;
-  
+
   // Pentru viewing request messages
   viewingRequest?: {
     id: string;
     proposedDate: Date | string;
     status: string;
   };
-  
-  // Status
-  sentAt: Date | string;
+
+  // Status — canonical timestamp is `createdAt` (backend emits `createdAt`).
+  createdAt: Date | string;
+  /** @deprecated Backend also emits `sentAt` as a duplicate of `createdAt`. Use `createdAt`. */
+  sentAt?: Date | string;
   deliveredAt?: Date | string;
-  readAt?: Date | string;
-  
-  isEdited: boolean;
+  readAt?: Date | string | null;
+
+  /** Computed by backend: true when the current user is the sender. */
+  isFromMe?: boolean;
+
+  isEdited?: boolean;
   editedAt?: Date | string;
-  
-  isDeleted: boolean;
+
+  isDeleted?: boolean;
 }
 
 /**
@@ -126,7 +144,8 @@ export interface IMessage {
  */
 export interface ISendMessageDto {
   conversationId: string;
-  text: string;
+  /** Backend expects `content` in the request body. */
+  content: string;
   type?: MessageType;
   mediaUrl?: string;
 }

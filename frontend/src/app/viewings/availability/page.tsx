@@ -113,9 +113,8 @@ export default function AvailabilitySettingsPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // TODO: Call backend API when endpoint is ready
-      // await api.fetch('/viewings/availability', { method: 'PUT', body: JSON.stringify({ availability, defaultDuration }) });
-      toast.success("Disponibilitatea a fost salvată!");
+      // No backend persistence endpoint yet — be honest rather than fake a save.
+      toast.info("Salvarea disponibilității va fi activată în curând.");
     } catch {
       toast.error("Nu am putut salva disponibilitatea.");
     } finally {

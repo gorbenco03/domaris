@@ -44,12 +44,14 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 import { getPropertyDetail, PropertyListing, searchProperties, trackPropertyView, getPropertyPrice, getPropertySurface, getPropertyMainImage, getPropertyLocation, getPropertyOwnerName, getPropertyOwnerAvatar } from "@/lib/propertiesApi";
-import { getUserReviews, getUserReviewStats, createReview, toggleHelpful, Review, ReviewStats } from "@/lib/reviewsApi";
+import { getUserReviews, getUserReviewStats, toggleHelpful, Review, ReviewStats } from "@/lib/reviewsApi";
 import { getListingValuation, AVMResponse } from "@/lib/aiApi";
 import { checkIsFavorite, toggleFavorite } from "@/lib/favoritesApi";
 import { requestViewing } from "@/lib/viewingsApi";
+import { startConversation } from "@/lib/messagingApi";
 import { useEarlyAccessCountdown } from "@/lib/earlyAccess";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 const timeSlots = [
   "09:00", "10:00", "11:00", "12:00",
@@ -60,6 +62,7 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const propertyId = params.id as string;
   const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
 
   // Property data state
   const [property, setProperty] = useState<PropertyListing | null>(null);
@@ -70,6 +73,7 @@ export default function PropertyDetailPage() {
   // UI state
   const [currentImage, setCurrentImage] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [bookingStep, setBookingStep] = useState(1);
@@ -81,7 +85,6 @@ export default function PropertyDetailPage() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // AI Insights state
   const [valuation, setValuation] = useState<AVMResponse | null>(null);
@@ -246,30 +249,13 @@ export default function PropertyDetailPage() {
 
   const handleSubmitReview = async () => {
     if (!property || reviewRating === 0 || !reviewComment.trim()) return;
-    setIsSubmittingReview(true);
-    try {
-      const newReview = await createReview({
-        subjectId: String(property.ownerId),
-        rating: reviewRating,
-        comment: reviewComment.trim(),
-      });
-      setReviews(prev => [newReview, ...prev]);
-      if (reviewStats) {
-        setReviewStats({
-          ...reviewStats,
-          totalCount: reviewStats.totalCount + 1,
-          averageRating: ((reviewStats.averageRating * reviewStats.totalCount) + reviewRating) / (reviewStats.totalCount + 1),
-        });
-      }
-      setShowReviewForm(false);
-      setReviewRating(0);
-      setReviewComment("");
-      toast.success("Recenzie trimisă cu succes!");
-    } catch {
-      toast.error("Nu am putut trimite recenzia.");
-    } finally {
-      setIsSubmittingReview(false);
-    }
+    // Recenziile sunt legate de o vizionare finalizată (model anti-fraudă):
+    // doar cine a vizionat efectiv proprietatea poate evalua proprietarul.
+    // De aceea nu există o creare „liberă" de recenzie din pagina anunțului.
+    toast.info("Poți lăsa o recenzie doar după o vizionare finalizată cu acest proprietar.");
+    setShowReviewForm(false);
+    setReviewRating(0);
+    setReviewComment("");
   };
 
   const handleToggleHelpful = async (reviewId: string) => {
@@ -288,6 +274,24 @@ export default function PropertyDetailPage() {
   const pricePerSqm = property && getPropertySurface(property) > 0
     ? Math.round(getPropertyPrice(property) / getPropertySurface(property))
     : null;
+
+  const handleStartConversation = async () => {
+    if (!isAuthenticated) {
+      toast.error("Trebuie să fii autentificat pentru a trimite mesaje.");
+      router.push("/auth");
+      return;
+    }
+    if (!property) return;
+    setIsStartingConversation(true);
+    try {
+      const conversation = await startConversation({ propertyId: property.id });
+      router.push(`/messages?chat=${conversation.id}`);
+    } catch {
+      toast.error("Nu am putut porni conversația. Încearcă din nou.");
+    } finally {
+      setIsStartingConversation(false);
+    }
+  };
 
   // Loading state
   if (isLoading) {
@@ -547,7 +551,7 @@ export default function PropertyDetailPage() {
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
-                      ) : valuation ? (
+                      ) : valuation && !valuation.valuation.insufficientData && (valuation.valuation.recommendedPrice ?? -1) >= 0 ? (
                         <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                             <div className="rounded-xl bg-muted p-4">
@@ -572,11 +576,11 @@ export default function PropertyDetailPage() {
                           <div className="flex items-center gap-4 text-sm">
                             <div className="flex items-center gap-1">
                               <TrendingUp className="h-4 w-4 text-accent" />
-                              <span className="text-muted-foreground">Lichiditate: {Math.round(valuation.valuation.liquidityScore * 100)}%</span>
+                              <span className="text-muted-foreground">Lichiditate: {Math.round(valuation.valuation.liquidityScore)}%</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Star className="h-4 w-4 text-accent" />
-                              <span className="text-muted-foreground">Atractivitate: {Math.round(valuation.valuation.dealAttractivenessScore * 100)}%</span>
+                              <span className="text-muted-foreground">Atractivitate: {Math.round(valuation.valuation.dealAttractivenessScore)}%</span>
                             </div>
                           </div>
                           {valuation.valuation.comparables.count > 0 && (
@@ -745,11 +749,11 @@ export default function PropertyDetailPage() {
                       {/* Quick stats */}
                       <div className="mb-5 grid grid-cols-2 gap-3">
                         <div className="rounded-xl bg-muted/50 p-3 text-center">
-                          <p className="text-2xl font-bold text-foreground">{property.viewCount ?? 0}</p>
+                          <p className="text-2xl font-bold text-foreground">{property.viewsCount ?? 0}</p>
                           <p className="text-xs text-muted-foreground">Vizualizări</p>
                         </div>
                         <div className="rounded-xl bg-muted/50 p-3 text-center">
-                          <p className="text-2xl font-bold text-foreground">{property.favoriteCount ?? 0}</p>
+                          <p className="text-2xl font-bold text-foreground">{property.leadsCount ?? 0}</p>
                           <p className="text-xs text-muted-foreground">Favorite</p>
                         </div>
                       </div>
@@ -762,12 +766,14 @@ export default function PropertyDetailPage() {
                             Vezi statistici detaliate
                           </Link>
                         </Button>
+                        {process.env.NEXT_PUBLIC_MONETIZATION_ENABLED === "true" && (
                         <Button variant="outline" className="w-full" asChild>
                           <Link href={`/promote/${property.id}`}>
                             <Sparkles className="mr-2 h-4 w-4" />
                             Promovează anunțul
                           </Link>
                         </Button>
+                        )}
                         <Button variant="outline" className="w-full" asChild>
                           <Link href={`/edit-property/${property.id}`}>
                             <ArrowRight className="mr-2 h-4 w-4" />
@@ -927,11 +933,19 @@ export default function PropertyDetailPage() {
                       )}
 
                       <div className="mt-4 flex gap-2">
-                        <Button variant="outline" size="lg" className="flex-1" asChild>
-                          <Link href={`/messages?chat=${property.ownerId}`}>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="flex-1"
+                          onClick={handleStartConversation}
+                          disabled={isStartingConversation}
+                        >
+                          {isStartingConversation ? (
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          ) : (
                             <MessageCircle className="mr-2 h-5 w-5" />
-                            Mesaj
-                          </Link>
+                          )}
+                          Mesaj
                         </Button>
                       </div>
                     </div>
@@ -947,19 +961,36 @@ export default function PropertyDetailPage() {
                         <div>
                           <Link href={`/user/${property.ownerId}`} className="flex items-center gap-2 hover:underline">
                             <span className="font-semibold text-foreground">{getPropertyOwnerName(property)}</span>
-                            <BadgeCheck className="h-4 w-4 text-primary" />
+                            {/* Show verified badge only when owner is actually verified */}
+                            {(property.owner as any)?.isVerified && (
+                              <BadgeCheck className="h-4 w-4 text-primary" />
+                            )}
                           </Link>
-                          <p className="text-sm text-muted-foreground">Proprietar verificat</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(property.owner as any)?.isVerified ? "Proprietar verificat" : "Proprietar"}
+                          </p>
                         </div>
                       </div>
-                      <div className="mt-4 flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Phone className="mr-2 h-4 w-4" /> Sună
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Mail className="mr-2 h-4 w-4" /> Email
-                        </Button>
-                      </div>
+                      {/* Phone/Email buttons only when contact data is available */}
+                      {((property.owner as any)?.phone || (property as any).ownerPhone ||
+                        (property.owner as any)?.email || (property as any).ownerEmail) && (
+                        <div className="mt-4 flex gap-2">
+                          {((property.owner as any)?.phone || (property as any).ownerPhone) && (
+                            <Button variant="outline" size="sm" className="flex-1" asChild>
+                              <a href={`tel:${(property.owner as any)?.phone || (property as any).ownerPhone}`}>
+                                <Phone className="mr-2 h-4 w-4" /> Sună
+                              </a>
+                            </Button>
+                          )}
+                          {((property.owner as any)?.email || (property as any).ownerEmail) && (
+                            <Button variant="outline" size="sm" className="flex-1" asChild>
+                              <a href={`mailto:${(property.owner as any)?.email || (property as any).ownerEmail}`}>
+                                <Mail className="mr-2 h-4 w-4" /> Email
+                              </a>
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -1024,9 +1055,8 @@ export default function PropertyDetailPage() {
             <Button variant="outline" onClick={() => setShowReviewForm(false)}>Anulează</Button>
             <Button
               onClick={handleSubmitReview}
-              disabled={reviewRating === 0 || !reviewComment.trim() || isSubmittingReview}
+              disabled={reviewRating === 0 || !reviewComment.trim()}
             >
-              {isSubmittingReview && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Trimite recenzia
             </Button>
           </DialogFooter>

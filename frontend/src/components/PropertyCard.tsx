@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Heart, MapPin, BedDouble, Bath, Maximize2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { toggleFavorite } from "@/lib/favoritesApi";
 
 interface PropertyCardProps {
   id?: number;
@@ -33,6 +36,30 @@ export const PropertyCard = ({
   isFavorite = false,
   tags = [],
 }: PropertyCardProps) => {
+  const router = useRouter();
+  const [favorite, setFavorite] = useState(isFavorite);
+  const [isToggling, setIsToggling] = useState(false);
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isToggling) return;
+
+    const next = !favorite;
+    setFavorite(next); // optimistic
+    setIsToggling(true);
+    try {
+      await toggleFavorite(id, !next);
+    } catch (err: unknown) {
+      setFavorite(!next); // revert on failure
+      // Not authenticated → send to login
+      const code = (err as { code?: string; status?: number })?.status;
+      if (code === 401) router.push("/auth");
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
   return (
     <article className="group overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:shadow-lg">
       {/* Image */}
@@ -43,16 +70,15 @@ export const PropertyCard = ({
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
+          onClick={handleToggleFavorite}
+          disabled={isToggling}
+          aria-label={favorite ? "Elimină de la favorite" : "Adaugă la favorite"}
           className={cn(
             "absolute right-3 top-3 rounded-full bg-card/90 p-2.5 backdrop-blur-sm transition-all hover:scale-110",
-            isFavorite ? "text-destructive" : "text-muted-foreground hover:text-destructive"
+            favorite ? "text-destructive" : "text-muted-foreground hover:text-destructive"
           )}
         >
-          <Heart className={cn("h-5 w-5", isFavorite && "fill-current")} />
+          <Heart className={cn("h-5 w-5", favorite && "fill-current")} />
         </button>
         
         {/* Tags */}

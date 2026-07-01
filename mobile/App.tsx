@@ -23,7 +23,9 @@ import { TutorialGate, TutorialProvider } from '@/features/tutorial';
 // Navigation
 import RootNavigator from '@/app/navigation/RootNavigator';
 
+// Shared
 import AppStatusGate from '@/shared/components/AppStatusGate';
+import { ErrorBoundary, OfflineBanner } from '@/shared/components';
 
 // Keep splash screen visible while loading resources
 SplashScreen.preventAutoHideAsync();
@@ -46,6 +48,7 @@ const AppContent: React.FC = () => {
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={theme.colors.background}
       />
+      <OfflineBanner />
       <AppStatusGate>
         <RootNavigator />
       </AppStatusGate>
@@ -70,10 +73,6 @@ export default function App() {
           'Inter-SemiBold': require('./src/assets/fonts/Inter-SemiBold.ttf'),
           'Inter-Bold': require('./src/assets/fonts/Inter-Bold.ttf'),
         });
-
-        // Add any other initialization logic here
-        // e.g., load cached data, initialize analytics, etc.
-
       } catch (e) {
         console.warn('Error loading resources:', e);
       } finally {
@@ -95,23 +94,25 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <SafeAreaProvider>
-        <QueryProvider>
-          <ThemeProvider>
-            <AuthProvider>
-              <TutorialProvider>
-                <SocketProvider>
-                  <PushNotificationsProvider>
-                    <AppContent />
-                    <TutorialGate />
-                  </PushNotificationsProvider>
-                </SocketProvider>
-              </TutorialProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </QueryProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <SafeAreaProvider>
+          <QueryProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <TutorialProvider>
+                  <SocketProvider>
+                    <PushNotificationsProvider>
+                      <AppContent />
+                      <TutorialGate />
+                    </PushNotificationsProvider>
+                  </SocketProvider>
+                </TutorialProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </QueryProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

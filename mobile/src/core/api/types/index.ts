@@ -31,6 +31,60 @@ export type {
   IPropertySearchResult,
 } from '@domaris/types';
 
+import type { IPropertyListItem } from '@domaris/types';
+
+/**
+ * Extended property list item with additional backend fields
+ * used by mobile screens (legacy / flattened API response shape).
+ */
+export interface IPropertyListItemExtended extends IPropertyListItem {
+  // Flattened characteristics
+  surfaceSqm?: number;
+  surface?: number;
+  floor?: number;
+  totalFloors?: number;
+  yearBuilt?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  balconies?: number;
+  amenities?: string[];
+  parkingType?: string;
+  parkingSpots?: number;
+
+  // Price fields
+  priceEur?: number;
+  isNegotiable?: boolean;
+
+  // Address / location
+  addressText?: string;
+  address?: {
+    street?: string;
+    number?: string;
+    building?: string;
+    apartment?: string;
+  };
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+
+  // Media
+  images?: Array<{ id: string | number; url: string; isPrimary?: boolean; caption?: string }>;
+  photos?: Array<{ id: string | number; url: string; isPrimary?: boolean; caption?: string }>;
+
+  // Extended data
+  description?: string;
+  ownershipStatus?: string;
+  user?: {
+    id: string | number;
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    isVerified?: boolean;
+    phone?: string;
+  };
+}
+
 // ============================================
 // SEARCH TYPES
 // ============================================

@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
             accesul
           </h1>
           <p className="max-w-md text-lg text-white/70">
-            Îți vom trimite un link pentru a-ți reseta parola.
+            Îți vom trimite un cod pentru a-ți reseta parola.
           </p>
         </div>
 
@@ -80,18 +80,21 @@ export default function ForgotPasswordPage() {
                 Ai uitat parola?
               </h2>
               <p className="text-muted-foreground">
-                Introdu adresa de email și îți vom trimite un link pentru resetare.
+                Introdu adresa de email și îți vom trimite un cod de 6 cifre pentru resetare.
               </p>
             </div>
 
             {sent ? (
               <div className="rounded-2xl border border-border bg-card p-8 text-center">
                 <Mail className="mx-auto h-16 w-16 text-accent" />
-                <h3 className="mt-4 text-xl font-semibold">Email trimis!</h3>
+                <h3 className="mt-4 text-xl font-semibold">Cod trimis!</h3>
                 <p className="mt-2 text-muted-foreground">
-                  Am trimis un email la <strong>{email}</strong> cu instrucțiuni pentru resetarea parolei.
+                  Am trimis un cod de 6 cifre la <strong>{email}</strong>. Introdu-l pe pagina următoare pentru a-ți seta o parolă nouă.
                 </p>
-                <Button asChild className="mt-6">
+                <Button asChild className="mt-6 w-full">
+                  <Link href={`/reset-password?email=${encodeURIComponent(email)}`}>Introdu codul</Link>
+                </Button>
+                <Button asChild variant="ghost" className="mt-2 w-full">
                   <Link href="/auth">Înapoi la autentificare</Link>
                 </Button>
               </div>
@@ -120,7 +123,7 @@ export default function ForgotPasswordPage() {
                       Se trimite...
                     </>
                   ) : (
-                    "Trimite link de resetare"
+                    "Trimite cod de resetare"
                   )}
                 </Button>
               </form>

@@ -11,13 +11,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Bell,
   Moon,
   Globe,
-  Palette,
   Lock,
   Smartphone,
   Trash2,
@@ -33,6 +33,8 @@ import { ProfileStackParamList } from '@/app/navigation/types';
 import { ProfileMenuItem, ProfileSection, SettingsToggle } from '../components';
 import { ScreenHeader } from '@/shared/components';
 import { useTutorial } from '@/shared/services';
+import { useAuth } from '@/app/providers/AuthProvider';
+import { deleteAccount } from '@/core/api/userApi';
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList>;
 
@@ -40,16 +42,15 @@ const SettingsScreen: React.FC = () => {
   const { theme, themeMode, setThemeMode } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { resetTutorial, startTutorial } = useTutorial();
+  const { logout } = useAuth();
 
   const [isDarkMode, setIsDarkMode] = useState(themeMode === 'dark');
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const handleReplayTutorial = () => {
-    // Reset and start tutorial
     resetTutorial();
-    // Navigate to Home tab first
     navigation.getParent()?.navigate('HomeTab');
-    // Small delay to allow navigation, then start tutorial
     setTimeout(() => {
       startTutorial();
     }, 500);
@@ -61,21 +62,50 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleDeleteAccount = () => {
+    // Step 1: Initial confirmation
     Alert.alert(
-      'Ștergere cont',
-      'Ești sigur că vrei să ștergi contul? Această acțiune este ireversibilă și toate datele tale vor fi șterse permanent.',
+      'Șterge contul',
+      'Ești sigur că vrei să ștergi contul? Toate datele tale (anunțuri, mesaje, favorite) vor fi șterse permanent și nu vor putea fi recuperate.',
       [
         { text: 'Anulează', style: 'cancel' },
         {
-          text: 'Șterge contul',
+          text: 'Continuă',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement account deletion
-            console.log('Account deletion requested');
-          },
+          onPress: confirmDeleteAccount,
         },
       ]
     );
+  };
+
+  const confirmDeleteAccount = () => {
+    // Step 2: Final confirmation — Apple 5.1.1v requires two-step
+    Alert.alert(
+      'Confirmare finală',
+      'Această acțiune este ireversibilă. Apasă "Șterge definitiv" pentru a continua.',
+      [
+        { text: 'Anulează', style: 'cancel' },
+        {
+          text: 'Șterge definitiv',
+          style: 'destructive',
+          onPress: executeDeleteAccount,
+        },
+      ]
+    );
+  };
+
+  const executeDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+    try {
+      await deleteAccount();
+      // Logout clears tokens and navigates to auth via RootNavigator
+      await logout();
+    } catch (error: any) {
+      setIsDeletingAccount(false);
+      const message =
+        error?.response?.data?.message ||
+        'A apărut o eroare la ștergerea contului. Încearcă din nou sau contactează suportul la support@riva.md.';
+      Alert.alert('Eroare', message);
+    }
   };
 
   return (
@@ -170,10 +200,16 @@ const SettingsScreen: React.FC = () => {
         {/* Danger Zone */}
         <ProfileSection title="Zona de pericol">
           <ProfileMenuItem
-            icon={<Trash2 />}
+            icon={
+              isDeletingAccount ? (
+                <ActivityIndicator size="small" color={theme.colors.secondary?.error} />
+              ) : (
+                <Trash2 />
+              )
+            }
             label="Șterge contul"
             description="Acțiune permanentă și ireversibilă"
-            onPress={handleDeleteAccount}
+            onPress={isDeletingAccount ? undefined : handleDeleteAccount}
             danger
             showArrow={false}
           />

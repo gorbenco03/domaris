@@ -17,7 +17,7 @@ export { default as IconButton } from './IconButton';
 export { default as ScreenHeader } from './ScreenHeader';
 export { default as Chip } from './Chip';
 export { default as PropertyCard } from './PropertyCard';
-export { default as AmenitySelector } from './AmenitySelector';
+export { default as AmenitySelector, type Amenity } from './AmenitySelector';
 export { OwnerDashboardWidget } from './OwnerDashboardWidget';
 export { EmptyState } from './EmptyState';
 export { default as AuthRequiredScreen } from './AuthRequiredScreen';
@@ -32,3 +32,5 @@ export {
   SkeletonList,
 } from './Skeleton';
 export { default as KeyboardAvoidingWrapper } from './KeyboardAvoidingWrapper';
+export { ErrorBoundary } from './ErrorBoundary';
+export { OfflineBanner } from './OfflineBanner';

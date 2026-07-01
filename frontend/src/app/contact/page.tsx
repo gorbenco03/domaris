@@ -40,11 +40,14 @@ export default function ContactPage() {
       return;
     }
     setIsSending(true);
-    // TODO: Send to backend API when endpoint is ready
-    await new Promise((r) => setTimeout(r, 1000));
+    // Open the user's email client pre-filled — the message actually goes somewhere
+    // (no backend contact endpoint yet, so we don't fake a "sent" success).
+    const mailSubject = encodeURIComponent(subject || `Mesaj de la ${name}`);
+    const mailBody = encodeURIComponent(`Nume: ${name}\nEmail: ${email}\n\n${message}`);
+    window.location.href = `mailto:contact@riva.md?subject=${mailSubject}&body=${mailBody}`;
     setIsSending(false);
     setSent(true);
-    toast.success("Mesajul a fost trimis! Te vom contacta în curând.");
+    toast.success("Ți-am deschis aplicația de email cu mesajul completat.");
   };
 
   return (

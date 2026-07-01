@@ -11,6 +11,7 @@
  */
 
 import { extractHeaderToken, genHex, getJti } from '../core/helper';
+import { randomInt } from 'crypto';
 import {
   BadRequestException,
   Inject,
@@ -337,7 +338,7 @@ export class AuthService {
         try {
           payload = await appleSignin.verifyIdToken(identityToken, {
             audience,
-            ignoreExpiration: true,
+            ignoreExpiration: false,
           });
           break;
         } catch (e) {
@@ -828,7 +829,8 @@ export class AuthService {
    * Generate OTP and store in Redis
    */
   private async generateAndStoreOtp(key: string): Promise<string> {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // crypto.randomInt is cryptographically secure (unlike Math.random)
+    const code = randomInt(100000, 1000000).toString();
     const otpKey = `otp:${key}`;
     const attemptsKey = `otp_attempts:${key}`;
 

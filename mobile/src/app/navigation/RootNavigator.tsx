@@ -20,7 +20,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NotificationsCenterScreen } from '@/features/notifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const navigationRef = createNavigationContainerRef<RootStackParamList>();
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 // ============================================
 // LOADING SCREEN

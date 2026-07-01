@@ -26,7 +26,9 @@ export function useMessagingSocket({
     const token = typeof window !== "undefined" ? localStorage.getItem("riva_access_token") : null;
     if (!token) return;
 
-    const socket = io(WS_URL, {
+    // The backend ChatGateway lives on the "/chat" namespace — connecting to the
+    // default namespace means none of its handlers (auth/join/typing) ever run.
+    const socket = io(`${WS_URL}/chat`, {
       auth: { token },
       transports: ["websocket", "polling"],
       reconnection: true,

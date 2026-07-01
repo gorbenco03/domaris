@@ -5,7 +5,7 @@
 
 import { apiClient } from '@/core/api/client';
 import { API_ENDPOINTS } from '@/core/api/endpoints';
-import type { IPropertyListing } from '@/core/api/types';
+import type { IPropertyListItem } from '@/core/api/types';
 
 // ============================================================================
 // TYPES
@@ -82,7 +82,7 @@ export interface IToggleAlertsRequest {
 }
 
 export interface IExecuteSavedSearchResponse {
-  data: IPropertyListing[];
+  data: IPropertyListItem[];
   total: number;
   page: number;
   limit: number;

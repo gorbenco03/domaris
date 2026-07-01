@@ -88,10 +88,25 @@ export async function getSearchSuggestions(
   if (!query || query.length < 2) {
     return [];
   }
-  
-  return api.fetch<SearchSuggestion[]>(
+
+  // Backend returns rows shaped as { text, type, count }. The UI consumes
+  // { value, label, type, count } — normalize so the dropdown isn't blank and
+  // selecting a suggestion applies a real filter.
+  const raw = await api.fetch<Array<{ text?: string; value?: string; label?: string; type: SearchSuggestion['type']; count?: number }>>(
     `/search/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`
   );
+
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((s) => {
+    const text = s.value ?? s.text ?? s.label ?? '';
+    return {
+      type: s.type,
+      value: text,
+      label: s.label ?? text,
+      count: s.count,
+    };
+  }).filter((s) => s.value);
 }
 
 /**

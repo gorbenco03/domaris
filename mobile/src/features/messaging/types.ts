@@ -73,10 +73,14 @@ export interface Message {
   senderId: string;
   type: MessageType;
   content: string;
+  /** Legacy / backend alias for content */
+  text?: string;
   metadata?: MessageMetadata;
   status: MessageStatus;
   readAt?: Date;
   createdAt: Date;
+  /** Legacy / backend alias for createdAt */
+  sentAt?: Date;
 }
 
 // ============================================

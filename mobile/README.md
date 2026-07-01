@@ -1,6 +1,68 @@
-# 🏠 RIVA - Platforma Imobiliară Direct de la Proprietari
+# RIVA - Platforma Imobiliară Direct de la Proprietari
 
 Aplicație mobilă React Native/Expo pentru conectarea directă a proprietarilor cu potențialii cumpărători sau chiriași.
+
+## Acțiuni necesare înainte de primul build production
+
+### 1. Mapbox Download Token (SECRET — nu se comite niciodată)
+
+Tokenul `sk.*` Mapbox trebuie setat ca EAS secret, nu în cod sau git:
+
+```bash
+eas secret:create --scope project --name RNMAPBOX_DOWNLOAD_TOKEN --value "sk.<YOUR_MAPBOX_SECRET_DOWNLOAD_TOKEN>"
+```
+
+Tokenul public `pk.*` este deja setat în `eas.json` sub `EXPO_PUBLIC_MAPBOX_TOKEN`.
+
+### 2. google-services.json (FCM / Android push notifications)
+
+Descarcă `google-services.json` din Firebase Console (proiectul asociat pachetului `ro.riva.app`) și plaseaz-o la rădăcina `mobile/`:
+
+```
+mobile/google-services.json
+```
+
+`app.json` conține deja `android.googleServicesFile: "./google-services.json"`.
+
+### 3. APNs (iOS push notifications production)
+
+La build-ul production EAS, entitlement-ul `aps-environment=production` este setat automat dacă profilul de distribuție este corect configurat în Apple Developer Portal pentru bundle ID `ro.riva.app`.
+
+### 4. Icoane (trebuie regenerate)
+
+- `assets/icon.png` (1024x1024) — trebuie sa fie FARA canal alpha (PNG RGB, nu RGBA). App Store respinge iconițele cu transparență. Regenerează cu un tool grafic (Figma, Sketch) exportând ca PNG fara transparenta.
+- `assets/notification-icon.png` — trebuie sa fie silhouette alb pe fundal transparent (cerință Android Material). Verifică că este o imagine albă cu alpha.
+
+### 5. App Store Connect / Google Play
+
+Completează `submit.production` în `eas.json`:
+
+**iOS:**
+```json
+"ios": {
+  "appleId": "apple-id@exemplu.com",
+  "ascAppId": "1234567890",
+  "appleTeamId": "ABCDE12345"
+}
+```
+
+**Android:**
+```json
+"android": {
+  "serviceAccountKeyPath": "./pc-api-key.json",
+  "track": "internal"
+}
+```
+
+### 6. Monetizare (v1 OFF)
+
+Monetizarea este dezactivata implicit (`EXPO_PUBLIC_MONETIZATION_ENABLED=false` în toate profilele din `eas.json`). Când ești gata să activezi IAP, seteaza valoarea la `"true"` în profilul de production.
+
+### 7. URL-uri producție
+
+Actualizează în `eas.json` → `build.production.env`:
+- `EXPO_PUBLIC_API_URL` — URL-ul HTTPS al backend-ului production
+- `EXPO_PUBLIC_WS_URL` — URL-ul WSS al backend-ului production
 
 ## 📱 Descriere
 

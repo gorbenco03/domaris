@@ -298,10 +298,10 @@ export default function MyPropertiesPage() {
                       {/* Quick Stats */}
                       <div className="mt-3 flex items-center gap-4 border-t border-border pt-3">
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground" title="Vizualizări (30 zile)">
-                          <Eye className="h-4 w-4" /><span>{property.stats?.views ?? property.viewCount ?? 0}</span>
+                          <Eye className="h-4 w-4" /><span>{property.stats?.views ?? property.viewsCount ?? 0}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground" title="Favorite">
-                          <Heart className="h-4 w-4" /><span>{property.stats?.favorites ?? property.favoriteCount ?? 0}</span>
+                          <Heart className="h-4 w-4" /><span>{property.stats?.favorites ?? property.leadsCount ?? 0}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground" title="Mesaje">
                           <MessageCircle className="h-4 w-4" /><span>{property.stats?.messages ?? 0}</span>

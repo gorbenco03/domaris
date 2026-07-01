@@ -11,10 +11,16 @@ export enum ListingStatus {
 
 export interface ListingImage {
     id: number;
-    listingId: number;
+    listingId?: number;
     url: string;
-    isMain: boolean;
-    createdAt: string | Date;
+    // Canonical: backend emits `isPrimary` + `order`.
+    isPrimary: boolean;
+    order: number;
+    alt?: string | null;
+    /** @deprecated Backend emits `isPrimary`, not `isMain`. */
+    isMain?: boolean;
+    createdAt?: string | Date;
+    updatedAt?: string | Date;
 }
 
 export interface Listing {

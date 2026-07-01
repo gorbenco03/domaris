@@ -25,6 +25,11 @@ export class ListingService {
   private readonly logger = new Logger(ListingService.name);
   private static readonly EARLY_ACCESS_DELAY_HOURS = 12;
 
+  /** v1 launches with monetization OFF — plan caps (listings/photos) are not enforced. */
+  private static isMonetizationEnabled(): boolean {
+    return (process.env.MONETIZATION_ENABLED ?? 'false').toLowerCase() === 'true';
+  }
+
   constructor(
     private readonly s3Service: S3Service,
     private readonly geocodingService: GeocodingService,
@@ -50,63 +55,65 @@ export class ListingService {
   ): Promise<Listing> {
     this.logger.log(`Creating listing for ownerId: ${ownerId}, dto: ${JSON.stringify(dto)}`);
 
-    // Enforce subscription listing limit
-    const canCreate = await this.subscriptionService.canCreateListing(Number(ownerId));
-    if (!canCreate.allowed) {
-      throw new ForbiddenException(
-        canCreate.reason || 'Ai atins limita de anunțuri pentru planul tău. Fă upgrade pentru a adăuga mai multe.',
-      );
+    const monetizationEnabled = ListingService.isMonetizationEnabled();
+
+    // Enforce subscription listing limit (only when monetization is active — v1 has it OFF)
+    if (monetizationEnabled) {
+      const canCreate = await this.subscriptionService.canCreateListing(Number(ownerId));
+      if (!canCreate.allowed) {
+        throw new ForbiddenException(
+          canCreate.reason || 'Ai atins limita de anunțuri pentru planul tău. Fă upgrade pentru a adăuga mai multe.',
+        );
+      }
     }
 
-    // Map DTO fields to Entity fields
-    const input = dto as any;
-    
-    // Construct address text from components if not provided directly
-    const computedAddress = [
-      input.street, 
-      input.number, 
-      input.block ? `Bl. ${input.block}` : '', 
-      input.apartment ? `Ap. ${input.apartment}` : ''
-    ].filter(Boolean).join(', ');
-
+    // Explicitly map only whitelisted DTO fields — no spread of raw input
     const now = new Date();
-    const publicFrom = new Date(
-      now.getTime() + ListingService.EARLY_ACCESS_DELAY_HOURS * 60 * 60 * 1000,
-    );
+    // When monetization is OFF (v1), there is no paid "early access" window — publish immediately.
+    const publicFrom = monetizationEnabled
+      ? new Date(now.getTime() + ListingService.EARLY_ACCESS_DELAY_HOURS * 60 * 60 * 1000)
+      : now;
 
     const listingData: any = {
-      ...input,
+      // Allowed user-supplied fields from CreateListingDto only
+      title: dto.title,
+      description: dto.description,
+      transactionType: dto.transactionType,
+      propertyType: dto.propertyType,
+      priceEur: dto.price,
+      currency: dto.currency,
+      city: dto.city || 'Chisinau',
+      neighborhood: dto.area,
+      rooms: dto.rooms !== undefined ? Number(dto.rooms) : undefined,
+      bedrooms: dto.bedrooms !== undefined ? Number(dto.bedrooms) : undefined,
+      bathrooms: dto.bathrooms !== undefined ? Number(dto.bathrooms) : undefined,
+      floor: dto.floor !== undefined ? Number(dto.floor) : undefined,
+      totalFloors: dto.totalFloors !== undefined ? Number(dto.totalFloors) : undefined,
+      yearBuilt: dto.yearBuilt !== undefined ? Number(dto.yearBuilt) : undefined,
+      surfaceSqm: dto.surface,
+      amenities: dto.amenities,
+      isFurnished: dto.isFurnished,
+      hasCentralHeating: dto.hasCentralHeating,
+      petFriendly: dto.petFriendly,
+      // Address text from DTO
+      addressText: dto.addressText,
+      // Internal/controlled fields — not from user input
       ownerId,
-      priceEur: input.price ?? input.priceEur, // Accept both field names
-      surfaceSqm: input.surface ?? input.surfaceSqm, // Accept both field names
-      rooms: Number(input.rooms), // Ensure number
-      bedrooms: input.bedrooms !== undefined ? Number(input.bedrooms) : undefined,
-      bathrooms: input.bathrooms !== undefined ? Number(input.bathrooms) : undefined,
-      floor: input.floor !== undefined ? Number(input.floor) : undefined,
-      totalFloors: input.totalFloors !== undefined ? Number(input.totalFloors) : undefined,
-      yearBuilt: input.yearBuilt !== undefined ? Number(input.yearBuilt) : undefined,
-      transactionType: input.transactionType,
-      propertyType: input.propertyType,
-      status: 'early_access',
+      status: monetizationEnabled ? 'early_access' : 'public',
       postedAt: now,
       publicFrom,
-
-      // Location mapping
-      addressText: input.addressText || input.address || computedAddress,
-      neighborhood: input.neighborhood || input.area,
-      city: input.city || 'Bucuresti', // Fallback
     };
 
     // GEOCODING LOGIC
-    if (input.lat && input.lng) {
+    if (dto.lat && dto.lng) {
       // User set location manually on map
-      listingData.lat = input.lat;
-      listingData.lng = input.lng;
+      listingData.lat = dto.lat;
+      listingData.lng = dto.lng;
       listingData.locationSetManually = true;
 
       // Optionally reverse geocode to get formatted address
       if (!listingData.addressText) {
-        const address = await this.geocodingService.reverseGeocode(input.lat, input.lng);
+        const address = await this.geocodingService.reverseGeocode(dto.lat, dto.lng);
         if (address) {
           listingData.addressText = address;
         }
@@ -348,24 +355,40 @@ export class ListingService {
 
     const oldPrice = listing.priceEur;
 
-    const updateData: any = { ...dto };
+    // Explicitly pick only whitelisted DTO fields — no spread of raw input
+    const updateData: any = {
+      title: dto.title,
+      description: dto.description,
+      transactionType: dto.transactionType,
+      propertyType: dto.propertyType,
+      priceEur: dto.price,
+      currency: dto.currency,
+      city: dto.city,
+      neighborhood: dto.area,
+      rooms: dto.rooms !== undefined ? Number(dto.rooms) : undefined,
+      bedrooms: dto.bedrooms !== undefined ? Number(dto.bedrooms) : undefined,
+      bathrooms: dto.bathrooms !== undefined ? Number(dto.bathrooms) : undefined,
+      floor: dto.floor !== undefined ? Number(dto.floor) : undefined,
+      totalFloors: dto.totalFloors !== undefined ? Number(dto.totalFloors) : undefined,
+      yearBuilt: dto.yearBuilt !== undefined ? Number(dto.yearBuilt) : undefined,
+      surfaceSqm: dto.surface,
+      amenities: dto.amenities,
+      isFurnished: dto.isFurnished,
+      hasCentralHeating: dto.hasCentralHeating,
+      petFriendly: dto.petFriendly,
+      addressText: dto.addressText,
+    };
 
-    // Map DTO price -> priceEur (accept both field names)
-    if (dto.price !== undefined || (dto as any).priceEur !== undefined) {
-      updateData.priceEur = dto.price ?? (dto as any).priceEur;
-    }
-    // Map DTO surface -> surfaceSqm (accept both field names)
-    if ((dto as any).surface !== undefined || (dto as any).surfaceSqm !== undefined) {
-      updateData.surfaceSqm = (dto as any).surface ?? (dto as any).surfaceSqm;
-    }
+    // Remove undefined keys so Sequelize doesn't overwrite existing values
+    Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
 
     // GEOCODING LOGIC (same as create)
-    if ((dto as any).lat && (dto as any).lng) {
-      updateData.lat = (dto as any).lat;
-      updateData.lng = (dto as any).lng;
+    if (dto.lat && dto.lng) {
+      updateData.lat = dto.lat;
+      updateData.lng = dto.lng;
       updateData.locationSetManually = true;
-    } else if ((dto as any).addressText) {
-      const fullAddress = `${(dto as any).addressText}, ${(dto as any).city || listing.city}, Romania`;
+    } else if (dto.addressText) {
+      const fullAddress = `${dto.addressText}, ${dto.city || listing.city}, Moldova`;
       const geocoded = await this.geocodingService.geocodeAddress(fullAddress);
 
       if (geocoded) {
@@ -594,19 +617,22 @@ export class ListingService {
       return { uploaded: [], message: 'No files provided' };
     }
 
-    // Enforce subscription photo limit
-    const subscription = await this.subscriptionService.getUserSubscription(Number(ownerId));
-    const capabilities = this.subscriptionService.getUserCapabilities(subscription);
     const existingImages = await ListingImage.count({ where: { listingId: Number(id) } });
-    const totalAfterUpload = existingImages + files.length;
 
-    if (totalAfterUpload > capabilities.maxPhotos) {
-      const remaining = Math.max(0, capabilities.maxPhotos - existingImages);
-      throw new ForbiddenException(
-        `Limita de fotografii pentru planul tău este ${capabilities.maxPhotos}. ` +
-        `Ai deja ${existingImages} fotografii, mai poți adăuga ${remaining}. ` +
-        `Fă upgrade pentru a încărca mai multe.`,
-      );
+    // Enforce subscription photo limit (only when monetization is active — v1 has it OFF)
+    if (ListingService.isMonetizationEnabled()) {
+      const subscription = await this.subscriptionService.getUserSubscription(Number(ownerId));
+      const capabilities = this.subscriptionService.getUserCapabilities(subscription);
+      const totalAfterUpload = existingImages + files.length;
+
+      if (totalAfterUpload > capabilities.maxPhotos) {
+        const remaining = Math.max(0, capabilities.maxPhotos - existingImages);
+        throw new ForbiddenException(
+          `Limita de fotografii pentru planul tău este ${capabilities.maxPhotos}. ` +
+          `Ai deja ${existingImages} fotografii, mai poți adăuga ${remaining}. ` +
+          `Fă upgrade pentru a încărca mai multe.`,
+        );
+      }
     }
 
     const uploadedImages: { id: number; url: string; isPrimary: boolean }[] = [];

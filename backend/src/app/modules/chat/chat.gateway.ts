@@ -60,7 +60,10 @@ interface MarkReadPayload {
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // În producție, restricționează la domeniul tău
+    // Read allowed origins from env; falls back to localhost for dev
+    origin: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+      : ['http://localhost:3000', 'http://localhost:19006'],
     credentials: true,
   },
   namespace: '/chat',

@@ -13,22 +13,18 @@ export interface PropertyListing {
   id: number;
   title: string;
   description: string;
-  // Price: backend may send price or priceEur
-  priceEur?: number;
-  price?: number;
+  // Canonical flat fields (backend = source of truth)
+  priceEur: number;
   currency: string;
   city: string;
   neighborhood?: string;
-  area?: string;
   address?: string;
+  addressText?: string;
   transactionType: 'RENT' | 'SALE';
   propertyType: string;
   rooms: number;
   bathrooms?: number;
-  // Surface: backend may send surfaceSqm, surface, or totalArea
-  surfaceSqm?: number;
-  surface?: number;
-  totalArea?: number;
+  surfaceSqm: number;
   floor?: number;
   totalFloors?: number;
   yearBuilt?: number;
@@ -39,22 +35,21 @@ export interface PropertyListing {
   status: PropertyStatus;
   listingStatus?: string;
   publicFrom?: string;
-  // Images: backend may send images array or mainImage string
+  // Canonical: backend always emits an images array (may be empty).
   images?: PropertyImage[];
-  mainImage?: string;
-  // Owner: backend may send flat ownerName or nested owner object
+  // Owner: nested object, emitted on the detail endpoint only.
   ownerId: number;
-  ownerName?: string;
-  ownerAvatar?: string;
   owner?: {
     id: number | string;
     firstName?: string;
     lastName?: string;
     avatar?: string;
+    verificationLevel?: number;
+    phone?: string;
     isVerified?: boolean;
   };
-  viewCount?: number;
-  favoriteCount?: number;
+  viewsCount?: number;
+  leadsCount?: number;
   isPromoted?: boolean;
   lat?: number;
   lng?: number;
@@ -65,36 +60,36 @@ export interface PropertyListing {
 export interface PropertyImage {
   id: number;
   url: string;
+  // Canonical: backend emits `isPrimary` + `order`.
   isPrimary?: boolean;
-  isMain?: boolean;
+  order?: number;
 }
 
 // ============================================================================
-// HELPER FUNCTIONS — normalize API response differences
+// HELPER FUNCTIONS — derive canonical fields from the API response
 // ============================================================================
 
-/** Get property price (API may send priceEur or price) */
+/** Property price (backend emits the flat `priceEur`). */
 export function getPropertyPrice(p: PropertyListing): number {
-  return p.priceEur ?? p.price ?? 0;
+  return p.priceEur ?? 0;
 }
 
-/** Get property surface area (API may send surfaceSqm, surface, or totalArea) */
+/** Property surface area (backend emits the flat `surfaceSqm`). */
 export function getPropertySurface(p: PropertyListing): number {
-  return p.surfaceSqm ?? p.surface ?? p.totalArea ?? 0;
+  return p.surfaceSqm ?? 0;
 }
 
-/** Get property main image URL */
+/** Main image URL — derived from the canonical `images` array (primary first). */
 export function getPropertyMainImage(p: PropertyListing): string {
   if (p.images && p.images.length > 0) {
-    const primary = p.images.find(img => img.isPrimary || img.isMain);
+    const primary = p.images.find(img => img.isPrimary);
     return primary?.url || p.images[0]?.url || '';
   }
-  return p.mainImage || '';
+  return '';
 }
 
-/** Get property owner display name */
+/** Owner display name (nested `owner`, present on the detail endpoint). */
 export function getPropertyOwnerName(p: PropertyListing): string {
-  if (p.ownerName) return p.ownerName;
   if (p.owner) {
     const parts = [p.owner.firstName, p.owner.lastName].filter(Boolean);
     if (parts.length > 0) return parts.join(' ');
@@ -102,14 +97,14 @@ export function getPropertyOwnerName(p: PropertyListing): string {
   return 'Proprietar';
 }
 
-/** Get property owner avatar */
+/** Owner avatar (nested `owner`, present on the detail endpoint). */
 export function getPropertyOwnerAvatar(p: PropertyListing): string | null {
-  return p.ownerAvatar || p.owner?.avatar || null;
+  return p.owner?.avatar || null;
 }
 
-/** Get property neighborhood/area display */
+/** Neighborhood + city display. */
 export function getPropertyLocation(p: PropertyListing): string {
-  const parts = [p.neighborhood || p.area, p.city].filter(Boolean);
+  const parts = [p.neighborhood, p.city].filter(Boolean);
   return parts.join(', ');
 }
 
@@ -168,6 +163,8 @@ export interface CreatePropertyRequest {
   hasCentralHeating?: boolean;
   hasParking?: boolean;
   hasBalcony?: boolean;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface UpdatePropertyRequest {
@@ -272,13 +269,18 @@ export async function getMyProperties(): Promise<PropertyListing[]> {
  */
 export async function createProperty(data: CreatePropertyRequest): Promise<PropertyListing> {
   // Map frontend field names to backend DTO field names
-  const { priceEur, surfaceSqm, neighborhood, ...rest } = data;
-  const payload = {
+  const { priceEur, surfaceSqm, neighborhood, lat, lng, currency, ...rest } = data;
+  const payload: Record<string, unknown> = {
     ...rest,
     price: priceEur,
     surface: surfaceSqm,
     area: neighborhood,
+    // Default currency to EUR for Moldova market
+    currency: currency ?? 'EUR',
   };
+  // Include coordinates if provided by the wizard's map picker
+  if (lat != null) payload.lat = lat;
+  if (lng != null) payload.lng = lng;
   return api.fetch<PropertyListing>('/properties', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -368,7 +370,8 @@ export async function updatePropertyStatus(
   id: string | number,
   status: PropertyStatus
 ): Promise<PropertyListing> {
-  return api.fetch<PropertyListing>(`/properties/${id}/toggle-active`, {
+  // Backend route is PATCH /properties/:id/status
+  return api.fetch<PropertyListing>(`/properties/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
@@ -387,7 +390,24 @@ export async function getPropertyAnalytics(
   viewings: number;
   dailyViews: Array<{ date: string; count: number }>;
 }> {
-  return api.fetch(`/properties/${id}/stats?period=${period}`);
+  // Backend route is /properties/:id/analytics and returns snake_case fields
+  // (views_total, favorites_total, contacts, viewingsRequested). Remap to the UI shape.
+  const res = await api.fetch<{
+    views_total?: number;
+    views_unique?: number;
+    favorites_total?: number;
+    contacts?: number;
+    viewingsRequested?: number;
+    dailyViews?: Array<{ date: string; count: number }>;
+  }>(`/properties/${id}/analytics?period=${period}`);
+
+  return {
+    views: res.views_total ?? 0,
+    favorites: res.favorites_total ?? 0,
+    messages: res.contacts ?? 0,
+    viewings: res.viewingsRequested ?? 0,
+    dailyViews: res.dailyViews ?? [],
+  };
 }
 
 // ============================================================================

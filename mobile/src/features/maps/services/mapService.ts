@@ -15,7 +15,7 @@ export const getUserLocation = async (): Promise<[number, number]> => {
 
     if (status !== 'granted') {
       console.log('Location permission denied');
-      return [23.5887, 46.7712]; // Cluj-Napoca center
+      return [28.8638, 47.0105]; // Chișinău, Moldova
     }
 
     const location = await Location.getCurrentPositionAsync({
@@ -25,7 +25,7 @@ export const getUserLocation = async (): Promise<[number, number]> => {
     return [location.coords.longitude, location.coords.latitude];
   } catch (error) {
     console.error('Failed to get user location:', error);
-    return [23.5887, 46.7712]; // Cluj-Napoca center fallback
+    return [28.8638, 47.0105]; // Chișinău, Moldova fallback
   }
 };
 

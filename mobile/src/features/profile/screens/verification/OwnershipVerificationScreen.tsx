@@ -58,7 +58,7 @@ const OwnershipVerificationScreen: React.FC = () => {
 
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted && permission.status !== 'limited') {
+    if (!permission.granted && (permission.status as string) !== 'limited') {
       Alert.alert('Permisiune necesară', 'Avem nevoie de acces la galerie.');
       return;
     }

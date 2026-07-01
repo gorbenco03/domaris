@@ -18,6 +18,7 @@ import { AiConversationService } from './conversation/ai-conversation.service.js
 import { IntentRouter } from './router/intent-router.js';
 import { ToolExecutor } from './tools/executor.js';
 import { ValuationEngine } from './avm/valuation-engine.js';
+import { MlAvmClient } from './avm/ml-client.js';
 import { SearchModule } from '../search/search.module.js';
 import { ViewingModule } from '../viewing/viewing.module.js';
 
@@ -30,6 +31,7 @@ import { ViewingModule } from '../viewing/viewing.module.js';
     AiConversationService,
     IntentRouter,
     ToolExecutor,
+    MlAvmClient,
     ValuationEngine,
   ],
   exports: [AIService, AIGatewayService, AiConversationService, ValuationEngine],

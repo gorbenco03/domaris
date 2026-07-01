@@ -48,6 +48,7 @@ import { useUserProfile } from '@/features/profile/services';
 import { useOwnerAnalyticsSummary } from '@/features/analytics/services';
 import { useUnreadCount } from '@/shared/services';
 import { useMonetizationStatus } from '@/features/monetization/hooks/usePayments';
+import { MONETIZATION_ENABLED } from '@/config/env';
 // useRequireVerification removed - KYC no longer required
 import {
   Avatar,
@@ -355,11 +356,8 @@ const ProfileScreen: React.FC = () => {
               if (!canCreateListing) {
                 Alert.alert(
                   'Limită atinsă',
-                  `Ai atins limita de ${monetizationStatus?.capabilities?.maxActiveListings || 1} anunțuri active pentru planul tău. Fă upgrade pentru a publica mai multe.`,
-                  [
-                    { text: 'Anulează', style: 'cancel' },
-                    { text: 'Vezi planurile', onPress: () => navigation.navigate('Pricing') },
-                  ],
+                  `Ai atins limita de anunțuri active pentru contul tău. Contactează suportul la support@riva.md pentru mai multe informații.`,
+                  [{ text: 'OK', style: 'cancel' }],
                 );
                 return;
               }
@@ -390,15 +388,17 @@ const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Premium Section */}
-        <ProfileSection title="Premium">
-          <ProfileMenuItem
-            icon={<Sparkles />}
-            label="Planuri de abonament"
-            description="Vezi toate beneficiile Premium"
-            onPress={() => navigation.navigate('Pricing')}
-          />
-        </ProfileSection>
+        {/* Premium Section — hidden at v1 while monetization is OFF */}
+        {MONETIZATION_ENABLED && (
+          <ProfileSection title="Premium">
+            <ProfileMenuItem
+              icon={<Sparkles />}
+              label="Planuri de abonament"
+              description="Vezi toate beneficiile Premium"
+              onPress={() => navigation.navigate('Pricing')}
+            />
+          </ProfileSection>
+        )}
 
         {/* Core Features Section */}
         <ProfileSection title="Activitate">

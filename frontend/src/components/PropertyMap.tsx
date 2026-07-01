@@ -30,12 +30,13 @@ export const PropertyMap = ({ properties, onViewDetails }: PropertyMapProps) => 
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    mapboxgl.accessToken = "pk.eyJ1IjoicmFkdWM0IiwiYSI6ImNtamhjaGd0bzFiamozZXF4c2dxaWx6N3cifQ.91u_TJ3Zv2qkw8d5LW53vg";
+    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
+    // Default center: Chișinău, Moldova
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/light-v11",
-      center: [26.1025, 44.4268],
+      center: [28.8575, 47.0105],
       zoom: 11,
     });
 
@@ -83,73 +84,80 @@ export const PropertyMap = ({ properties, onViewDetails }: PropertyMapProps) => 
       markerContent.onmouseout = () => { markerContent.style.transform = 'scale(1)'; };
       el.appendChild(markerContent);
 
-      const popupContent = `
-        <div id="popup-card-${property.id}" class="property-popup" style="width: 280px; padding: 0; margin: 0; cursor: pointer;">
-          <div style="position: relative;">
-            <img 
-              src="${property.image}" 
-              alt="${property.title}" 
-              style="width: 100%; height: 160px; object-fit: cover; border-radius: 8px 8px 0 0;"
-            />
-            <span style="
-              position: absolute; 
-              top: 8px; 
-              left: 8px; 
-              background: ${property.priceType === 'rent' ? 'hsl(var(--primary))' : 'hsl(var(--accent))'};
-              color: white;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 11px;
-              font-weight: 600;
-            ">
-              ${property.priceType === 'rent' ? 'De închiriat' : 'De vânzare'}
-            </span>
-          </div>
-          <div style="padding: 12px;">
-            <p style="font-weight: 700; font-size: 18px; color: hsl(var(--primary)); margin: 0 0 4px 0;">
-              ${property.price}${property.priceType === 'rent' ? '/lună' : ''}
-            </p>
-            <p style="font-weight: 600; font-size: 14px; margin: 0 0 4px 0; color: hsl(var(--foreground));">
-              ${property.title}
-            </p>
-            <p style="font-size: 12px; color: hsl(var(--muted-foreground)); margin: 0 0 8px 0;">
-              ${property.location}
-            </p>
-            <div style="display: flex; gap: 12px; font-size: 12px; color: hsl(var(--muted-foreground));">
-              <span>${property.rooms} camere</span>
-              <span>•</span>
-              <span>${property.baths} băi</span>
-              <span>•</span>
-              <span>${property.area} m²</span>
-            </div>
-          </div>
-        </div>
-      `;
+      // Build popup DOM safely (no innerHTML/setHTML to avoid XSS)
+      const popupNode = document.createElement("div");
+      popupNode.style.cssText = "width:280px;padding:0;margin:0;cursor:pointer;";
+      popupNode.dataset.popupId = String(property.id);
 
-      const popup = new mapboxgl.Popup({ 
-        offset: 25, 
+      const imgWrapper = document.createElement("div");
+      imgWrapper.style.position = "relative";
+
+      if (property.image) {
+        const img = document.createElement("img");
+        img.src = property.image;
+        img.alt = "";
+        img.style.cssText = "width:100%;height:160px;object-fit:cover;border-radius:8px 8px 0 0;";
+        imgWrapper.appendChild(img);
+      }
+
+      const badge = document.createElement("span");
+      badge.style.cssText = `
+        position:absolute;top:8px;left:8px;
+        background:${property.priceType === "rent" ? "hsl(var(--primary))" : "hsl(var(--accent))"};
+        color:white;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;
+      `;
+      badge.textContent = property.priceType === "rent" ? "De închiriat" : "De vânzare";
+      imgWrapper.appendChild(badge);
+      popupNode.appendChild(imgWrapper);
+
+      const info = document.createElement("div");
+      info.style.padding = "12px";
+
+      const priceEl = document.createElement("p");
+      priceEl.style.cssText = "font-weight:700;font-size:18px;color:hsl(var(--primary));margin:0 0 4px 0;";
+      priceEl.textContent = property.price + (property.priceType === "rent" ? "/lună" : "");
+      info.appendChild(priceEl);
+
+      const titleEl = document.createElement("p");
+      titleEl.style.cssText = "font-weight:600;font-size:14px;margin:0 0 4px 0;color:hsl(var(--foreground));";
+      titleEl.textContent = property.title;
+      info.appendChild(titleEl);
+
+      const locEl = document.createElement("p");
+      locEl.style.cssText = "font-size:12px;color:hsl(var(--muted-foreground));margin:0 0 8px 0;";
+      locEl.textContent = property.location;
+      info.appendChild(locEl);
+
+      const detailsEl = document.createElement("div");
+      detailsEl.style.cssText = "display:flex;gap:12px;font-size:12px;color:hsl(var(--muted-foreground));";
+      const rooms = document.createElement("span"); rooms.textContent = `${property.rooms} camere`;
+      const sep1 = document.createElement("span"); sep1.textContent = "•";
+      const baths = document.createElement("span"); baths.textContent = `${property.baths} băi`;
+      const sep2 = document.createElement("span"); sep2.textContent = "•";
+      const area = document.createElement("span"); area.textContent = `${property.area} m²`;
+      detailsEl.append(rooms, sep1, baths, sep2, area);
+      info.appendChild(detailsEl);
+      popupNode.appendChild(info);
+
+      const popup = new mapboxgl.Popup({
+        offset: 25,
         closeButton: true,
         closeOnClick: false,
         maxWidth: "300px",
-        className: "property-card-popup"
-      }).setHTML(popupContent);
+        className: "property-card-popup",
+      }).setDOMContent(popupNode);
 
-      popup.on('open', () => {
+      // Attach click handler directly to the DOM node (no querySelector needed)
+      popupNode.addEventListener("click", () => {
+        onViewDetails?.(property.id);
+      });
+
+      popup.on("open", () => {
         // Close any other open popup
         if (activePopupRef.current && activePopupRef.current !== popup) {
           activePopupRef.current.remove();
         }
         activePopupRef.current = popup;
-
-        // Add click handler for the entire card
-        setTimeout(() => {
-          const card = document.getElementById(`popup-card-${property.id}`);
-          if (card) {
-            card.addEventListener('click', () => {
-              onViewDetails?.(property.id);
-            });
-          }
-        }, 10);
       });
 
       const marker = new mapboxgl.Marker({ element: el })

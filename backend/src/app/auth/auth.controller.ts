@@ -28,6 +28,7 @@ import {
   HttpStatus,
   UseGuards,
   Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -56,6 +57,7 @@ import {
 } from './dto/auth.dto';
 import { Public, CurrentUserId } from '../core/decorators';
 import { AuthGuard } from './auth.guard';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -67,6 +69,7 @@ export class AuthController {
   // ============================================================================
 
   @Public()
+  @Throttle({ auth: { limit: 5, ttl: 60000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register with email (sends OTP)' })
   @ApiResponse({ status: 200, description: 'OTP sent', type: OtpSentResponseDto })
@@ -77,6 +80,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ auth: { limit: 10, ttl: 60000 } })
   @Post('verify-email-otp')
   @ApiOperation({ summary: 'Verify email OTP (completes register)' })
   @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
@@ -91,6 +95,7 @@ export class AuthController {
   // ============================================================================
 
   @Public()
+  @Throttle({ auth: { limit: 10, ttl: 60000 } })
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'JWT tokens', type: AuthResponseDto })
@@ -99,7 +104,7 @@ export class AuthController {
   async login(@Body() body: LoginDto, @Req() req: any) {
     const user = await this.authService.validateUser(body.email, body.password);
     if (!user) {
-      throw new Error('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
     return this.authService.login(user, req.ip, req.headers['user-agent']);
   }
@@ -131,6 +136,7 @@ export class AuthController {
   // ============================================================================
 
   @Public()
+  @Throttle({ auth: { limit: 5, ttl: 60000 } })
   @Post('forgot-password')
   @ApiOperation({ summary: 'Request password reset' })
   @ApiResponse({ status: 200, description: 'Reset code sent (if email exists)' })

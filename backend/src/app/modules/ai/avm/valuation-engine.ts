@@ -14,6 +14,7 @@ import { Op } from 'sequelize';
 import { Listing } from '../../../db/entities/listing.entity.js';
 import { AVMInput, AVMResult, AVMFactor, AVMExplanation } from '../types/index.js';
 import * as crypto from 'crypto';
+import { MlAvmClient } from './ml-client.js';
 
 interface ComparableProperty {
   id: number;
@@ -28,17 +29,22 @@ interface ComparableProperty {
   similarityScore: number;
 }
 
+/** Minimum ML confidence_score (0-1) required to use the ML prediction. */
+const ML_MIN_CONFIDENCE = 0.4;
+
 @Injectable()
 export class ValuationEngine {
   private readonly logger = new Logger(ValuationEngine.name);
   private openai: OpenAI | null = null;
   private readonly cache = new Map<string, { result: AVMResult; expiresAt: Date }>();
+  private readonly mlClient: MlAvmClient;
 
-  constructor() {
+  constructor(mlAvmClient: MlAvmClient) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (apiKey) {
       this.openai = new OpenAI({ apiKey });
     }
+    this.mlClient = mlAvmClient;
   }
 
   // ========================================================================
@@ -57,9 +63,72 @@ export class ValuationEngine {
 
     this.logger.log(`Computing AVM for: ${input.city}, ${input.rooms} rooms, ${input.surfaceSqm}sqm`);
 
-    // Step 1: Find comparable properties
-    const comparables = await this.findComparables(input);
+    // Step 1: Fan-out — run ML call and DB comparable search in parallel
+    const [mlPrediction, comparables] = await Promise.all([
+      this.mlClient.predict(input),
+      this.findComparables(input),
+    ]);
 
+    // ── Branch A: ML service responded with sufficient confidence ────────────
+    if (mlPrediction && mlPrediction.confidence_score >= ML_MIN_CONFIDENCE) {
+      this.logger.log(
+        `Using ML prediction: ${mlPrediction.predicted_price} EUR ` +
+        `(confidence=${mlPrediction.confidence_score}, model=${mlPrediction.model_version})`,
+      );
+
+      // Liquidity / deal scores still use comparables when available
+      const liquidityScore = this.computeLiquidityScore(input, comparables);
+      const dealScore = comparables.length > 0
+        ? this.computeDealAttractivenessScore(mlPrediction.predicted_price, comparables)
+        : 50;
+
+      const result: AVMResult = {
+        recommendedPrice: Math.round(mlPrediction.predicted_price),
+        priceRange: {
+          min: Math.round(mlPrediction.price_min),
+          max: Math.round(mlPrediction.price_max),
+        },
+        currency: 'EUR',
+        liquidityScore,
+        dealAttractivenessScore: dealScore,
+        confidence: mlPrediction.confidence_score,
+        confidenceBreakdown: {
+          compCount: comparables.length,
+          featureCoverage: this.computeFeatureCoverage(input),
+          areaVolatility: comparables.length > 1 ? this.computeAreaVolatility(comparables) : 0,
+        },
+        comparables: {
+          count: comparables.length,
+          avgPrice: comparables.length > 0
+            ? Math.round(comparables.reduce((s, c) => s + c.priceEur, 0) / comparables.length)
+            : 0,
+          avgPricePerSqm: comparables.length > 0
+            ? Math.round(comparables.reduce((s, c) => s + c.pricePerSqm, 0) / comparables.length)
+            : 0,
+          medianPrice: comparables.length > 0 ? this.median(comparables.map(c => c.priceEur)) : 0,
+        },
+        factors: [],
+        computedAt: new Date(),
+        cacheKey,
+        source: 'ml',
+        mlModelVersion: mlPrediction.model_version,
+      };
+
+      this.cache.set(cacheKey, {
+        result,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+      return result;
+    }
+
+    // ── Branch B: CMA (comparables) path ────────────────────────────────────
+    if (mlPrediction && mlPrediction.confidence_score < ML_MIN_CONFIDENCE) {
+      this.logger.warn(
+        `ML confidence too low (${mlPrediction.confidence_score} < ${ML_MIN_CONFIDENCE}), falling back to CMA`,
+      );
+    }
+
+    // Not enough comparables — return low-confidence result instead of price=0
     if (comparables.length < 3) {
       return this.insufficientDataResult(input, comparables.length, cacheKey);
     }
@@ -99,6 +168,7 @@ export class ValuationEngine {
       factors,
       computedAt: new Date(),
       cacheKey,
+      source: 'cma',
     };
 
     // Cache for 24 hours
@@ -532,9 +602,14 @@ Respond in Romanian. Be professional but accessible.`;
     compCount: number,
     cacheKey: string,
   ): AVMResult {
+    this.logger.warn(
+      `Insufficient comparables (${compCount}) and ML unavailable for: ${input.city}, ${input.rooms}rm, ${input.surfaceSqm}sqm`,
+    );
     return {
-      recommendedPrice: 0,
-      priceRange: { min: 0, max: 0 },
+      // recommendedPrice of -1 clearly signals "unknown" without being a
+      // silently-wrong 0.  Consumers MUST check insufficientData before use.
+      recommendedPrice: -1,
+      priceRange: { min: -1, max: -1 },
       currency: 'EUR',
       liquidityScore: 0,
       dealAttractivenessScore: 0,
@@ -553,6 +628,8 @@ Respond in Romanian. Be professional but accessible.`;
       factors: [],
       computedAt: new Date(),
       cacheKey,
+      source: 'cma',
+      insufficientData: true,
     };
   }
 
@@ -562,6 +639,29 @@ Respond in Romanian. Be professional but accessible.`;
     forSeller: boolean,
   ): AVMExplanation {
     const priceUnit = input.transactionType === 'RENT' ? '/lună' : '';
+
+    // Date insuficiente: nu afișa preț numeric (ar fi „-1 EUR"), ci un mesaj onest.
+    if (avmResult.insufficientData || avmResult.recommendedPrice < 0) {
+      const loc = `${input.city}${input.neighborhood ? `, ${input.neighborhood}` : ''}`;
+      return {
+        summary: `Momentan nu există suficiente date comparabile pentru a estima un preț de încredere pentru această proprietate din ${loc}.`,
+        priceJustification: `Pentru o evaluare automată fiabilă este nevoie de mai multe proprietăți similare în zonă. Pe măsură ce apar anunțuri și tranzacții comparabile, estimarea va deveni disponibilă.`,
+        marketContext: `Sunt prea puține proprietăți comparabile în ${loc} pentru o evaluare automată în acest moment.`,
+        recommendations: forSeller
+          ? [
+              'Stabilește prețul comparând manual cu anunțuri similare recente',
+              'Adaugă cât mai multe detalii și fotografii de calitate',
+              'Reia estimarea după ce apar mai multe anunțuri în zonă',
+            ]
+          : [
+              'Compară manual cu alte anunțuri din zonă',
+              'Solicită o evaluare profesională dacă este necesar',
+            ],
+        sellerTips: forSeller
+          ? ['Estimarea automată va fi disponibilă când vor exista mai multe date comparabile în zonă']
+          : undefined,
+      };
+    }
 
     return {
       summary: `Prețul recomandat pentru această proprietate este ${avmResult.recommendedPrice} EUR${priceUnit}, bazat pe analiza a ${avmResult.comparables.count} proprietăți similare din zonă.`,

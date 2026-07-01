@@ -162,7 +162,8 @@ export class UserService {
 
     user.avatar = avatarUrl;
     await user.save();
-    return { success: true, avatar: avatarUrl };
+    // Consistent single-field response: { avatar: <url> }
+    return { avatar: avatarUrl };
   }
 
   // ============================================================================

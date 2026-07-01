@@ -62,7 +62,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
-    if (status !== 'granted' && status !== 'limited') {
+    if (status !== 'granted' && (status as string) !== 'limited') {
       Alert.alert(
         'Permisiune necesară',
         'Avem nevoie de acces la galeria ta pentru a încărca fotografii.'

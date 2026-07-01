@@ -129,7 +129,7 @@ export default function PropertyInsightsPage() {
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Building className="h-4 w-4" />
-              {property.rooms} camere · {property.surfaceSqm ?? property.surface ?? property.totalArea ?? 0} m²
+              {property.rooms} camere · {property.surfaceSqm ?? 0} m²
             </div>
             <div className="flex items-center gap-2 text-sm font-semibold text-primary">
               <DollarSign className="h-4 w-4" />
@@ -194,7 +194,7 @@ export default function PropertyInsightsPage() {
           )}
 
           {/* AVM Valuation */}
-          {valuation && (
+          {valuation && !valuation.valuation.insufficientData && (valuation.valuation.recommendedPrice ?? -1) >= 0 && (
             <div className="rounded-2xl border border-border bg-card p-6">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="h-5 w-5 text-primary" />
@@ -218,7 +218,7 @@ export default function PropertyInsightsPage() {
               <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
                 <span>Încredere: {Math.round(valuation.valuation.confidence * 100)}%</span>
                 <span>·</span>
-                <span>Lichiditate: {Math.round(valuation.valuation.liquidityScore * 100)}%</span>
+                <span>Lichiditate: {Math.round(valuation.valuation.liquidityScore)}%</span>
                 {valuation.valuation.comparables.count > 0 && (
                   <>
                     <span>·</span>

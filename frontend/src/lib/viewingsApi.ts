@@ -90,6 +90,52 @@ export interface ViewingAvailability {
   defaultDuration: number;
 }
 
+/**
+ * Translate the backend viewing shape (formatViewing) into the UI Viewing shape.
+ * Backend sends: slot{date,startTime,endTime}, lowercase status, `seeker` (owner view),
+ * `owner` (seeker view), property.imageUrl, isOwner. The UI reads scheduledAt,
+ * requester/owner, property.image, UPPERCASE status.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapBackendViewing(v: any): Viewing {
+  if (!v || typeof v !== 'object') return v;
+
+  const slot = v.slot;
+  const scheduledAt: string | undefined = slot?.date
+    ? `${slot.date}T${slot.startTime || '00:00'}:00`
+    : v.scheduledAt || v.confirmedDate || v.createdAt;
+
+  const statusUpper = String(v.status || 'PENDING').toUpperCase() as ViewingStatus;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapParticipant = (p: any): ViewingParticipant | null =>
+    p ? { id: p.id, name: p.name, firstName: p.firstName, lastName: p.lastName, avatar: p.avatar, phone: p.phone } : null;
+
+  const requester = mapParticipant(v.requester ?? v.seeker);
+  const owner = mapParticipant(v.owner);
+
+  const property: ViewingProperty | null = v.property
+    ? {
+        id: v.property.id,
+        title: v.property.title,
+        address: v.property.address,
+        city: v.property.city,
+        image: v.property.image ?? v.property.imageUrl ?? v.property.mainImage,
+      }
+    : null;
+
+  return {
+    ...v,
+    status: statusUpper,
+    scheduledAt,
+    requester,
+    owner,
+    property,
+    role: v.isOwner ? 'OWNER' : 'REQUESTER',
+    otherParty: v.isOwner ? requester : owner,
+  };
+}
+
 // ============================================================================
 // VIEWINGS ENDPOINTS (Authenticated)
 // ============================================================================
@@ -110,10 +156,11 @@ export async function getViewings(params?: {
   const query = queryParams.toString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const response = await api.fetch<any>(`/viewings${query ? `?${query}` : ''}`);
-  
-  if (Array.isArray(response)) return response;
-  if (response?.data && Array.isArray(response.data)) return response.data;
-  return [];
+
+  const rows = Array.isArray(response)
+    ? response
+    : (response?.data && Array.isArray(response.data) ? response.data : []);
+  return rows.map(mapBackendViewing);
 }
 
 /**
@@ -122,16 +169,19 @@ export async function getViewings(params?: {
 export async function getUpcomingViewings(): Promise<Viewing[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const response = await api.fetch<any>('/viewings/upcoming');
-  if (Array.isArray(response)) return response;
-  if (response?.data && Array.isArray(response.data)) return response.data;
-  return [];
+  const rows = Array.isArray(response)
+    ? response
+    : (response?.data && Array.isArray(response.data) ? response.data : []);
+  return rows.map(mapBackendViewing);
 }
 
 /**
  * Get viewing by ID
  */
 export async function getViewingById(id: string): Promise<Viewing> {
-  return api.fetch<Viewing>(`/viewings/${id}`);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = await api.fetch<any>(`/viewings/${id}`);
+  return mapBackendViewing(res);
 }
 
 /**

@@ -18,7 +18,13 @@ import type { IPublicUserProfile } from './user.interface.js';
 // ============================================================================
 
 /**
- * Interfața principală Property
+ * Interfața principală Property (structură nested: location/pricing/characteristics/media).
+ *
+ * @deprecated Backend-ul emite o formă FLAT pentru listinguri
+ * (`priceEur`, `surfaceSqm`, `neighborhood`, `images: {id,url,isPrimary,order}[]`,
+ * `owner?` nested). Folosește `Listing` din `listing.interface.ts` (formă canonică flat)
+ * sau `IPropertyListItem` pentru elemente de listă. Această interfață nested NU reflectă
+ * răspunsul API și este păstrată doar pentru compatibilitate.
  */
 export interface IProperty {
   id: string;

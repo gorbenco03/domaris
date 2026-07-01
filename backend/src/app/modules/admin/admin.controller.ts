@@ -2,13 +2,14 @@ import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query, Re
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { S3Service } from '../../s3/s3.service.js';
-import { AuthOnly, CurrentUser } from '../../core/decorators.js';
+import { AuthOnly, CurrentUser, RequireAdmin } from '../../core/decorators.js';
 import { AdminGuard } from '../../core/admin.guard.js';
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @Controller('admin')
 @AuthOnly()
+@RequireAdmin()
 @UseGuards(AdminGuard)
 export class AdminController {
     constructor(

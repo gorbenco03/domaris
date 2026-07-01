@@ -6,7 +6,7 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { IProperty } from '@/core/api/types';
+import type { IProperty, IPropertyListItem } from '@/core/api/types';
 
 // ============================================
 // AUTH STACK
@@ -77,6 +77,7 @@ export type SearchStackParamList = {
   SearchFilters: undefined;
   MapSearch: undefined;
   SavedSearches: undefined;
+  SavedSearchResults: { searchId: number };
   AIChat: { conversationId?: number };
   AiConversationsList: undefined;
   PropertyInsights: { propertyId: string };
@@ -120,7 +121,7 @@ export type ProfileStackParamList = {
   NotificationSettings: undefined;
   MyProperties: undefined;
   CreateProperty: undefined;
-  EditProperty: { propertyId: string; property?: IProperty };
+  EditProperty: { propertyId: string; property?: IProperty | IPropertyListItem };
   PropertyStats: { propertyId: string };
   Viewings: undefined;
   ViewingDetail: { viewingId: string };

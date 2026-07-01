@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,13 @@ import {
   PublicUserProfile,
   UserListing,
 } from "@/lib/userApi";
+import { startConversation } from "@/lib/messagingApi";
 import { getUserReviews, getUserReviewStats } from "@/lib/reviewsApi";
 import { formatDistanceToNow } from "date-fns";
 import { ro } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Review {
   id: number;
@@ -49,6 +52,8 @@ type Tab = "listings" | "reviews";
 export default function PublicProfilePage() {
   const params = useParams();
   const userId = params.id as string;
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
   const [profile, setProfile] = useState<PublicUserProfile | null>(null);
   const [listings, setListings] = useState<UserListing[]>([]);
@@ -57,6 +62,7 @@ export default function PublicProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("listings");
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -95,6 +101,23 @@ export default function PublicProfilePage() {
   const getFullName = () => {
     if (!profile) return "Utilizator";
     return [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+  };
+
+  const handleContactUser = async () => {
+    if (!isAuthenticated) {
+      toast.error("Trebuie să fii autentificat pentru a trimite mesaje.");
+      router.push("/auth");
+      return;
+    }
+    setIsStartingConversation(true);
+    try {
+      const conversation = await startConversation({ participantId: Number(userId) });
+      router.push(`/messages?chat=${conversation.id}`);
+    } catch {
+      toast.error("Nu am putut porni conversația. Încearcă din nou.");
+    } finally {
+      setIsStartingConversation(false);
+    }
   };
 
   const getInitials = () => {
@@ -240,11 +263,18 @@ export default function PublicProfilePage() {
 
         {/* Contact Button */}
         <div className="mb-8">
-          <Button asChild className="w-full" size="lg">
-            <Link href={`/messages?chat=${userId}`}>
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleContactUser}
+            disabled={isStartingConversation}
+          >
+            {isStartingConversation ? (
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
               <MessageCircle className="mr-2 h-5 w-5" />
-              Contactează
-            </Link>
+            )}
+            Contactează
           </Button>
         </div>
 

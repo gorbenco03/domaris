@@ -38,11 +38,31 @@ import { Global, Module } from '@nestjs/common';
                         port: process.env.REDIS_PORT
                     });
                     
-                    // Return a mock client that won't crash the app but actually stores data
-                    console.warn('⚠️ [RedisModule] Using InMemoryRedis fallback');
-                    
+                    // WARNING: in-memory fallback loses data on restart and does NOT
+                    // work across multiple server instances. Redis is REQUIRED in production.
+                    // If NODE_ENV=production and Redis is unavailable, the app will NOT start.
+                    if (process.env.NODE_ENV === 'production') {
+                        throw new Error(
+                            '[RedisModule] Redis is required in production but failed to connect. ' +
+                            'Check REDIS_HOST / REDIS_PORT / REDIS_PASSWORD and ensure Redis is running.'
+                        );
+                    }
+
+                    console.warn('⚠️ [RedisModule] Using InMemoryRedis fallback (development only)');
+
                     const store = new Map<string, any>();
-                    
+                    const expireTimers = new Map<string, NodeJS.Timeout>();
+
+                    const scheduleExpiry = (key: string, seconds: number) => {
+                        const existing = expireTimers.get(key);
+                        if (existing) clearTimeout(existing);
+                        const timer = setTimeout(() => {
+                            store.delete(key);
+                            expireTimers.delete(key);
+                        }, seconds * 1000);
+                        expireTimers.set(key, timer);
+                    };
+
                     return {
                         set: async (key: string, value: string) => {
                             store.set(key, value);
@@ -53,27 +73,33 @@ import { Global, Module } from '@nestjs/common';
                             return typeof val === 'string' ? val : null;
                         },
                         del: async (key: string) => {
+                            const existed = store.has(key);
                             store.delete(key);
-                            return 1;
+                            const timer = expireTimers.get(key);
+                            if (timer) { clearTimeout(timer); expireTimers.delete(key); }
+                            return existed ? 1 : 0;
                         },
                         exists: async (key: string) => {
                             return store.has(key) ? 1 : 0;
                         },
                         setex: async (key: string, seconds: number, value: string) => {
                             store.set(key, value);
-                            setTimeout(() => {
-                                store.delete(key);
-                            }, seconds * 1000);
+                            scheduleExpiry(key, seconds);
                             return 'OK';
                         },
                         expire: async (key: string, seconds: number) => {
                             if (store.has(key)) {
-                                setTimeout(() => {
-                                    store.delete(key);
-                                }, seconds * 1000);
+                                scheduleExpiry(key, seconds);
                                 return 1;
                             }
                             return 0;
+                        },
+                        // Atomic increment — used by OTP attempt tracking
+                        incr: async (key: string) => {
+                            const current = store.get(key);
+                            const next = (parseInt(typeof current === 'string' ? current : '0', 10) || 0) + 1;
+                            store.set(key, next.toString());
+                            return next;
                         },
                         // Set operations
                         sadd: async (key: string, ...members: string[]) => {

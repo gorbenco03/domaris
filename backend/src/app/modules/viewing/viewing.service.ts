@@ -379,7 +379,41 @@ export class ViewingService {
     }
     await viewing.save();
 
-    // TODO: Send notification to other party
+    // Notifică cealaltă parte despre schimbarea de status
+    try {
+      const recipientId = isOwner ? viewing.seekerId : viewing.property?.ownerId;
+      if (recipientId) {
+        const propertyTitle = (viewing as any).property?.title || 'proprietatea';
+        const slotFormatted = viewing.slot ? format(viewing.slot, 'dd.MM.yyyy HH:mm') : '';
+
+        const notifMap: Record<string, { title: string; body: string }> = {
+          CONFIRMED: {
+            title: '✅ Vizionare confirmată!',
+            body: `Vizionarea pentru "${propertyTitle}" a fost confirmată${slotFormatted ? ` pentru ${slotFormatted}` : ''}.`,
+          },
+          REJECTED: {
+            title: '❌ Vizionare respinsă',
+            body: `Vizionarea pentru "${propertyTitle}" a fost respinsă${reason ? `: ${reason}` : ''}.`,
+          },
+          CANCELLED: {
+            title: '🚫 Vizionare anulată',
+            body: `Vizionarea pentru "${propertyTitle}" a fost anulată${reason ? `: ${reason}` : ''}.`,
+          },
+        };
+
+        const notif = notifMap[status];
+        if (notif) {
+          await this.notificationService.create(recipientId, {
+            type: `viewing_${status.toLowerCase()}`,
+            title: notif.title,
+            body: notif.body,
+            metadata: { viewingId, propertyId: viewing.propertyId },
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('[ViewingService] Failed to send status notification:', err?.message);
+    }
 
     return this.getViewing(userId, viewingId);
   }
@@ -411,7 +445,22 @@ export class ViewingService {
     }
     await viewing.save();
 
-    // TODO: Send notification
+    // Notifică cealaltă parte despre reprogramare
+    try {
+      const recipientId = isOwner ? viewing.seekerId : viewing.property?.ownerId;
+      if (recipientId) {
+        const propertyTitle = (viewing as any).property?.title || 'proprietatea';
+        const slotFormatted = format(new Date(newSlot), 'dd.MM.yyyy HH:mm');
+        await this.notificationService.create(recipientId, {
+          type: 'viewing_rescheduled',
+          title: '📅 Vizionare reprogramată',
+          body: `Vizionarea pentru "${propertyTitle}" a fost reprogramată la ${slotFormatted}${reason ? `: ${reason}` : ''}.`,
+          metadata: { viewingId, propertyId: viewing.propertyId, newSlot },
+        });
+      }
+    } catch (err: any) {
+      console.error('[ViewingService] Failed to send reschedule notification:', err?.message);
+    }
 
     return this.getViewing(userId, viewingId);
   }

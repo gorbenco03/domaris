@@ -85,7 +85,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
     const estimate = estimateQuery.data;
     const currentPrice = analysisInput.priceEur || 0;
     const percentDiff = analysis.priceAnalysis?.percentDiff ?? 0;
-    const status =
+    const status: 'optimal' | 'high' | 'low' =
       analysis.priceAnalysis.isReasonable
         ? 'optimal'
         : percentDiff < 0

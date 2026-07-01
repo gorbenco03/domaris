@@ -152,6 +152,26 @@ export default function PricingPage() {
     return `${price} €/lună`;
   };
 
+  // Monetization disabled at v1
+  if (process.env.NEXT_PUBLIC_MONETIZATION_ENABLED !== "true") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <Zap className="mx-auto h-16 w-16 text-muted-foreground" />
+          <h1 className="mt-4 text-2xl font-bold">Planurile premium nu sunt disponibile momentan</h1>
+          <p className="mt-2 text-muted-foreground">
+            RIVA este gratuit pentru toți utilizatorii în această etapă. Planurile premium vor fi lansate în curând.
+          </p>
+          <Button asChild className="mt-6">
+            <Link href="/">Înapoi acasă</Link>
+          </Button>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />

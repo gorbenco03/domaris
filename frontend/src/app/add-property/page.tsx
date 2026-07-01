@@ -578,9 +578,8 @@ function Step6OwnershipVerification({
       </div>
 
       <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-4 text-sm text-foreground">
-        Încarcă un document care dovedește că ești proprietarul. Anunțul tău va primi un badge de
-        <strong> „Proprietate verificată"</strong> după aprobarea echipei noastre.
-        Fără document, anunțul va avea badge-ul <strong>„Neverificat"</strong>.
+        Poți încărca un document care dovedește că ești proprietarul (opțional). Verificarea documentelor și badge-ul
+        <strong> „Proprietate verificată"</strong> vor fi disponibile într-o versiune viitoare a platformei.
       </div>
 
       <div>
@@ -781,6 +780,7 @@ export default function AddPropertyPage() {
         propertyType: form.propertyType || "APARTMENT",
         transactionType: form.transactionType || "SALE",
         priceEur: parseFloat(form.priceEur),
+        currency: 'EUR',
         city: form.city,
         neighborhood: form.neighborhood || undefined,
         address: form.address || undefined,
@@ -794,6 +794,8 @@ export default function AddPropertyPage() {
         hasCentralHeating: form.hasCentralHeating,
         hasParking: form.hasParking,
         hasBalcony: form.hasBalcony,
+        lat: form.lat ?? undefined,
+        lng: form.lng ?? undefined,
       };
 
       const property = await createProperty(data);
@@ -856,9 +858,12 @@ export default function AddPropertyPage() {
           </div>
           <h1 className="text-2xl font-bold">Anunțul a fost publicat!</h1>
           <p className="mt-3 text-muted-foreground">
-            {form.ownershipDoc
-              ? "Anunțul tău este vizibil. Documentul de proprietate va fi verificat de echipa noastră."
-              : "Anunțul tău este acum vizibil pentru toți utilizatorii."}
+            Anunțul tău este acum vizibil pentru toți utilizatorii.
+            {form.ownershipDoc && (
+              <span className="block mt-2 text-sm">
+                Documentul de proprietate a fost salvat local. Verificarea documentelor va fi disponibilă într-o versiune viitoare.
+              </span>
+            )}
           </p>
           <div className="mt-8 flex justify-center gap-4">
             <Button variant="outline" asChild><Link href="/my-properties">Proprietățile mele</Link></Button>

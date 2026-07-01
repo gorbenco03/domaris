@@ -1,0 +1,132 @@
+{
+  "model_version": "riva-avm-v1.0.0",
+  "trained_at": "2026-06-25T18:17:15.587839",
+  "train_samples": 689,
+  "val_samples": 141,
+  "test_samples": 147,
+  "feature_count": 36,
+  "features": [
+    "rooms",
+    "surface_sqm",
+    "floor",
+    "total_floors",
+    "amenities_count",
+    "lat",
+    "lng",
+    "building_age",
+    "floor_ratio",
+    "is_ground_floor",
+    "is_top_floor",
+    "dist_to_center_km",
+    "neighborhood_encoded",
+    "zone_cluster",
+    "transaction_month",
+    "transaction_year",
+    "amenity_parking",
+    "amenity_elevator",
+    "amenity_balcony",
+    "amenity_garage",
+    "amenity_storage",
+    "amenity_security",
+    "amenity_interphone",
+    "amenity_gas",
+    "amenity_internet",
+    "city_balti",
+    "city_cahul",
+    "city_chisinau",
+    "city_orhei",
+    "city_soroca",
+    "city_ungheni",
+    "property_type_apartment",
+    "property_type_house",
+    "property_type_studio",
+    "property_type_villa",
+    "is_furnished"
+  ],
+  "optuna_trials": 30,
+  "best_optuna_params": {
+    "num_leaves": 121,
+    "learning_rate": 0.15735495259556462,
+    "feature_fraction": 0.8498009794634057,
+    "bagging_fraction": 0.728803379010198,
+    "bagging_freq": 6,
+    "min_child_samples": 10,
+    "reg_alpha": 0.015511394289104679,
+    "reg_lambda": 0.00010291045136069805
+  },
+  "metrics_val": {
+    "MAE": 56901.48,
+    "MAPE": 27.26,
+    "RMSE": 85753.39,
+    "R2": 0.8589
+  },
+  "metrics_test": {
+    "MAE": 63693.42,
+    "MAPE": 26.39,
+    "RMSE": 99143.91,
+    "R2": 0.8209
+  },
+  "baseline_metrics": {
+    "ZoneMean_val": {
+      "MAE": 178407.37,
+      "MAPE": 176.77,
+      "RMSE": 229332.25,
+      "R2": -0.0094
+    },
+    "ZoneMean_test": {
+      "MAE": 180052.94,
+      "MAPE": 147.47,
+      "RMSE": 233070.02,
+      "R2": 0.0103
+    },
+    "ZoneMedian_val": {
+      "MAE": 160636.73,
+      "MAPE": 112.51,
+      "RMSE": 240100.73,
+      "R2": -0.1065
+    },
+    "ZoneMedian_test": {
+      "MAE": 169096.67,
+      "MAPE": 92.96,
+      "RMSE": 250775.33,
+      "R2": -0.1458
+    },
+    "LinearRegression_val": {
+      "MAE": 61536.57,
+      "MAPE": 42.16,
+      "RMSE": 87651.23,
+      "R2": 0.8525
+    },
+    "LinearRegression_test": {
+      "MAE": 71099.54,
+      "MAPE": 40.47,
+      "RMSE": 100450.81,
+      "R2": 0.8162
+    },
+    "Ridge(alpha=10)_val": {
+      "MAE": 61726.32,
+      "MAPE": 42.01,
+      "RMSE": 87702.59,
+      "R2": 0.8524
+    },
+    "Ridge(alpha=10)_test": {
+      "MAE": 71228.84,
+      "MAPE": 40.32,
+      "RMSE": 100362.25,
+      "R2": 0.8165
+    }
+  },
+  "ci_coverage_80pct_test": 68.7,
+  "shap_top10_features": {
+    "surface_sqm": 135241.14,
+    "property_type_villa": 21708.07,
+    "neighborhood_encoded": 17737.64,
+    "building_age": 12410.23,
+    "total_floors": 6187.06,
+    "lng": 4153.57,
+    "rooms": 4096.62,
+    "lat": 4085.37,
+    "amenity_parking": 3781.14,
+    "dist_to_center_km": 3265.8
+  }
+}

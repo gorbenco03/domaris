@@ -21,7 +21,11 @@
       "infoPlist": {
         "NSCameraUsageDescription": "RIVA folosește camera pentru a fotografia proprietăți",
         "NSPhotoLibraryUsageDescription": "RIVA accesează galeria pentru a selecta fotografii ale proprietăților",
-        "NSLocationWhenInUseUsageDescription": "RIVA folosește locația pentru a găsi proprietăți în apropiere"
+        "NSLocationWhenInUseUsageDescription": "RIVA folosește locația pentru a găsi proprietăți în apropiere",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": false
+        }
       }
     },
     "android": {
@@ -33,12 +37,14 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "VIBRATE"
       ]
     },
     "web": {
@@ -65,13 +71,13 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "RIVA folosește locația pentru a găsi proprietăți în apropiere"
+          "locationWhenInUsePermission": "RIVA folosește locația pentru a găsi proprietăți în apropiere"
         }
       ],
       [
         "@rnmapbox/maps",
         {
-          "RNMapboxMapsDownloadToken": "sk.REDACTED_ROTATE_ME"
+          "RNMapboxMapsDownloadToken": "RNMAPBOX_DOWNLOAD_TOKEN_PLACEHOLDER"
         }
       ]
     ],

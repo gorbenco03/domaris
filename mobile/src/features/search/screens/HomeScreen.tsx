@@ -433,7 +433,7 @@ const HomeScreen: React.FC = () => {
                   title={property.title}
                   transactionType={property.transactionType || 'SALE'}
                   price={(property as any).priceEur ?? property.price ?? 0}
-                  currency={property.currency || 'EUR'}
+                  currency={(property.currency as 'EUR' | 'RON') || 'EUR'}
                   location={{
                     neighborhood: property.neighborhood || undefined,
                     city: property.city || '',

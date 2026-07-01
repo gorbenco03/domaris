@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Optional } from '@nestjs/common';
 import { Notification } from '../../db/entities/notification.entity.js';
 import { Device } from '../../db/entities/device.entity.js';
 import { User } from '../../db/entities/user.entity.js';
+import { PushNotificationService } from '../../core/push/push.service.js';
 
 @Injectable()
 export class NotificationService {
     private readonly logger = new Logger(NotificationService.name);
+
+    constructor(
+        @Optional() private readonly pushService: PushNotificationService,
+    ) {}
 
     /**
      * Creează o notificare nouă
@@ -27,11 +32,28 @@ export class NotificationService {
 
         this.logger.log(`📬 Notification created for user ${userId}: ${data.title}`);
 
-        // TODO: Trigger push notification to devices
-        // const devices = await Device.findAll({ where: { userId } });
-        // for (const device of devices) {
-        //   await this.pushService.send(device.token, data);
-        // }
+        // Trimite push notification dacă PushNotificationService este disponibil
+        if (this.pushService) {
+            try {
+                await this.pushService.sendToUser({
+                    userId,
+                    type: data.type,
+                    saveToDatabase: false, // Deja salvat mai sus
+                    notification: {
+                        title: data.title,
+                        body: data.body,
+                        data: data.metadata
+                            ? Object.fromEntries(
+                                Object.entries(data.metadata).map(([k, v]) => [k, String(v)]),
+                              )
+                            : undefined,
+                    },
+                });
+            } catch (pushErr: any) {
+                // Push eșuat = non-fatal; notificarea e salvată în DB
+                this.logger.warn(`Push notification failed for user ${userId}: ${pushErr?.message}`);
+            }
+        }
 
         return notification;
     }
@@ -86,12 +108,32 @@ export class NotificationService {
         });
     }
 
+    /** Default notification preference flags (all on) merged over stored values. */
+    private normalizePreferences(stored?: Record<string, any> | null) {
+        const defaults = {
+            emailNotifications: true,
+            pushNotifications: true,
+            newMessages: true,
+            viewingUpdates: true,
+            priceAlerts: true,
+            newListings: true,
+            marketingEmails: false,
+        };
+        return { ...defaults, ...(stored || {}) };
+    }
+
+    async getPreferences(userId: number) {
+        const user = await User.findByPk(userId);
+        if (!user) throw new NotFoundException('User not found');
+        return this.normalizePreferences(user.notificationPreferences);
+    }
+
     async updatePreferences(userId: number, prefs: any) {
         const user = await User.findByPk(userId);
         if (!user) throw new NotFoundException('User not found');
         user.notificationPreferences = { ...user.notificationPreferences, ...prefs };
         await user.save();
-        return user.notificationPreferences;
+        return this.normalizePreferences(user.notificationPreferences);
     }
 
     async sendTestNotification(userId: number, body: { title?: string; message?: string }) {

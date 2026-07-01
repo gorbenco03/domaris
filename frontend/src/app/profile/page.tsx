@@ -87,7 +87,7 @@ export default function ProfilePage() {
     { icon: Heart, label: "Favorite", sublabel: "Proprietăți salvate", href: "/favorites" },
     { icon: Calendar, label: "Vizionări programate", sublabel: "Vezi calendar", href: "/viewings" },
     { icon: Settings, label: "Setări cont", sublabel: "Profil și preferințe", href: "/settings" },
-    { icon: HelpCircle, label: "Ajutor & Suport", sublabel: "Centre de ajutor", href: "/help" },
+    { icon: HelpCircle, label: "Ajutor & Suport", sublabel: "Centre de ajutor", href: "/contact" },
   ];
 
   const handleLogout = async () => {
@@ -119,38 +119,52 @@ export default function ProfilePage() {
               <div className="flex-1 text-white">
                 <h1 className="text-2xl font-bold">{getFullName()}</h1>
                 <div className="mt-1 flex flex-col gap-1 text-sm text-white/70 sm:flex-row sm:gap-4">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    Chișinău, Moldova
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    Membru din februarie 2026
-                  </span>
+                  {user?.email && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {user.email}
+                    </span>
+                  )}
+                  {(user as any)?.createdAt && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      Membru din {new Date((user as any).createdAt).toLocaleDateString("ro-RO", { month: "long", year: "numeric" })}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Verified Badge */}
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent/20 px-3 py-1 text-sm text-accent">
-              <span className="h-2 w-2 rounded-full bg-accent" />
-              Email verificat
-            </div>
+            {/* Verified Badge — only if actually verified */}
+            {(user as any)?.isVerified && (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent/20 px-3 py-1 text-sm text-accent">
+                <span className="h-2 w-2 rounded-full bg-accent" />
+                Identitate verificată
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Rating */}
-        <div className="mb-6 flex items-center justify-between rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-3">
-            <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
-            <span className="text-xl font-bold text-foreground">5.0</span>
-            <span className="text-muted-foreground">(0 recenzii)</span>
+        {/* Rating — shown only when real data is available */}
+        {(user as any)?.rating != null && (
+          <div className="mb-6 flex items-center justify-between rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center gap-3">
+              <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />
+              <span className="text-xl font-bold text-foreground">
+                {((user as any).rating as number).toFixed(1)}
+              </span>
+              <span className="text-muted-foreground">
+                ({(user as any).reviewsCount ?? 0} recenzii)
+              </span>
+            </div>
+            <Button variant="ghost" size="sm" className="text-accent" asChild>
+              <Link href={`/user/${user?.id}`}>
+                Vezi
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" className="text-accent">
-            Vezi
-            <ChevronRight className="ml-1 h-4 w-4" />
-          </Button>
-        </div>
+        )}
 
         {/* Stats */}
         <div className="mb-8">
@@ -173,7 +187,8 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Premium Section */}
+        {/* Premium Section — hidden until monetization is enabled */}
+        {process.env.NEXT_PUBLIC_MONETIZATION_ENABLED === "true" && (
         <div className="mb-8">
           <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Premium
@@ -194,6 +209,7 @@ export default function ProfilePage() {
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </Link>
         </div>
+        )}
 
         {/* Add Listing CTA */}
         <div className="mb-8 overflow-hidden rounded-2xl bg-gradient-to-r from-accent to-[hsl(158,64%,45%)] p-6">

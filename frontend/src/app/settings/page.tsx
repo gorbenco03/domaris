@@ -15,12 +15,15 @@ import {
   Bell,
   Lock,
   Shield,
+  Trash2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getCurrentProfile,
   updateProfile,
   uploadAvatar,
+  deleteAccount,
   getNotificationPreferences,
   updateNotificationPreferences,
   UserProfile,
@@ -33,7 +36,8 @@ import { cn } from "@/lib/utils";
 type Tab = "profile" | "notifications" | "security";
 
 export default function SettingsPage() {
-  const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, user, logout } = useAuth();
+  const router = useRouter();
 
   // Profile state
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -51,6 +55,11 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Delete account state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // UI state
   const [isLoading, setIsLoading] = useState(true);
@@ -150,6 +159,21 @@ export default function SettingsPage() {
       toast.error("Nu am putut schimba parola. Verifică parola curentă.");
     } finally {
       setIsChangingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "ȘTERGE") return;
+    setIsDeletingAccount(true);
+    try {
+      await deleteAccount();
+      toast.success("Contul a fost șters.");
+      await logout();
+      router.push("/");
+    } catch {
+      toast.error("Nu am putut șterge contul. Încearcă din nou sau contactează suportul.");
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -502,6 +526,62 @@ export default function SettingsPage() {
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Delete account */}
+            <div className="rounded-2xl border border-destructive/30 bg-card p-6">
+              <h2 className="mb-2 text-lg font-semibold text-destructive">Șterge contul</h2>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Ștergerea contului este ireversibilă. Toate anunțurile, mesajele și datele asociate vor fi eliminate permanent.
+              </p>
+              {!showDeleteConfirm ? (
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Șterge contul meu
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-destructive">
+                    Scrie <strong>ȘTERGE</strong> pentru a confirma:
+                  </p>
+                  <Input
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="ȘTERGE"
+                    className="border-destructive/50 focus-visible:ring-destructive"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeleteConfirmText("");
+                      }}
+                      disabled={isDeletingAccount}
+                    >
+                      Anulează
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={handleDeleteAccount}
+                      disabled={deleteConfirmText !== "ȘTERGE" || isDeletingAccount}
+                    >
+                      {isDeletingAccount ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-2 h-4 w-4" />
+                      )}
+                      Confirmă ștergerea
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

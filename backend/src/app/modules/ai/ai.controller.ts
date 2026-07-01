@@ -31,7 +31,17 @@ import { AIService } from './ai.service.js';
 import { AIGatewayService } from './gateway/ai-gateway.service.js';
 import { AiConversationService } from './conversation/ai-conversation.service.js';
 import { Public, MinVerificationLevel, CurrentUser } from '../../core/decorators.js';
+import { Throttle } from '@nestjs/throttler';
 import { AVMInput } from './types/index.js';
+import {
+  IsString,
+  IsNumber,
+  IsBoolean,
+  IsArray,
+  IsObject,
+  IsOptional,
+  IsIn,
+} from 'class-validator';
 
 // ============================================================================
 // DTOs
@@ -55,35 +65,70 @@ class ChatContextOptionsDto {
 }
 
 class ChatRequestBody {
+  @IsString()
   message!: string;
+  @IsOptional()
+  @IsArray()
   conversationHistory?: { role: 'user' | 'assistant'; content: string }[];
   /**
    * Opțiuni pentru personalizarea comportamentului AI
    */
+  @IsOptional()
+  @IsObject()
   context?: ChatContextOptionsDto;
 }
 
 class GenerateDescriptionBody {
+  @IsString()
   propertyType!: string;
+  @IsString()
   transactionType!: string;
+  @IsOptional()
+  @IsNumber()
   rooms?: number;
+  @IsOptional()
+  @IsNumber()
   surface?: number;
+  @IsString()
   city!: string;
+  @IsOptional()
+  @IsString()
   neighborhood?: string;
+  @IsOptional()
+  @IsNumber()
   floor?: number;
+  @IsOptional()
+  @IsNumber()
   totalFloors?: number;
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   amenities?: string[];
+  @IsOptional()
+  @IsNumber()
   yearBuilt?: number;
+  @IsOptional()
+  @IsIn(['professional', 'friendly', 'luxurious'])
   style?: 'professional' | 'friendly' | 'luxurious';
 }
 
 class EstimatePriceBody {
+  @IsString()
   city!: string;
+  @IsOptional()
+  @IsString()
   neighborhood?: string;
+  @IsString()
   propertyType!: string;
+  @IsNumber()
   rooms!: number;
+  @IsNumber()
   surface!: number;
+  @IsOptional()
+  @IsNumber()
   floor?: number;
+  @IsOptional()
+  @IsNumber()
   yearBuilt?: number;
 }
 
@@ -103,19 +148,40 @@ class PropertySummaryResponse {
 }
 
 class AnalyzeListingBody {
+  @IsOptional()
+  @IsNumber()
   propertyId?: number;
+  @IsOptional()
+  @IsString()
   title?: string;
+  @IsOptional()
+  @IsString()
   description?: string;
+  @IsOptional()
+  @IsNumber()
   priceEur?: number;
+  @IsOptional()
+  @IsString()
   city?: string;
+  @IsOptional()
+  @IsNumber()
   rooms?: number;
+  @IsOptional()
+  @IsNumber()
   surfaceSqm?: number;
+  @IsOptional()
+  @IsNumber()
   photosCount?: number;
 }
 
 class AgentChatBody {
+  @IsString()
   message!: string;
+  @IsOptional()
+  @IsString()
   conversationId?: string;
+  @IsOptional()
+  @IsObject()
   context?: {
     tone?: 'professional' | 'friendly' | 'concise';
     language?: 'ro' | 'en';
@@ -125,17 +191,37 @@ class AgentChatBody {
 }
 
 class AVMRequestBody {
+  @IsString()
   city!: string;
+  @IsOptional()
+  @IsString()
   neighborhood?: string;
+  @IsString()
   propertyType!: string;
+  @IsIn(['RENT', 'SALE'])
   transactionType!: 'RENT' | 'SALE';
+  @IsNumber()
   rooms!: number;
+  @IsNumber()
   surfaceSqm!: number;
+  @IsOptional()
+  @IsNumber()
   floor?: number;
+  @IsOptional()
+  @IsNumber()
   totalFloors?: number;
+  @IsOptional()
+  @IsNumber()
   yearBuilt?: number;
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   amenities?: string[];
+  @IsOptional()
+  @IsIn(['new', 'renovated', 'good', 'needs_work'])
   condition?: 'new' | 'renovated' | 'good' | 'needs_work';
+  @IsOptional()
+  @IsBoolean()
   isFurnished?: boolean;
 }
 
@@ -146,6 +232,8 @@ class AVMRequestBody {
 @ApiTags('ai')
 @ApiBearerAuth()
 @Controller('ai')
+// AI endpoints hit OpenAI — tighter rate limit to control cost
+@Throttle({ global: { limit: 20, ttl: 60000 } })
 export class AIController {
   constructor(
     private readonly aiService: AIService,
@@ -196,7 +284,7 @@ export class AIController {
   // ========================================================================
 
   @Post('generate-description')
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(1)
   @ApiOperation({
     summary: 'Generate property description using AI',
     description:
@@ -262,7 +350,7 @@ export class AIController {
   }
 
   @Post('analyze-listing')
-  @MinVerificationLevel(2)
+  @MinVerificationLevel(1)
   @ApiOperation({
     summary: 'Analyze a listing (draft or existing)',
     description:

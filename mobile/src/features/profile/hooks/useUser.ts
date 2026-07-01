@@ -20,6 +20,7 @@ export interface IUpdateProfileRequest {
   city?: string;
   county?: string;
   avatar?: string;
+  location?: string;
 }
 
 /**

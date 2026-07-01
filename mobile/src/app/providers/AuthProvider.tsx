@@ -9,6 +9,7 @@ import { useAuthStore, User } from '@/core/stores/authStore';
 import { tokenManager } from '@/core/auth/tokenManager';
 import { authApi } from '@/features/auth/api';
 import type { IAppleAuthRequest } from '@/core/api/types';
+import { registerGlobalLogout } from '@/core/api/client';
 
 // ============================================
 // CONTEXT
@@ -109,6 +110,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   };
+
+  // Register global logout so the API client can trigger full session clear + redirect
+  useEffect(() => {
+    registerGlobalLogout(async () => {
+      await logout();
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize auth state on app start
   useEffect(() => {

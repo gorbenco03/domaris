@@ -62,6 +62,7 @@ import {
   HttpStatus,
   Logger,
   BadRequestException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -102,11 +103,43 @@ import { Op } from 'sequelize';
 export class MonetizationController {
   private readonly logger = new Logger(MonetizationController.name);
 
+  /**
+   * Feature-flag de monetizare.
+   * Setează MONETIZATION_ENABLED=true în .env pentru a activa la v2.
+   * Implicit false — toate endpoint-urile de plată/abonament returnează 503.
+   */
+  private readonly monetizationEnabled: boolean =
+    (process.env.MONETIZATION_ENABLED ?? 'false').toLowerCase() === 'true';
+
   constructor(
     private readonly subscriptionService: SubscriptionService,
     private readonly promotionService: PromotionService,
     private readonly moldovaPaymentsService: MoldovaPaymentsService,
-  ) {}
+  ) {
+    if (!this.monetizationEnabled) {
+      this.logger.warn(
+        'Monetizare DEZACTIVATĂ (MONETIZATION_ENABLED != true). ' +
+        'Endpoint-urile de creare abonament/promovare/plăți returnează 503.',
+      );
+    }
+  }
+
+  /**
+   * Aruncă ServiceUnavailableException dacă monetizarea este dezactivată.
+   * Apelat la începutul tuturor endpoint-urilor de scriere monetizare.
+   */
+  private requireMonetizationEnabled(): void {
+    if (!this.monetizationEnabled) {
+      throw new ServiceUnavailableException({
+        statusCode: 503,
+        error: 'SERVICE_UNAVAILABLE',
+        message:
+          'Monetizarea este temporar dezactivată în această versiune. ' +
+          'Funcționalitatea va fi disponibilă în versiunea viitoare.',
+        monetizationEnabled: false,
+      });
+    }
+  }
 
   // ============================================================================
   // SUBSCRIPTION PLANS (Public)
@@ -217,6 +250,7 @@ export class MonetizationController {
     @CurrentUserId() userId: number,
     @Body() dto: CreateSubscriptionDto,
   ) {
+    this.requireMonetizationEnabled();
     const subscription = await this.subscriptionService.createSubscription(userId, dto);
     return {
       success: true,
@@ -249,6 +283,7 @@ export class MonetizationController {
     @CurrentUserId() userId: number,
     @Body() dto: ChangePlanDto,
   ) {
+    this.requireMonetizationEnabled();
     const subscription = await this.subscriptionService.changePlan(userId, dto);
     return {
       success: true,
@@ -277,6 +312,7 @@ export class MonetizationController {
     @CurrentUserId() userId: number,
     @Body() dto: CancelSubscriptionDto,
   ) {
+    this.requireMonetizationEnabled();
     await this.subscriptionService.cancelSubscription(userId, dto);
     return {
       success: true,
@@ -310,6 +346,7 @@ export class MonetizationController {
     @Param('id') listingId: string,
     @Body() dto: CreatePromotionDto,
   ) {
+    this.requireMonetizationEnabled();
     const promotion = await this.promotionService.createPromotion(
       userId,
       parseInt(listingId, 10),
@@ -977,6 +1014,7 @@ export class MonetizationController {
     @CurrentUserId() userId: number,
     @Body() body: { type: 'subscription' | 'promotion'; itemId: number; billingCycle?: string; listingId?: number },
   ) {
+    this.requireMonetizationEnabled();
     this.logger.log(`Initiating PAYNET payment for user ${userId}`);
 
     if (body.type === 'promotion' && !body.listingId) {
@@ -1031,6 +1069,7 @@ export class MonetizationController {
     @CurrentUserId() userId: number,
     @Body() body: { type: 'subscription' | 'promotion'; itemId: number; billingCycle?: string; listingId?: number; saveCard?: boolean },
   ) {
+    this.requireMonetizationEnabled();
     this.logger.log(`Initiating MAIB payment for user ${userId}`);
 
     if (body.type === 'promotion' && !body.listingId) {
@@ -1086,6 +1125,7 @@ export class MonetizationController {
     @CurrentUserId() userId: number,
     @Body() body: { type: 'subscription' | 'promotion'; itemId: number; billingCycle?: string; listingId?: number; phone?: string },
   ) {
+    this.requireMonetizationEnabled();
     this.logger.log(`Initiating MPAY payment for user ${userId}`);
 
     if (body.type === 'promotion' && !body.listingId) {

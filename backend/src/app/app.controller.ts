@@ -1,25 +1,58 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Inject, Logger } from '@nestjs/common';
+import { Sequelize } from 'sequelize-typescript';
+import { InjectConnection } from '@nestjs/sequelize';
+import { Public } from './core/decorators';
 
 @Controller()
 export class AppController {
+  private readonly logger = new Logger(AppController.name);
+
+  constructor(
+    @InjectConnection() private readonly sequelize: Sequelize,
+    @Inject('REDIS_CLIENT') private readonly redisClient: any,
+  ) {}
+
+  @Public()
   @Get('health')
-  getHealth() {
+  async getHealth() {
+    let dbOk = false;
+    let redisOk = false;
+    let dbError: string | null = null;
+    let redisError: string | null = null;
+
+    // Real DB ping
+    try {
+      await this.sequelize.authenticate();
+      dbOk = true;
+    } catch (err: any) {
+      dbError = err?.message ?? 'unknown';
+      this.logger.error('[Health] DB ping failed', err?.message);
+    }
+
+    // Real Redis ping
+    try {
+      if (typeof this.redisClient.ping === 'function') {
+        await this.redisClient.ping();
+      } else {
+        // In-memory fallback: set + get as liveness check
+        await this.redisClient.set('_health_check', '1');
+        const val = await this.redisClient.get('_health_check');
+        if (val !== '1') throw new Error('In-memory fallback inconsistency');
+      }
+      redisOk = true;
+    } catch (err: any) {
+      redisError = err?.message ?? 'unknown';
+      this.logger.error('[Health] Redis ping failed', err?.message);
+    }
+
+    const allOk = dbOk && redisOk;
+
     return {
-      status: 'ok',
+      status: allOk ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV,
-      redis: {
-        host: process.env.REDIS_HOST ? '✅ Set' : '❌ Missing',
-        port: process.env.REDIS_PORT ? '✅ Set' : '❌ Missing',
-        password: process.env.REDIS_PASSWORD ? '✅ Set' : '❌ Missing',
-      },
-      database: {
-        host: process.env.DB_HOST ? '✅ Set' : '❌ Missing',
-        user: process.env.DB_USER ? '✅ Set' : '❌ Missing',
-        name: process.env.DB_NAME ? '✅ Set' : '❌ Missing',
-      },
-      google: {
-        clientId: process.env.GOOGLE_CLIENT_ID ? '✅ Set' : '❌ Missing',
+      checks: {
+        database: dbOk ? 'ok' : `error: ${dbError}`,
+        redis: redisOk ? 'ok' : `error: ${redisError}`,
       },
     };
   }

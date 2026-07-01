@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { IconButton, ScreenHeader } from '@/shared/components';
+import { MONETIZATION_ENABLED } from '@/config/env';
 import { 
   ArrowLeft, 
   Download, 
@@ -194,16 +195,18 @@ export const PropertyAnalyticsScreen: React.FC<Props> = ({ route, navigation }) 
 
         {/* Action Buttons */}
         <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: theme.colors.primary.main }]}
-            onPress={() => navigation.navigate('BoostPurchase', {
-              listingId: numericPropertyId,
-              propertyId,
-            })}
-          >
-            <Zap size={20} color={theme.colors.surface} />
-            <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Promovează anunțul</Text>
-          </TouchableOpacity>
+          {MONETIZATION_ENABLED && (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: theme.colors.primary.main }]}
+              onPress={() => navigation.navigate('BoostPurchase', {
+                listingId: numericPropertyId,
+                propertyId,
+              })}
+            >
+              <Zap size={20} color={theme.colors.surface} />
+              <Text style={[styles.actionButtonText, { color: theme.colors.surface }]}>Promovează anunțul</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.colors.secondary.main }]}

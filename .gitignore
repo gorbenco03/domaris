@@ -60,6 +60,13 @@ Thumbs.db
 # local tool metadata
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
+.claude/
+
+# python venv for the ML/AVM pipeline (heavy, regenerable)
+ml/.venv/
+
+# thesis (LaTeX document) — uploaded separately as PDF, not part of the app source repo
+thesis/
 
 # expo / react native
 .expo/

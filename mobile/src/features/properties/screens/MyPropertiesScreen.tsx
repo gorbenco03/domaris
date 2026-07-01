@@ -48,6 +48,7 @@ import {
   useUpdatePropertyStatus
 } from '@/features/properties/services';
 import { useMonetizationStatus } from '@/features/monetization/hooks/usePayments';
+import { MONETIZATION_ENABLED } from '@/config/env';
 import { ActivityIndicator } from 'react-native';
 import { IPropertyListItem } from '@/core/api/types';
 
@@ -269,7 +270,7 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
             <BarChart2 size={16} color={theme.colors.secondary.info} />
           </TouchableOpacity>
 
-          {property.status === 'ACTIVE' && (
+          {MONETIZATION_ENABLED && property.status === 'ACTIVE' && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: theme.colors.secondary.warning + '15' }]}
               onPress={onBoost}
@@ -373,18 +374,17 @@ const MyPropertiesScreen: React.FC = () => {
   };
 
   const handleBoost = (propertyId: string) => {
+    if (!MONETIZATION_ENABLED) return; // Boost disabled at v1
     navigation.navigate('BoostPurchase', { propertyId });
   };
 
   const handleAddProperty = () => {
     if (!canCreateListing) {
-      const maxListings = monetizationStatus?.capabilities?.maxActiveListings || 1;
       Alert.alert(
         'Limită atinsă',
-        `Ai atins limita de ${maxListings} anunțuri active. Fă upgrade pentru a publica mai multe.`,
+        'Ai atins limita de anunțuri active. Contactează suportul la support@riva.md pentru mai multe informații.',
         [
-          { text: 'Anulează', style: 'cancel' },
-          { text: 'Vezi planurile', onPress: () => (navigation as any).navigate('Pricing') },
+          { text: 'OK', style: 'cancel' },
         ],
       );
       return;
@@ -451,8 +451,8 @@ const MyPropertiesScreen: React.FC = () => {
           </LinearGradient>
         </View>
 
-        {/* Quota Banner */}
-        {monetizationStatus && (
+        {/* Quota Banner — only shown when monetization is enabled */}
+        {MONETIZATION_ENABLED && monetizationStatus && (
           <View style={styles.quotaBannerContainer}>
             <View
               style={[
@@ -479,20 +479,6 @@ const MyPropertiesScreen: React.FC = () => {
               >
                 {properties.length}/{monetizationStatus.capabilities?.maxActiveListings === 999 ? '∞' : monetizationStatus.capabilities?.maxActiveListings || 1} anunțuri active
               </Text>
-              {!canCreateListing && (
-                <TouchableOpacity
-                  onPress={() => (navigation as any).navigate('Pricing')}
-                >
-                  <Text
-                    style={[
-                      styles.quotaUpgradeLink,
-                      { color: theme.colors.primary.main },
-                    ]}
-                  >
-                    Upgrade
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         )}

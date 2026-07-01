@@ -6,8 +6,13 @@
 // API CONFIGURATION
 // ============================================
 
+// Single source of truth for the API base URL.
+// Value comes from EXPO_PUBLIC_API_URL injected by EAS (see eas.json).
+// Fallback is localhost for local dev; never a hardcoded LAN IP.
+import { env } from './env';
+
 export const API_CONFIG = {
-  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://172.20.10.6:4000/api',
+  BASE_URL: env.API_URL,
   TIMEOUT: 30000,
   RETRY_ATTEMPTS: 3,
 } as const;
@@ -160,8 +165,8 @@ export const PAGINATION = {
 // ============================================
 
 export const MAP_CONFIG = {
-  DEFAULT_LATITUDE: 44.4268,      // București
-  DEFAULT_LONGITUDE: 26.1025,
+  DEFAULT_LATITUDE: 47.0105,      // Chișinău, Moldova
+  DEFAULT_LONGITUDE: 28.8638,
   DEFAULT_ZOOM: 12,
   SEARCH_RADIUS_KM: 50,
 } as const;

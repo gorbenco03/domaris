@@ -147,7 +147,7 @@ const EditProfileScreen: React.FC = () => {
             <Avatar
               firstName={formData.firstName}
               lastName={formData.lastName}
-              source={formData.avatar}
+              source={formData.avatar ?? undefined}
               size="xl"
               showEditButton
               onEditPress={handlePickImage}

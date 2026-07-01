@@ -2,16 +2,26 @@
  * RIVA - Push Notifications Provider
  * Registers device push tokens after authentication.
  * Handles navigation when user taps on a notification.
+ *
+ * NOTE: Uses the navigationRef exported from RootNavigator so navigation works
+ * regardless of where this provider sits in the tree (it is outside
+ * NavigationContainer in App.tsx, which is why a local ref would stay null).
+ *
+ * APNs / FCM setup required before production build:
+ *  - iOS: set `aps-environment=production` entitlement (handled by EAS on production profile)
+ *  - Android: place google-services.json at project root and set
+ *    `android.googleServicesFile` in app.json (already done — file must be provided).
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { CommonActions } from '@react-navigation/native';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { notificationsApi } from '@/features/notifications/services';
+import { navigationRef } from '@/app/navigation/RootNavigator';
 
 const DEVICE_ID_KEY = 'device_id';
 const PUSH_TOKEN_KEY = 'push_token';
@@ -24,7 +34,6 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
   children,
 }) => {
   const { isAuthenticated } = useAuth();
-  const navigationRef = useRef<any>(null);
 
   useEffect(() => {
     Notifications.setNotificationHandler({
@@ -38,7 +47,7 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
     });
   }, []);
 
-  // Handle notification tap - navigate to appropriate screen
+  // Handle notification tap — navigate to appropriate screen
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -47,46 +56,9 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
         const data = response.notification.request.content.data as any;
         const notificationType = data?.type?.toLowerCase?.() || '';
 
-        // Helper to navigate to viewing detail
-        const navigateToViewingDetail = (viewingId: string) => {
-          // Use global navigation - this will be handled by RootNavigator
-          const nav = navigationRef.current;
-          if (nav?.dispatch) {
-            nav.dispatch(
-              CommonActions.navigate({
-                name: 'Main',
-                params: {
-                  screen: 'ProfileTab',
-                  params: {
-                    screen: 'ViewingDetail',
-                    params: { viewingId },
-                  },
-                },
-              })
-            );
-          }
-        };
+        const nav = navigationRef.current;
+        if (!nav?.dispatch) return;
 
-        // Helper to navigate to property detail
-        const navigateToProperty = (propertyId: string) => {
-          const nav = navigationRef.current;
-          if (nav?.dispatch) {
-            nav.dispatch(
-              CommonActions.navigate({
-                name: 'Main',
-                params: {
-                  screen: 'SearchTab',
-                  params: {
-                    screen: 'PropertyDetail',
-                    params: { propertyId },
-                  },
-                },
-              })
-            );
-          }
-        };
-
-        // Route based on notification type
         if (
           (notificationType === 'viewing_request' ||
             notificationType === 'viewing_confirmed' ||
@@ -95,9 +67,31 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
             notificationType === 'feedback_request') &&
           data?.viewingId
         ) {
-          navigateToViewingDetail(String(data.viewingId));
+          nav.dispatch(
+            CommonActions.navigate({
+              name: 'Main',
+              params: {
+                screen: 'ProfileTab',
+                params: {
+                  screen: 'ViewingDetail',
+                  params: { viewingId: String(data.viewingId) },
+                },
+              },
+            })
+          );
         } else if (data?.propertyId) {
-          navigateToProperty(String(data.propertyId));
+          nav.dispatch(
+            CommonActions.navigate({
+              name: 'Main',
+              params: {
+                screen: 'SearchTab',
+                params: {
+                  screen: 'PropertyDetail',
+                  params: { propertyId: String(data.propertyId) },
+                },
+              },
+            })
+          );
         }
       }
     );
@@ -138,11 +132,6 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
         const token = tokenResponse.data;
         if (!token) return;
 
-        const existingToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY);
-        if (existingToken === token) {
-          console.log('ℹ️ Push token already stored locally; re-registering with backend');
-        }
-
         let deviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY);
         if (!deviceId) {
           deviceId = `${Platform.OS}-${Date.now()}-${Math.random()
@@ -151,7 +140,6 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
           await SecureStore.setItemAsync(DEVICE_ID_KEY, deviceId);
         }
 
-        console.log('📨 Registering push token with backend');
         await notificationsApi.registerPushToken({
           token,
           platform: Platform.OS === 'ios' ? 'ios' : 'android',

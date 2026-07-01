@@ -5,10 +5,24 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "http://localhost:4000/api",
+        "EXPO_PUBLIC_WS_URL": "ws://localhost:4000",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29yYmVuY28wMyIsImEiOiJjbGc2OHg0dTQxMjhlMnRyejN5Y2xmZ3d6In0.tTql8D8ra4QBhzSowQtXMg",
+        "EXPO_PUBLIC_MONETIZATION_ENABLED": "false"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ENV": "staging",
+        "EXPO_PUBLIC_API_URL": "https://api-staging.riva.md/api",
+        "EXPO_PUBLIC_WS_URL": "wss://api-staging.riva.md",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29yYmVuY28wMyIsImEiOiJjbGc2OHg0dTQxMjhlMnRyejN5Y2xmZ3d6In0.tTql8D8ra4QBhzSowQtXMg",
+        "EXPO_PUBLIC_MONETIZATION_ENABLED": "false"
+      }
     },
     "production": {
       "ios": {
@@ -16,6 +30,13 @@
       },
       "android": {
         "autoIncrement": true
+      },
+      "env": {
+        "EXPO_PUBLIC_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://api.riva.md/api",
+        "EXPO_PUBLIC_WS_URL": "wss://api.riva.md",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1IjoiZ29yYmVuY28wMyIsImEiOiJjbGc2OHg0dTQxMjhlMnRyejN5Y2xmZ3d6In0.tTql8D8ra4QBhzSowQtXMg",
+        "EXPO_PUBLIC_MONETIZATION_ENABLED": "false"
       }
     }
   },

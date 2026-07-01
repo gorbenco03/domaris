@@ -26,16 +26,16 @@ export interface Notification {
   userId: number;
   type: NotificationType;
   title: string;
-  message?: string;
-  body?: string;
-  data?: Record<string, unknown>;
+  // Canonical body field (backend emits `body`, not `message`).
+  body: string;
+  metadata?: Record<string, unknown>;
   isRead: boolean;
   createdAt: string;
 }
 
-/** Get notification display text (API may send message or body) */
+/** Notification display text (backend emits `body`). */
 export function getNotificationText(n: Notification): string {
-  return n.message || n.body || '';
+  return n.body || '';
 }
 
 export interface NotificationPreferences {

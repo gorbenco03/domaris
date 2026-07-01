@@ -17,14 +17,38 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Op } from 'sequelize';
+import { Sequelize } from 'sequelize-typescript';
+import { InjectConnection } from '@nestjs/sequelize';
 import { User } from '../../db/entities/user.entity';
 import { KycVerification } from '../../db/entities/kyc-verification.entity';
 import { KycDocument } from '../../db/entities/kyc-document.entity';
 import { AuditService } from '../../core/audit/audit.service.js';
+import { S3Service } from '../../s3/s3.service.js';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class KycService {
-  constructor(private readonly auditService: AuditService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly s3Service: S3Service,
+    @InjectConnection() private readonly sequelize: Sequelize,
+  ) {}
+  /**
+   * Încarcă un fișier KYC în DO Spaces cu ACL privat.
+   * Returnează key-ul S3 (nu URL public — documentele sunt private).
+   */
+  private async uploadKycFile(
+    file: Express.Multer.File,
+    userId: number,
+    suffix: string,
+  ): Promise<string> {
+    const ext = file.originalname.split('.').pop()?.toLowerCase() || 'bin';
+    const key = `kyc/${userId}/${uuidv4()}_${suffix}.${ext}`;
+    const contentType = file.mimetype || 'application/octet-stream';
+
+    return this.s3Service.uploadPrivateBuffer(file.buffer, key, contentType);
+  }
+
   private async getVerification(userId: number) {
     return KycVerification.findOne({
       where: { userId },
@@ -121,35 +145,37 @@ export class KycService {
     }
 
     if (files.docFront?.[0]) {
+      const key = await this.uploadKycFile(files.docFront[0], userId, 'front');
       await KycDocument.create({
         verificationId: verification.id,
         userId,
         type: docType.toUpperCase() as any,
         status: 'PENDING',
-        // In production: upload to DigitalOcean Spaces and store URL
-        fileUrl: `uploads/kyc/${userId}/${Date.now()}_front.jpg`,
+        fileUrl: key,
         uploadedAt: now,
       });
     }
 
     if (files.docBack?.[0]) {
+      const key = await this.uploadKycFile(files.docBack[0], userId, 'back');
       await KycDocument.create({
         verificationId: verification.id,
         userId,
         type: docType.toUpperCase() as any,
         status: 'PENDING',
-        fileUrl: `uploads/kyc/${userId}/${Date.now()}_back.jpg`,
+        fileUrl: key,
         uploadedAt: now,
       });
     }
 
     if (files.selfie?.[0]) {
+      const key = await this.uploadKycFile(files.selfie[0], userId, 'selfie');
       await KycDocument.create({
         verificationId: verification.id,
         userId,
         type: 'SELFIE',
         status: 'PENDING',
-        fileUrl: `uploads/kyc/${userId}/${Date.now()}_selfie.jpg`,
+        fileUrl: key,
         uploadedAt: now,
       });
     }
@@ -267,13 +293,14 @@ export class KycService {
       });
     }
 
+    const ownershipKey = await this.uploadKycFile(file, userId, `ownership_${propertyId ?? 'unknown'}`);
     await KycDocument.create({
       verificationId: verification.id,
       userId,
       propertyId: propertyId ?? null,
       type: docType.toUpperCase() as any,
       status: 'PENDING',
-      fileUrl: `uploads/kyc/${userId}/ownership_${propertyId ?? 'unknown'}_${Date.now()}.pdf`,
+      fileUrl: ownershipKey,
       uploadedAt: now,
     });
 
@@ -306,38 +333,43 @@ export class KycService {
       throw new NotFoundException('Verificare negăsită');
     }
 
-    // Update verification
-    verification.status = 'APPROVED';
-    verification.reviewedAt = new Date();
-    verification.reviewedBy = adminId;
-    verification.rejectionReason = null;
-    await verification.save();
+    const targetLevel = verification.targetLevel;
 
-    await KycDocument.update(
-      { status: 'APPROVED', reviewedAt: verification.reviewedAt },
-      { where: { verificationId: verification.id } },
-    );
+    // Tranzacție DB: verificare + documente + nivel user într-un singur atomic block
+    await this.sequelize.transaction(async (t) => {
+      const reviewedAt = new Date();
 
-    // Update user level
-    user.verificationLevel = Math.max(user.verificationLevel, verification.targetLevel);
-    await user.save();
+      verification.status = 'APPROVED';
+      verification.reviewedAt = reviewedAt;
+      verification.reviewedBy = adminId;
+      verification.rejectionReason = null;
+      await verification.save({ transaction: t });
 
-    // AUDIT LOG
+      await KycDocument.update(
+        { status: 'APPROVED', reviewedAt },
+        { where: { verificationId: verification.id }, transaction: t },
+      );
+
+      user.verificationLevel = Math.max(user.verificationLevel, targetLevel);
+      await user.save({ transaction: t });
+    });
+
+    // AUDIT LOG (în afara tranzacției — side-effect non-critic)
     await this.auditService.logKycApproval(
       adminId,
       adminEmail,
       verification.id,
       userId,
-      verification.targetLevel,
+      targetLevel,
       ipAddress,
       userAgent
     );
 
-    console.log(`[KYC] User ${userId} verified to level ${verification.targetLevel}`);
+    console.log(`[KYC] User ${userId} verified to level ${targetLevel}`);
 
     return {
       success: true,
-      message: `Utilizator verificat la nivelul ${verification.targetLevel}`,
+      message: `Utilizator verificat la nivelul ${targetLevel}`,
       newLevel: user.verificationLevel,
     };
   }

@@ -236,6 +236,12 @@ export interface AVMResult {
   factors: AVMFactor[];
   computedAt: Date;
   cacheKey: string;
+  /** Which engine produced this result */
+  source?: 'ml' | 'cma';
+  /** True when there are <3 comparables and ML was also unavailable */
+  insufficientData?: boolean;
+  /** ML model version, present only when source === 'ml' */
+  mlModelVersion?: string;
 }
 
 export interface AVMFactor {

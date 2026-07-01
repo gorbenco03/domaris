@@ -11,7 +11,7 @@ import { api } from './api';
 
 export interface ConversationParticipant {
   id: number;
-  name?: string;
+  // Backend emits firstName/lastName (no flat `name`).
   firstName?: string;
   lastName?: string;
   avatar?: string | null;
@@ -19,10 +19,9 @@ export interface ConversationParticipant {
   isVerified?: boolean;
 }
 
-/** Build display name from participant (API sends firstName/lastName, not name) */
+/** Build display name from participant (backend emits firstName/lastName). */
 export function getParticipantName(p?: ConversationParticipant | null): string {
   if (!p) return 'Utilizator';
-  if (p.name) return p.name;
   const parts = [p.firstName, p.lastName].filter(Boolean);
   return parts.length > 0 ? parts.join(' ') : 'Utilizator';
 }
@@ -33,18 +32,20 @@ export function getParticipantInitials(p?: ConversationParticipant | null): stri
 }
 
 export interface ConversationProperty {
-  id: string;
+  id: string | number;
   title: string;
+  // Backend emits `image` (URL of first listing image).
   image?: string | null;
+  /** @deprecated Backend emits `image`, not `mainImage`. */
   mainImage?: string | null;
   price?: number;
   currency?: string;
 }
 
-/** Get property image URL (API may send image or mainImage) */
+/** Get property image URL (backend emits `image`). */
 export function getPropertyImage(p?: ConversationProperty | null): string | null {
   if (!p) return null;
-  return p.image || p.mainImage || null;
+  return p.image || null;
 }
 
 export interface ConversationListItem {
@@ -52,13 +53,16 @@ export interface ConversationListItem {
   property?: ConversationProperty | null;
   otherParticipant?: ConversationParticipant | null;
   lastMessage?: {
+    // Canonical fields emitted by backend.
     content?: string;
-    text?: string;
     createdAt?: string;
-    sentAt?: string;
     senderId?: number;
     isFromMe?: boolean;
     type?: string;
+    /** @deprecated Backend also emits `text` (duplicate of `content`). */
+    text?: string;
+    /** @deprecated Backend also emits `sentAt` (duplicate of `createdAt`). */
+    sentAt?: string;
   } | null;
   unreadCount?: number;
   status?: string;
@@ -66,16 +70,14 @@ export interface ConversationListItem {
   isArchived?: boolean;
 }
 
-/** Get last message text from conversation (API may use content or text) */
+/** Last message text (backend emits `content`). */
 export function getLastMessageText(msg?: ConversationListItem['lastMessage']): string {
-  if (!msg) return '';
-  return msg.content || msg.text || '';
+  return msg?.content || '';
 }
 
-/** Get last message time from conversation (API may use createdAt or sentAt) */
+/** Last message time (backend emits `createdAt`). */
 export function getLastMessageTime(msg?: ConversationListItem['lastMessage']): string | null {
-  if (!msg) return null;
-  return msg.createdAt || msg.sentAt || null;
+  return msg?.createdAt || null;
 }
 
 export interface Conversation {
@@ -97,38 +99,35 @@ export interface Message {
     lastName?: string;
     avatar?: string | null;
   };
-  // API may return text or content
-  text?: string;
+  // Canonical content field emitted by backend.
   content?: string;
+  /** @deprecated Backend also emits `text` (duplicate of `content`). */
+  text?: string;
   type: 'TEXT' | 'IMAGE' | 'VIEWING_REQUEST';
-  // API may return isRead boolean or readAt date
-  isRead?: boolean;
+  // Backend emits `readAt` (timestamp or null), not an `isRead` boolean.
   readAt?: string | null;
-  // API may return sentAt or createdAt
-  sentAt?: string;
+  // Canonical timestamp emitted by backend.
   createdAt?: string;
+  /** @deprecated Backend also emits `sentAt` (duplicate of `createdAt`). */
+  sentAt?: string;
   isFromMe?: boolean;
   isEdited?: boolean;
   isDeleted?: boolean;
 }
 
-/** Get display text from a message (API uses text or content) */
+/** Display text from a message (backend emits `content`). */
 export function getMessageText(msg?: Message | null): string {
-  if (!msg) return '';
-  return msg.content || msg.text || '';
+  return msg?.content || '';
 }
 
-/** Get message timestamp (API uses sentAt or createdAt) */
+/** Message timestamp (backend emits `createdAt`). */
 export function getMessageTime(msg?: Message | null): string {
-  if (!msg) return '';
-  return msg.sentAt || msg.createdAt || '';
+  return msg?.createdAt || '';
 }
 
-/** Check if message is read */
+/** Whether a message has been read (backend emits `readAt`). */
 export function isMessageRead(msg?: Message | null): boolean {
-  if (!msg) return false;
-  if (typeof msg.isRead === 'boolean') return msg.isRead;
-  return !!msg.readAt;
+  return !!msg?.readAt;
 }
 
 export interface SendMessageDto {
@@ -192,10 +191,13 @@ export async function getMessages(
 }
 
 /**
- * Start or get existing conversation about a property
+ * Start or get existing conversation.
+ * Provide propertyId when contacting about a specific listing.
+ * Provide participantId when opening a direct conversation with a user (no property context).
  */
 export async function startConversation(data: {
-  propertyId: number;
+  propertyId?: number;
+  participantId?: number;
   message?: string;
 }): Promise<Conversation> {
   return api.fetch<Conversation>('/conversations', {

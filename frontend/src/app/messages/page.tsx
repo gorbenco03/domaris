@@ -176,6 +176,29 @@ function MessagesContent() {
     fetchMessages();
   }, [selectedConversation]);
 
+  // Poll the open conversation as a reliable real-time fallback. The web client
+  // sends messages over REST (not the socket), so the gateway never broadcasts
+  // message:new for them — without this the recipient wouldn't see new messages live.
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await getMessages(selectedConversation);
+        setMessages((prev) => {
+          const pendingTemps = prev.filter((m) => String(m.id).startsWith("opt-"));
+          return [...fresh, ...pendingTemps];
+        });
+        markAsRead(selectedConversation).catch(() => {});
+        setConversations((prev) =>
+          prev.map((c) => (c.id === selectedConversation ? { ...c, unreadCount: 0 } : c))
+        );
+      } catch {
+        // ignore transient polling errors
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [selectedConversation]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

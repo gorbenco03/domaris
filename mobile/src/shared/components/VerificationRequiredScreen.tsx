@@ -27,9 +27,10 @@ const VerificationRequiredScreen: React.FC<VerificationRequiredScreenProps> = ({
   const handleVerificationPress = () => {
     const parent = navigation.getParent?.();
     const root = parent?.getParent?.() ?? parent ?? navigation;
-    // @ts-ignore - Root navigator route
+    // @ts-ignore - Root navigator route (nested params not statically typed)
     root.navigate('Main', {
       screen: 'ProfileTab',
+      // @ts-ignore
       params: { screen: 'VerificationHub' },
     });
   };

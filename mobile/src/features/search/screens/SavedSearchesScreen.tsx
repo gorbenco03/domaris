@@ -174,7 +174,7 @@ const SavedSearchCard: React.FC<SavedSearchCardProps> = ({
             )}
             <Text style={[styles.alertText, { color: theme.colors.textSecondary }]}>
               {search.alertsEnabled
-                ? `Alerte ${ALERT_FREQUENCY_LABELS[search.alertFrequency]}`
+                ? `Alerte ${ALERT_FREQUENCY_LABELS[search.alertFrequency ?? ''] ?? ''}`
                 : 'Alerte dezactivate'}
             </Text>
           </View>

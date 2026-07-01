@@ -48,6 +48,7 @@ export interface BackendViewing {
     phone?: string;
     avatar?: string;
   };
+  isOwner?: boolean;
   seeker?: {
     id: string;
     name: string;

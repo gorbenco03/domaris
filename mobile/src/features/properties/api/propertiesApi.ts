@@ -5,7 +5,7 @@
 
 import { apiClient } from '@/core/api/client';
 import { API_ENDPOINTS } from '@/core/api/endpoints';
-import type { IPropertyListing } from '@/core/api/types';
+import type { IPropertyListItemExtended as IPropertyListItem } from '@/core/api/types';
 
 // ============================================================================
 // TYPES
@@ -59,7 +59,7 @@ export interface IUpdatePropertyRequest {
 }
 
 export interface IPropertyListResponse {
-  data: IPropertyListing[];
+  data: IPropertyListItem[];
   total: number;
   page?: number;
   limit?: number;
@@ -109,8 +109,8 @@ export const searchProperties = async (
  */
 export const getPropertyDetail = async (
   id: string | number
-): Promise<IPropertyListing> => {
-  const response = await apiClient.get<IPropertyListing>(
+): Promise<IPropertyListItem> => {
+  const response = await apiClient.get<IPropertyListItem>(
     API_ENDPOINTS.PROPERTIES.DETAIL(String(id))
   );
   return response.data;
@@ -135,8 +135,8 @@ export const trackPropertyView = async (
 /**
  * Get my properties (requires Level 2+)
  */
-export const getMyProperties = async (): Promise<IPropertyListing[]> => {
-  const response = await apiClient.get<IPropertyListing[]>(
+export const getMyProperties = async (): Promise<IPropertyListItem[]> => {
+  const response = await apiClient.get<IPropertyListItem[]>(
     API_ENDPOINTS.PROPERTIES.MY_PROPERTIES
   );
   return response.data;
@@ -147,8 +147,8 @@ export const getMyProperties = async (): Promise<IPropertyListing[]> => {
  */
 export const createProperty = async (
   data: ICreatePropertyRequest
-): Promise<IPropertyListing> => {
-  const response = await apiClient.post<IPropertyListing>(
+): Promise<IPropertyListItem> => {
+  const response = await apiClient.post<IPropertyListItem>(
     API_ENDPOINTS.PROPERTIES.CREATE,
     data
   );
@@ -161,8 +161,8 @@ export const createProperty = async (
 export const updateProperty = async (
   id: string | number,
   data: IUpdatePropertyRequest
-): Promise<IPropertyListing> => {
-  const response = await apiClient.patch<IPropertyListing>(
+): Promise<IPropertyListItem> => {
+  const response = await apiClient.patch<IPropertyListItem>(
     API_ENDPOINTS.PROPERTIES.UPDATE(String(id)),
     data
   );
@@ -225,8 +225,8 @@ export const uploadPropertyPhotos = async (
 export const updatePropertyStatus = async (
   id: string | number,
   status: PropertyStatus
-): Promise<IPropertyListing> => {
-  const response = await apiClient.patch<IPropertyListing>(
+): Promise<IPropertyListItem> => {
+  const response = await apiClient.patch<IPropertyListItem>(
     `${API_ENDPOINTS.PROPERTIES.UPDATE(String(id))}/status`,
     { status }
   );

@@ -83,8 +83,9 @@ export async function getCurrentProfile(): Promise<UserProfile> {
  * Update current user profile
  */
 export async function updateProfile(data: UpdateProfileDto): Promise<UserProfile> {
+  // Backend exposes PUT /users/me (see UserController.updateProfile)
   return api.fetch<UserProfile>('/users/me', {
-    method: 'PATCH',
+    method: 'PUT',
     body: JSON.stringify(data),
   });
 }
@@ -94,31 +95,29 @@ export async function updateProfile(data: UpdateProfileDto): Promise<UserProfile
  */
 export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
   const formData = new FormData();
-  formData.append('avatar', file);
-  // Some backends expect 'file' instead of 'avatar'
+  // Backend uses FileInterceptor('file', ...) — field name must be 'file'.
   formData.append('file', file);
-  
+
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/users/me/avatar`,
     {
-      method: 'POST',
+      method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('riva_access_token') || ''}`,
       },
       body: formData,
     }
   );
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Upload failed' }));
     console.error('Avatar upload failed:', response.status, error);
     throw { code: 'UPLOAD_ERROR', message: error.message || `Upload failed (${response.status})` };
   }
-  
-  const data = await response.json();
-  // Backend may return { avatarUrl }, { avatar }, { url }, or { user: { avatar } }
-  const avatarUrl = data.avatarUrl || data.avatar || data.url || data.user?.avatar || '';
-  return { avatarUrl };
+
+  // Backend returns a single canonical field: { avatar: <url> }
+  const data: { avatar: string } = await response.json();
+  return { avatarUrl: data.avatar };
 }
 
 /**
@@ -171,6 +170,15 @@ export async function getUserListings(userId: string | number): Promise<UserList
   return [];
 }
 
+/**
+ * Delete current user account (irreversible)
+ */
+export async function deleteAccount(): Promise<{ success: boolean }> {
+  return api.fetch<{ success: boolean }>('/users/me', {
+    method: 'DELETE',
+  });
+}
+
 // ============================================================================
 // EXPORT ALL
 // ============================================================================
@@ -180,6 +188,7 @@ export const userApi = {
   updateProfile,
   uploadAvatar,
   deleteAvatar,
+  deleteAccount,
   getNotificationPreferences,
   updateNotificationPreferences,
   getPublicProfile,

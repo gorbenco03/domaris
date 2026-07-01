@@ -1,0 +1,4 @@
+transaction_id,transaction_date,city,neighborhood,property_type,rooms,surface_sqm,floor,total_floors,year_built,is_furnished,amenities_count,amenities_list,lat,lng,sale_price_eur,price_per_sqm_eur,data_source,is_verified
+t-0001,2025-03-14,Chisinau,Botanica,APARTMENT,2,52,4,9,1987,true,3,parking|elevator|balcony,46.9898,28.8560,47500,913,internal,true
+t-0002,2025-04-02,Chisinau,Centru,STUDIO,0,28,2,5,2015,false,2,elevator|interphone,47.0245,28.8324,38000,1357,partner,true
+t-0003,2025-04-21,Chisinau,Durlesti,HOUSE,4,120,0,2,2008,false,4,parking|garage|storage|gas,47.0600,28.7700,135000,1125,internal,true

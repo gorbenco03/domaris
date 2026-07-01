@@ -139,6 +139,9 @@ export interface AVMResponse {
     liquidityScore: number;
     dealAttractivenessScore: number;
     confidence: number;
+    // true when the engine had < 3 comparables and could not produce a real estimate
+    // (recommendedPrice / priceRange come back as -1 in that case).
+    insufficientData?: boolean;
     comparables: {
       count: number;
       avgPrice: number;
@@ -184,7 +187,7 @@ export interface PropertyAnalysis {
     photos: number;
     pricing: number;
   };
-  priceCheck: {
+  priceCheck?: {
     status: 'low' | 'fair' | 'high';
     suggestedPrice: number;
     marketAverage: number;
@@ -196,6 +199,43 @@ export interface PropertyAnalysis {
     suggested: string;
     impact: 'high' | 'medium' | 'low';
   }>;
+}
+
+// Raw shape returned by the backend (AiService.analyzeProperty / analyzeListingDraft).
+interface BackendPropertyAnalysis {
+  overallScore?: number;
+  priceAnalysis?: { isReasonable?: boolean; suggestion?: string; marketComparison?: string; percentDiff?: number | null };
+  descriptionAnalysis?: { score?: number; issues?: string[]; suggestions?: string[] };
+  photosAnalysis?: { count?: number; suggestions?: string[] };
+  recommendations?: Array<{ priority?: string; title?: string; description?: string; impact?: string }>;
+}
+
+/** Translate the backend analysis shape into the flat shape the UI renders. */
+function mapAnalysis(b: BackendPropertyAnalysis): PropertyAnalysis {
+  const recs = Array.isArray(b.recommendations) ? b.recommendations : [];
+  return {
+    scores: {
+      overall: b.overallScore ?? 0,
+      title: 70,
+      description: b.descriptionAnalysis?.score ?? 0,
+      photos: Math.min(100, (b.photosAnalysis?.count ?? 0) * 10),
+      pricing: b.priceAnalysis?.isReasonable ? 80 : 50,
+    },
+    // Backend doesn't return absolute suggested/market numbers here — omit the
+    // price-check block rather than render zeros.
+    priceCheck: undefined,
+    recommendations: recs.map((r) =>
+      [r.title, r.description].filter(Boolean).join(' — ') || String(r),
+    ),
+    improvements: [
+      ...(b.descriptionAnalysis?.suggestions ?? []).map((s) => ({
+        field: 'Descriere', current: '', suggested: s, impact: 'medium' as const,
+      })),
+      ...(b.photosAnalysis?.suggestions ?? []).map((s) => ({
+        field: 'Fotografii', current: '', suggested: s, impact: 'medium' as const,
+      })),
+    ],
+  };
 }
 
 export interface AIConversationSummary {
@@ -334,10 +374,11 @@ export async function generatePropertyDescription(
  * Analyze property listing quality
  */
 export async function analyzeProperty(propertyId: number): Promise<PropertyAnalysis> {
-  return api.fetch<PropertyAnalysis>('/ai/analyze-listing', {
+  const raw = await api.fetch<BackendPropertyAnalysis>('/ai/analyze-listing', {
     method: 'POST',
     body: JSON.stringify({ propertyId }),
   });
+  return mapAnalysis(raw);
 }
 
 /**
@@ -352,10 +393,11 @@ export async function analyzeListingDraft(payload: {
   surfaceSqm?: number;
   photosCount?: number;
 }): Promise<PropertyAnalysis> {
-  return api.fetch<PropertyAnalysis>('/ai/analyze-listing', {
+  const raw = await api.fetch<BackendPropertyAnalysis>('/ai/analyze-listing', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  return mapAnalysis(raw);
 }
 
 /**
@@ -366,7 +408,18 @@ export async function getPropertySummary(propertyId: number): Promise<{
   highlights: string[];
   concerns: string[];
 }> {
-  return api.fetch(`/ai/property-summary/${propertyId}`);
+  // Backend returns { summary, highlights, cautions }. Normalize cautions -> concerns.
+  const res = await api.fetch<{
+    summary?: string;
+    highlights?: string[];
+    concerns?: string[];
+    cautions?: string[];
+  }>(`/ai/property-summary/${propertyId}`);
+  return {
+    summary: res.summary || '',
+    highlights: res.highlights || [],
+    concerns: res.concerns ?? res.cautions ?? [],
+  };
 }
 
 /**
@@ -383,9 +436,16 @@ export async function estimatePrice(request: {
   priceRange: { min: number; max: number };
   confidence: number;
 }> {
-  return api.fetch('/ai/suggest-price', {
+  // Backend route is /ai/estimate-price and expects { city, propertyType, rooms, surface }
+  // (note: `surface`, not `surfaceSqm`; no `transactionType`).
+  return api.fetch('/ai/estimate-price', {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: JSON.stringify({
+      city: request.city,
+      propertyType: request.propertyType,
+      rooms: request.rooms,
+      surface: request.surfaceSqm,
+    }),
   });
 }
 

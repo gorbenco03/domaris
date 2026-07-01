@@ -88,7 +88,7 @@ export const QUERY_KEYS = {
 
 export const VALIDATION = {
   PASSWORD_MIN_LENGTH: 8,
-  PHONE_REGEX: /^(\+40|0)[0-9]{9}$/,
+  PHONE_REGEX: /^(\+373|0)[0-9]{8}$/,
   EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   MAX_PROPERTY_IMAGES: 20,
   MAX_IMAGE_SIZE_MB: 10,

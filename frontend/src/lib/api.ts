@@ -298,12 +298,17 @@ export async function forgotPassword(email: string): Promise<{ success: boolean;
 }
 
 /**
- * Reset password with token from email
+ * Reset password with the 6-digit code emailed by /auth/forgot-password.
+ * Backend ResetPasswordDto expects { email, code, newPassword }.
  */
-export async function resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+export async function resetPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<{ success: boolean; message: string }> {
   return api.fetch<{ success: boolean; message: string }>('/auth/reset-password', {
     method: 'POST',
-    body: JSON.stringify({ token, newPassword }),
+    body: JSON.stringify({ email, code, newPassword }),
   });
 }
 

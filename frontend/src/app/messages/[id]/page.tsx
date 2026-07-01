@@ -85,6 +85,26 @@ export default function ConversationPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Poll for new messages while the conversation is open (reliable real-time fallback:
+  // the web client sends via REST, so without this the recipient wouldn't see new
+  // messages until a manual reload).
+  useEffect(() => {
+    if (!isAuthenticated || !conversationId) return;
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await getMessages(conversationId);
+        setMessages((prev) => {
+          const pendingTemps = prev.filter((m) => String(m.id).startsWith("temp-"));
+          return [...fresh, ...pendingTemps];
+        });
+        markAsRead(conversationId).catch(() => {});
+      } catch {
+        // ignore transient polling errors
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, conversationId]);
+
   const handleSend = async () => {
     if (!newMessage.trim() || isSending) return;
     
@@ -99,7 +119,7 @@ export default function ConversationPage() {
       senderId: Number(user?.id) || 0,
       content: messageContent,
       type: 'TEXT',
-      isRead: false,
+      readAt: null,
       createdAt: new Date().toISOString(),
     };
     setMessages(prev => [...prev, tempMessage]);

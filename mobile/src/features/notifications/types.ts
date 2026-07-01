@@ -33,6 +33,7 @@ export interface Notification {
   imageUrl?: string;
   actionType?: ActionType;
   actionPayload?: string;
+  actionData?: Record<string, any>;
   read: boolean;
   readAt?: Date;
   channels: NotificationChannel[];
