@@ -1,0 +1,914 @@
+[
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 2,
+    "latency_ms": 13115.2,
+    "q": "Caut un apartament cu 2 camere în Chișinău",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 0,
+    "latency_ms": 4243.7,
+    "q": "Vreau o casă în Botanica sub 100000 euro",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 2,
+    "latency_ms": 7857.4,
+    "q": "Apartament 3 camere de închiriat în Centru",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 0,
+    "latency_ms": 4137.6,
+    "q": "Caut garsonieră în Buiucani",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2865.9,
+    "q": "Am nevoie de un apartament mobilat cu parcare",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 0,
+    "latency_ms": 4148.4,
+    "q": "Vreau să cumpăr o casă în Durlești",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 0,
+    "latency_ms": 4713.9,
+    "q": "Caut apartament 2 camere între 400 și 600 euro",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 0,
+    "latency_ms": 6554.4,
+    "q": "Găsește-mi un studio în Ciocana",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 2,
+    "latency_ms": 8089.5,
+    "q": "Apartament cu 3 camere, minim 70 mp, în Rîșcani",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "search",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [
+      "search_properties"
+    ],
+    "n_properties": 5,
+    "latency_ms": 37887.0,
+    "q": "Vreau o vilă cu grădină în Chișinău",
+    "expected": "search",
+    "ok": true
+  },
+  {
+    "predicted": "compare",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2773.4,
+    "q": "Compară primele două apartamente",
+    "expected": "compare",
+    "ok": true
+  },
+  {
+    "predicted": "compare",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2959.9,
+    "q": "Care e diferența dintre astea două?",
+    "expected": "compare",
+    "ok": true
+  },
+  {
+    "predicted": "compare",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3179.6,
+    "q": "Apartamentul din Botanica vs cel din Centru",
+    "expected": "compare",
+    "ok": true
+  },
+  {
+    "predicted": "compare",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3174.0,
+    "q": "Compară prețurile la aceste proprietăți",
+    "expected": "compare",
+    "ok": true
+  },
+  {
+    "predicted": "compare",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2503.5,
+    "q": "Vreau să compar opțiunile",
+    "expected": "compare",
+    "ok": true
+  },
+  {
+    "predicted": "compare",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2499.7,
+    "q": "Care e mai bun între ele?",
+    "expected": "compare",
+    "ok": true
+  },
+  {
+    "predicted": "compare",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2954.0,
+    "q": "Diferențe între cele două case",
+    "expected": "compare",
+    "ok": true
+  },
+  {
+    "predicted": "compare",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2912.7,
+    "q": "Compară-le pe cele găsite",
+    "expected": "compare",
+    "ok": true
+  },
+  {
+    "predicted": "schedule",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2558.2,
+    "q": "Vreau să programez o vizionare",
+    "expected": "schedule",
+    "ok": true
+  },
+  {
+    "predicted": "schedule",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 4947.2,
+    "q": "Pot vedea apartamentul mâine?",
+    "expected": "schedule",
+    "ok": true
+  },
+  {
+    "predicted": "schedule",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3024.3,
+    "q": "Aș dori să vizitez proprietatea",
+    "expected": "schedule",
+    "ok": true
+  },
+  {
+    "predicted": "schedule",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2754.6,
+    "q": "Programează o vizionare pentru sâmbătă",
+    "expected": "schedule",
+    "ok": true
+  },
+  {
+    "predicted": "schedule",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2885.5,
+    "q": "Când pot să văd casa?",
+    "expected": "schedule",
+    "ok": true
+  },
+  {
+    "predicted": "schedule",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2554.2,
+    "q": "Vreau să fac o vizionare la apartamentul din Centru",
+    "expected": "schedule",
+    "ok": true
+  },
+  {
+    "predicted": "schedule",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2903.1,
+    "q": "Să văd apartamentul săptămâna viitoare",
+    "expected": "schedule",
+    "ok": true
+  },
+  {
+    "predicted": "schedule",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3636.9,
+    "q": "Programare vizionare",
+    "expected": "schedule",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2974.0,
+    "q": "Îmi permit un apartament de 50000 euro?",
+    "expected": "mortgage",
+    "ok": true
+  },
+  {
+    "predicted": "mortgage",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 4104.1,
+    "q": "Ce credit ipotecar pot lua?",
+    "expected": "mortgage",
+    "ok": true
+  },
+  {
+    "predicted": "mortgage",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3252.3,
+    "q": "Care ar fi rata lunară pentru 60000 euro?",
+    "expected": "mortgage",
+    "ok": true
+  },
+  {
+    "predicted": "mortgage",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 6743.6,
+    "q": "Am nevoie de un împrumut pentru casă",
+    "expected": "mortgage",
+    "ok": true
+  },
+  {
+    "predicted": "mortgage",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3367.0,
+    "q": "Cât ar fi rata la un credit de 40000 euro?",
+    "expected": "mortgage",
+    "ok": true
+  },
+  {
+    "predicted": "mortgage",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3932.0,
+    "q": "Ce buget îmi trebuie pentru un apartament?",
+    "expected": "mortgage",
+    "ok": true
+  },
+  {
+    "predicted": "mortgage",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2868.0,
+    "q": "Pot obține ipotecă pentru această proprietate?",
+    "expected": "mortgage",
+    "ok": true
+  },
+  {
+    "predicted": "mortgage",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3170.6,
+    "q": "Vreau informații despre creditul imobiliar",
+    "expected": "mortgage",
+    "ok": true
+  },
+  {
+    "predicted": "area_info",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 7956.8,
+    "q": "Cum e cartierul Botanica?",
+    "expected": "area_info",
+    "ok": true
+  },
+  {
+    "predicted": "area_info",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 5754.3,
+    "q": "Spune-mi despre zona Centru",
+    "expected": "area_info",
+    "ok": true
+  },
+  {
+    "predicted": "area_info",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 4761.9,
+    "q": "Ce facilități are Buiucani?",
+    "expected": "area_info",
+    "ok": true
+  },
+  {
+    "predicted": "area_info",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3008.1,
+    "q": "E bun cartierul Ciocana pentru familii?",
+    "expected": "area_info",
+    "ok": true
+  },
+  {
+    "predicted": "area_info",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [
+      "recommend_areas"
+    ],
+    "n_properties": 0,
+    "latency_ms": 4419.0,
+    "q": "Informații despre zona Rîșcani",
+    "expected": "area_info",
+    "ok": true
+  },
+  {
+    "predicted": "area_info",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 4309.2,
+    "q": "Cum e viața în Telecentru?",
+    "expected": "area_info",
+    "ok": true
+  },
+  {
+    "predicted": "area_info",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 5515.5,
+    "q": "Ce știi despre cartierul Sculeni?",
+    "expected": "area_info",
+    "ok": true
+  },
+  {
+    "predicted": "area_info",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3479.6,
+    "q": "Zona Poșta Veche e sigură?",
+    "expected": "area_info",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3167.5,
+    "q": "E corect prețul ăsta?",
+    "expected": "price_check",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3654.0,
+    "q": "Merită apartamentul banii?",
+    "expected": "price_check",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 12472.8,
+    "q": "Prețul e prea scump?",
+    "expected": "price_check",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3202.5,
+    "q": "E un preț rezonabil pentru zonă?",
+    "expected": "price_check",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3399.1,
+    "q": "Crezi că e negociabil?",
+    "expected": "price_check",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3274.3,
+    "q": "Apartamentul e ieftin sau scump?",
+    "expected": "price_check",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.9,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 4404.0,
+    "q": "E un preț bun pentru 60 mp în Centru?",
+    "expected": "price_check",
+    "ok": true
+  },
+  {
+    "predicted": "price_check",
+    "tier": 1,
+    "confidence": 0.85,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2662.6,
+    "q": "Prețul ăsta e ok?",
+    "expected": "price_check",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 1,
+    "confidence": 1,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2384.5,
+    "q": "Bună!",
+    "expected": "greeting",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3.6,
+    "q": "Salut",
+    "expected": "greeting",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 1,
+    "confidence": 1,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2722.4,
+    "q": "Bună ziua",
+    "expected": "greeting",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3.9,
+    "q": "Hey",
+    "expected": "greeting",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2.9,
+    "q": "Servus",
+    "expected": "greeting",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 1,
+    "confidence": 1,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2447.6,
+    "q": "Neața",
+    "expected": "greeting",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2.4,
+    "q": "Hello",
+    "expected": "greeting",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3280.1,
+    "q": "Bună, ai un moment?",
+    "expected": "greeting",
+    "ok": true
+  },
+  {
+    "predicted": "thanks",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 4.5,
+    "q": "Mulțumesc!",
+    "expected": "thanks",
+    "ok": true
+  },
+  {
+    "q": "Mersi mult",
+    "expected": "thanks",
+    "ok": false,
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  {
+    "predicted": "thanks",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 5.1,
+    "q": "Mulțumesc pentru ajutor",
+    "expected": "thanks",
+    "ok": true
+  },
+  {
+    "predicted": "thanks",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 5.0,
+    "q": "Thanks",
+    "expected": "thanks",
+    "ok": true
+  },
+  {
+    "predicted": "thanks",
+    "tier": 1,
+    "confidence": 1,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2551.6,
+    "q": "Îți mulțumesc",
+    "expected": "thanks",
+    "ok": true
+  },
+  {
+    "predicted": "thanks",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 4.3,
+    "q": "Mersi, la revedere",
+    "expected": "thanks",
+    "ok": true
+  },
+  {
+    "predicted": "thanks",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2.9,
+    "q": "Mulțam frumos",
+    "expected": "thanks",
+    "ok": true
+  },
+  {
+    "predicted": "thanks",
+    "tier": 0,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3.6,
+    "q": "Ms",
+    "expected": "thanks",
+    "ok": true
+  },
+  {
+    "predicted": "help",
+    "tier": 0,
+    "confidence": 0.92,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 4.1,
+    "q": "Ajutor",
+    "expected": "help",
+    "ok": true
+  },
+  {
+    "predicted": "help",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3279.2,
+    "q": "Cum funcționează?",
+    "expected": "help",
+    "ok": true
+  },
+  {
+    "predicted": "help",
+    "tier": 0,
+    "confidence": 0.92,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3.9,
+    "q": "Ce poți să faci?",
+    "expected": "help",
+    "ok": true
+  },
+  {
+    "predicted": "help",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3883.7,
+    "q": "Cum folosesc aplicația?",
+    "expected": "help",
+    "ok": true
+  },
+  {
+    "q": "Ce poți face pentru mine?",
+    "expected": "help",
+    "ok": false,
+    "error": "HTTP Error 429: Too Many Requests"
+  },
+  {
+    "predicted": "help",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2370.2,
+    "q": "Am nevoie de ajutor",
+    "expected": "help",
+    "ok": true
+  },
+  {
+    "predicted": "help",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3654.4,
+    "q": "Explică-mi cum merge",
+    "expected": "help",
+    "ok": true
+  },
+  {
+    "predicted": "help",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3599.6,
+    "q": "Cu ce mă poți ajuta?",
+    "expected": "help",
+    "ok": true
+  },
+  {
+    "predicted": "unclear",
+    "tier": 2,
+    "confidence": 0.1,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2814.1,
+    "q": "asdfgh",
+    "expected": "unclear",
+    "ok": true
+  },
+  {
+    "predicted": "unclear",
+    "tier": 1,
+    "confidence": 0.8,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 6795.9,
+    "q": "Nu știu ce vreau",
+    "expected": "unclear",
+    "ok": true
+  },
+  {
+    "predicted": "unclear",
+    "tier": 2,
+    "confidence": 0.5,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2935.3,
+    "q": "Poate mai târziu",
+    "expected": "unclear",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 1,
+    "confidence": 0.8,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3792.5,
+    "q": "Vremea e frumoasă azi",
+    "expected": "unclear",
+    "ok": true
+  },
+  {
+    "predicted": "unclear",
+    "tier": 2,
+    "confidence": 0.1,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3367.7,
+    "q": "Îmi place culoarea albastră",
+    "expected": "unclear",
+    "ok": true
+  },
+  {
+    "predicted": "unclear",
+    "tier": 2,
+    "confidence": 0.1,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3907.6,
+    "q": "Care e sensul vieții?",
+    "expected": "unclear",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 1,
+    "confidence": 0.8,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 2869.3,
+    "q": "Spune-mi o glumă",
+    "expected": "unclear",
+    "ok": true
+  },
+  {
+    "predicted": "greeting",
+    "tier": 1,
+    "confidence": 0.95,
+    "tools": [],
+    "n_properties": 0,
+    "latency_ms": 3465.9,
+    "q": "Ce mai faci?",
+    "expected": "unclear",
+    "ok": true
+  }
+]
