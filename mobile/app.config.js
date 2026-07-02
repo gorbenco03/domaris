@@ -1,12 +1,16 @@
 const appConfig = require('./app.json');
 
-// The Mapbox DOWNLOAD token (sk.*) must be set as an EAS secret:
-//   eas secret:create --name RNMAPBOX_DOWNLOAD_TOKEN --value "sk.eyJ1IjoiZ..."
-// It is injected at build time by EAS and should NEVER be committed.
+// The Mapbox DOWNLOAD token (sk.* cu scope Downloads:Read) descarcă SDK-ul nativ la build.
+//   - build EAS: setat ca EAS secret  ->  eas env:create --name RNMAPBOX_DOWNLOAD_TOKEN --value "sk...."
+//   - build local: setat în mobile/.env.local (RNMAPBOX_DOWNLOAD_TOKEN sau RNMAPBOX_MAPS_DOWNLOAD_TOKEN)
+// NU se commit-uiește niciodată.
 //
 // The public ACCESS token (pk.*) is set via EXPO_PUBLIC_MAPBOX_TOKEN in eas.json env.
 
-const downloadToken = process.env.RNMAPBOX_DOWNLOAD_TOKEN || 'RNMAPBOX_DOWNLOAD_TOKEN_PLACEHOLDER';
+const downloadToken =
+  process.env.RNMAPBOX_DOWNLOAD_TOKEN ||
+  process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN ||
+  'RNMAPBOX_DOWNLOAD_TOKEN_PLACEHOLDER';
 
 module.exports = {
   ...appConfig.expo,
