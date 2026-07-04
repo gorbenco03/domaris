@@ -54,6 +54,7 @@ export class ChatService {
       include: [
         { 
           model: Listing, 
+          as: 'property',
           attributes: ['id', 'title', 'priceEur'],
           include: [{ model: ListingImage, as: 'images', attributes: ['url'], limit: 1 }]
         },
@@ -141,8 +142,9 @@ export class ChatService {
   async getConversation(userId: number, conversationId: number) {
     const conversation = await Conversation.findByPk(conversationId, {
       include: [
-        { 
-          model: Listing, 
+        {
+          model: Listing,
+          as: 'property',
           attributes: ['id', 'title', 'priceEur', 'ownerId'],
           include: [{ model: ListingImage, as: 'images', attributes: ['url'], limit: 1 }]
         },
@@ -442,13 +444,13 @@ export class ChatService {
 
     return {
       id: conversation.id,
-      property: conversation.listing
+      property: conversation.property
         ? {
-            id: conversation.listing.id,
-            title: conversation.listing.title,
-            price: conversation.listing.priceEur,
+            id: conversation.property.id,
+            title: conversation.property.title,
+            price: conversation.property.priceEur,
             // Safe access to nested images array
-            image: conversation.listing.images?.[0]?.url,
+            image: conversation.property.images?.[0]?.url,
           }
         : null,
       otherParticipant: otherParticipant
