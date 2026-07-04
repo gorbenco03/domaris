@@ -224,11 +224,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const userData = await authApi.getCurrentUser();
       store.setUser(userData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Refresh user error:', error);
-      // If token is invalid, logout
-      await store.logout();
-      throw error;
+      // Deloghează DOAR când token-ul e cu adevărat invalid (401/403).
+      // Erorile de rețea sau de server (ex. backend-ul care pornește „la rece"
+      // pe Railway, timeout, offline momentan) NU trebuie să șteargă sesiunea —
+      // altfel utilizatorul e delogat la fiecare repornire a aplicației.
+      const status = error?.response?.status ?? error?.status;
+      if (status === 401 || status === 403) {
+        await store.logout();
+      }
+      // Altfel: păstrăm sesiunea persistată și nu propagăm eroarea.
     }
   };
 

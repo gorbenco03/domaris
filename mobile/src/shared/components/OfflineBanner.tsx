@@ -13,28 +13,37 @@ export const OfflineBanner: React.FC = () => {
   const insets = useSafeAreaInsets();
   const [isOffline, setIsOffline] = React.useState(false);
   const translateY = useRef(new Animated.Value(-60)).current;
+  const offlineTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
-      // Offline DOAR când nu există interfață de rețea (isConnected === false).
-      // NU folosim `isInternetReachable`: acela face un sondaj HTTP către un URL
-      // extern care eșuează fals pe multe rețele (URL blocat/lent, ex. în Moldova),
-      // afișând un banner „fără internet" deși conexiunea funcționează.
+    // Offline DOAR când nu există interfață de rețea (isConnected === false).
+    // NU folosim `isInternetReachable`: acela face un sondaj HTTP către un URL
+    // extern care eșuează fals pe multe rețele (URL blocat/lent, ex. în Moldova),
+    // afișând un banner „fără internet" deși conexiunea funcționează.
+    // În plus, afișăm bannerul doar dacă starea offline persistă ~3s, ca să
+    // evităm clipirea la tranziții momentane (pornire aplicație, schimbare rețea).
+    const apply = (state: NetInfoState) => {
       const offline = state.isConnected === false;
-      setIsOffline(offline);
-    });
+      if (offline) {
+        if (!offlineTimer.current) {
+          offlineTimer.current = setTimeout(() => setIsOffline(true), 3000);
+        }
+      } else {
+        if (offlineTimer.current) {
+          clearTimeout(offlineTimer.current);
+          offlineTimer.current = null;
+        }
+        setIsOffline(false);
+      }
+    };
 
-    // Fetch initial state
-    NetInfo.fetch().then((state) => {
-      // Offline DOAR când nu există interfață de rețea (isConnected === false).
-      // NU folosim `isInternetReachable`: acela face un sondaj HTTP către un URL
-      // extern care eșuează fals pe multe rețele (URL blocat/lent, ex. în Moldova),
-      // afișând un banner „fără internet" deși conexiunea funcționează.
-      const offline = state.isConnected === false;
-      setIsOffline(offline);
-    });
+    const unsubscribe = NetInfo.addEventListener(apply);
+    NetInfo.fetch().then(apply);
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (offlineTimer.current) clearTimeout(offlineTimer.current);
+    };
   }, []);
 
   useEffect(() => {
