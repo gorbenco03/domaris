@@ -671,9 +671,15 @@ export class ToolExecutor {
         };
         const avm = await this.valuationEngine.valuate(avmInput);
         if (avm.recommendedPrice > 0) {
+          // Bandă afișată plafonată la ±15% din prețul recomandat (vezi AIService)
+          const rec = avm.recommendedPrice;
+          const displayRange = {
+            min: Math.round(Math.max(avm.priceRange.min, rec * 0.85)),
+            max: Math.round(Math.min(avm.priceRange.max, rec * 1.15)),
+          };
           const result: any = {
             recommendedPrice: avm.recommendedPrice,
-            priceRange: avm.priceRange,
+            priceRange: displayRange,
             currency: avm.currency,
             confidence: avm.confidence,
             source: avm.source, // 'ml' sau 'cma'
@@ -733,11 +739,12 @@ export class ToolExecutor {
       Math.max(0.3, 0.6 + 0.02 * comparables.data.length - (stdDev / avgPrice) * 0.3),
     );
 
+    const halfBand = Math.min(stdDev * 0.5, estimatedPrice * 0.15);
     const result = {
       recommendedPrice: estimatedPrice,
       priceRange: {
-        min: Math.round(estimatedPrice - stdDev * 0.5),
-        max: Math.round(estimatedPrice + stdDev * 0.5),
+        min: Math.round(estimatedPrice - halfBand),
+        max: Math.round(estimatedPrice + halfBand),
       },
       currency: 'EUR',
       confidence: Math.round(confidence * 100) / 100,

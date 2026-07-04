@@ -880,9 +880,18 @@ Reguli:
         };
         const avm = await this.valuationEngine.valuate(avmInput);
         if (avm.recommendedPrice > 0) {
+          // Banda afișată e plafonată la ±15% în jurul prețului recomandat:
+          // intervalul brut q10-q90 al modelului poate fi asimetric și foarte
+          // lat pentru cazuri incerte (ex. clădiri nou construite, rare în date),
+          // ceea ce nu e util pentru sugestia de preț din interfață.
+          const rec = avm.recommendedPrice;
+          const displayRange = {
+            min: Math.round(Math.max(avm.priceRange.min, rec * 0.85)),
+            max: Math.round(Math.min(avm.priceRange.max, rec * 1.15)),
+          };
           return {
-            estimatedPrice: avm.recommendedPrice,
-            priceRange: avm.priceRange,
+            estimatedPrice: rec,
+            priceRange: displayRange,
             confidence: avm.confidence,
             comparables: {
               avgPrice: avm.comparables?.avgPrice ?? 0,
@@ -960,11 +969,15 @@ Reguli:
       Math.max(0.3, 0.6 + 0.02 * comparables.data.length - (stdDev / avgPrice) * 0.5)
     );
 
+    // Bandă plafonată la ±15% din preț: deviația standard a comparabilelor
+    // poate fi enormă în zone eterogene (ex. Botanica amestecă blocuri vechi
+    // ieftine cu construcții noi scumpe), rezultând un interval inutilizabil.
+    const halfBand = Math.min(stdDev * 0.5, estimatedPrice * 0.15);
     return {
       estimatedPrice,
       priceRange: {
-        min: Math.round(estimatedPrice - stdDev * 0.5),
-        max: Math.round(estimatedPrice + stdDev * 0.5),
+        min: Math.round(estimatedPrice - halfBand),
+        max: Math.round(estimatedPrice + halfBand),
       },
       confidence: Math.round(confidence * 100) / 100,
       comparables: {
