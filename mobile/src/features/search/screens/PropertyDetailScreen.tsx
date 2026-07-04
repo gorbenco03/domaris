@@ -88,6 +88,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SearchStackParamList, MainTabParamList, ProfileStackParamList } from '@/app/navigation/types';
+import { AVMValuationCard } from '@/features/properties/components/AVMValuationCard';
 
 // Combined navigation type for cross-tab navigation
 type PropertyDetailNavigationProp = CompositeNavigationProp<
@@ -481,6 +482,21 @@ const PropertyDetailScreen: React.FC = () => {
              <InfoItem icon={Layers} value={`${property.floor ?? '-'}/${property.totalFloors ?? '-'}`} label="Etaj" />
              <InfoItem icon={Calendar} value={property.yearBuilt || '-'} label="An constr." />
           </View>
+
+          {/* Evaluare automată (AVM) — preț estimat vs. preț cerut */}
+          <AVMValuationCard
+            city={property.city}
+            neighborhood={property.neighborhood}
+            propertyType={property.propertyType}
+            transactionType={(property.transactionType as 'SALE' | 'RENT') ?? 'SALE'}
+            rooms={property.rooms}
+            surfaceSqm={property.surfaceSqm || property.surface}
+            floor={property.floor ?? undefined}
+            totalFloors={property.totalFloors ?? undefined}
+            yearBuilt={property.yearBuilt ?? undefined}
+            amenities={property.amenities}
+            askingPrice={property.priceEur || property.price}
+          />
 
           {/* AI Assistant Banner */}
           <TouchableOpacity 
