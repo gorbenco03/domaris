@@ -84,10 +84,11 @@ export class ValuationEngine {
 
       const result: AVMResult = {
         recommendedPrice: Math.round(mlPrediction.predicted_price),
-        priceRange: {
-          min: Math.round(mlPrediction.price_min),
-          max: Math.round(mlPrediction.price_max),
-        },
+        priceRange: this.clampDisplayRange(
+          mlPrediction.predicted_price,
+          mlPrediction.price_min,
+          mlPrediction.price_max,
+        ),
         currency: 'EUR',
         liquidityScore,
         dealAttractivenessScore: dealScore,
@@ -149,7 +150,7 @@ export class ValuationEngine {
 
     const result: AVMResult = {
       recommendedPrice: Math.round(adjustedPrice),
-      priceRange,
+      priceRange: this.clampDisplayRange(adjustedPrice, priceRange.min, priceRange.max),
       currency: 'EUR',
       liquidityScore,
       dealAttractivenessScore: dealScore,
@@ -178,6 +179,23 @@ export class ValuationEngine {
     });
 
     return result;
+  }
+
+  /**
+   * Plafonează banda afișată la ±15% din prețul recomandat. Intervalul brut
+   * (q10-q90 al modelului sau derivat din comparabile) poate fi foarte lat sau
+   * asimetric în zone eterogene ori la proprietăți rare în date, rezultând o
+   * sugestie inutilizabilă în interfață. Se aplică pe toate căile de valuare.
+   */
+  private clampDisplayRange(
+    recommended: number,
+    min: number,
+    max: number,
+  ): { min: number; max: number } {
+    return {
+      min: Math.round(Math.max(min, recommended * 0.85)),
+      max: Math.round(Math.min(max, recommended * 1.15)),
+    };
   }
 
   // ========================================================================
