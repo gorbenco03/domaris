@@ -420,6 +420,12 @@ const ProfileScreen: React.FC = () => {
             description="Contracte de închiriere active și istorice"
             onPress={() => navigation.navigate('MyContracts')}
           />
+          <ProfileMenuItem
+            icon={<Shield />}
+            label="Verificare identitate"
+            description="Niveluri KYC — deblochează publicarea și contactarea"
+            onPress={() => navigation.navigate('VerificationHub')}
+          />
         </ProfileSection>
 
         {/* Settings entry (single) */}

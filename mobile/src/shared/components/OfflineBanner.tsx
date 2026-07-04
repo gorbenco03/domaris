@@ -16,19 +16,21 @@ export const OfflineBanner: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
-      // Considerăm offline DOAR când NetInfo spune explicit false.
-      // `isInternetReachable` e `null` până se termină sondajul (și poate rămâne
-      // null pe unele build-uri) — a-l trata ca offline dă un banner fals.
-      const offline = state.isConnected === false || state.isInternetReachable === false;
+      // Offline DOAR când nu există interfață de rețea (isConnected === false).
+      // NU folosim `isInternetReachable`: acela face un sondaj HTTP către un URL
+      // extern care eșuează fals pe multe rețele (URL blocat/lent, ex. în Moldova),
+      // afișând un banner „fără internet" deși conexiunea funcționează.
+      const offline = state.isConnected === false;
       setIsOffline(offline);
     });
 
     // Fetch initial state
     NetInfo.fetch().then((state) => {
-      // Considerăm offline DOAR când NetInfo spune explicit false.
-      // `isInternetReachable` e `null` până se termină sondajul (și poate rămâne
-      // null pe unele build-uri) — a-l trata ca offline dă un banner fals.
-      const offline = state.isConnected === false || state.isInternetReachable === false;
+      // Offline DOAR când nu există interfață de rețea (isConnected === false).
+      // NU folosim `isInternetReachable`: acela face un sondaj HTTP către un URL
+      // extern care eșuează fals pe multe rețele (URL blocat/lent, ex. în Moldova),
+      // afișând un banner „fără internet" deși conexiunea funcționează.
+      const offline = state.isConnected === false;
       setIsOffline(offline);
     });
 
