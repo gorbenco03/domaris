@@ -3,3 +3,8 @@ packages:
   - 'backend'
   - 'frontend'
   - 'mobile'
+
+# pnpm 10.3+ tratează scripturile de build neaprobate ca eroare fatală
+# (ERR_PNPM_IGNORED_BUILDS). Le raportăm ca avertisment, nu eroare —
+# niciun script de dependență nu e necesar pentru build-ul de producție.
+strictDepBuilds: false

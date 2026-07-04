@@ -92,3 +92,5 @@ mobile/android/.cxx/
 # generated native artifacts that should not be committed
 mobile/android/app/debug/
 mobile/android/app/release/
+/mobile/ios/
+/mobile/android/
