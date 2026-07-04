@@ -122,7 +122,7 @@ def main():
     ax.set_xticks(range(len(labels))); ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
     ax.set_yticks(range(len(labels))); ax.set_yticklabels(labels, fontsize=8)
     ax.set_xlabel("Intent prezis"); ax.set_ylabel("Intent real")
-    ax.set_title("Matricea de confuzie a clasificării intentului")
+    ax.set_title("Matricea de confuzie a clasificării intenției")
     thr = cm.max() / 2 if cm.max() else 0
     for i in range(len(labels)):
         for j in range(len(labels)):

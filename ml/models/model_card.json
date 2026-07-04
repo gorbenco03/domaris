@@ -1,10 +1,10 @@
 {
   "model_version": "riva-avm-v1.0.0",
-  "trained_at": "2026-06-25T18:17:15.587839",
-  "train_samples": 689,
-  "val_samples": 141,
-  "test_samples": 147,
-  "feature_count": 36,
+  "trained_at": "2026-07-04T01:52:25.383234",
+  "train_samples": 11948,
+  "val_samples": 2553,
+  "test_samples": 2551,
+  "feature_count": 54,
   "features": [
     "rooms",
     "surface_sqm",
@@ -31,102 +31,120 @@
     "amenity_interphone",
     "amenity_gas",
     "amenity_internet",
-    "city_balti",
+    "city_anenii_noi",
+    "city_basarabeasca",
+    "city_briceni",
+    "city_bălți",
     "city_cahul",
-    "city_chisinau",
+    "city_chișinău",
+    "city_cimișlia",
+    "city_comrat",
+    "city_căușeni",
+    "city_drochia",
+    "city_edineț",
+    "city_florești",
+    "city_fălești",
+    "city_glodeni",
+    "city_hîncești",
+    "city_ialoveni",
+    "city_leova",
+    "city_nisporeni",
+    "city_ocnița",
     "city_orhei",
+    "city_rezina",
     "city_soroca",
+    "city_strășeni",
+    "city_taraclia",
     "city_ungheni",
+    "city_ștefan_vodă",
     "property_type_apartment",
     "property_type_house",
-    "property_type_studio",
-    "property_type_villa",
     "is_furnished"
   ],
-  "optuna_trials": 30,
+  "optuna_trials": 20,
   "best_optuna_params": {
-    "num_leaves": 121,
-    "learning_rate": 0.15735495259556462,
-    "feature_fraction": 0.8498009794634057,
-    "bagging_fraction": 0.728803379010198,
-    "bagging_freq": 6,
-    "min_child_samples": 10,
-    "reg_alpha": 0.015511394289104679,
-    "reg_lambda": 0.00010291045136069805
+    "num_leaves": 20,
+    "learning_rate": 0.16015312171361207,
+    "feature_fraction": 0.8534286719238086,
+    "bagging_fraction": 0.8645035840204937,
+    "bagging_freq": 8,
+    "min_child_samples": 15,
+    "reg_alpha": 0.006199100007802264,
+    "reg_lambda": 0.00037961668958008145
   },
   "metrics_val": {
-    "MAE": 56901.48,
-    "MAPE": 27.26,
-    "RMSE": 85753.39,
-    "R2": 0.8589
+    "MAE": 26819.09,
+    "MAPE": 16.0,
+    "RMSE": 48966.35,
+    "R2": 0.8909
   },
   "metrics_test": {
-    "MAE": 63693.42,
-    "MAPE": 26.39,
-    "RMSE": 99143.91,
-    "R2": 0.8209
+    "MAE": 28051.69,
+    "MAPE": 16.01,
+    "RMSE": 53704.6,
+    "R2": 0.8818
   },
   "baseline_metrics": {
     "ZoneMean_val": {
-      "MAE": 178407.37,
-      "MAPE": 176.77,
-      "RMSE": 229332.25,
-      "R2": -0.0094
+      "MAE": 108203.28,
+      "MAPE": 117.33,
+      "RMSE": 144130.69,
+      "R2": 0.0551
     },
     "ZoneMean_test": {
-      "MAE": 180052.94,
-      "MAPE": 147.47,
-      "RMSE": 233070.02,
-      "R2": 0.0103
+      "MAE": 111595.28,
+      "MAPE": 118.4,
+      "RMSE": 151816.16,
+      "R2": 0.0557
     },
     "ZoneMedian_val": {
-      "MAE": 160636.73,
-      "MAPE": 112.51,
-      "RMSE": 240100.73,
-      "R2": -0.1065
+      "MAE": 90521.19,
+      "MAPE": 63.48,
+      "RMSE": 152906.67,
+      "R2": -0.0635
     },
     "ZoneMedian_test": {
-      "MAE": 169096.67,
-      "MAPE": 92.96,
-      "RMSE": 250775.33,
-      "R2": -0.1458
+      "MAE": 94045.61,
+      "MAPE": 64.22,
+      "RMSE": 161779.74,
+      "R2": -0.0723
     },
     "LinearRegression_val": {
-      "MAE": 61536.57,
-      "MAPE": 42.16,
-      "RMSE": 87651.23,
-      "R2": 0.8525
+      "MAE": 41780.8,
+      "MAPE": 37.91,
+      "RMSE": 62980.08,
+      "R2": 0.8196
     },
     "LinearRegression_test": {
-      "MAE": 71099.54,
-      "MAPE": 40.47,
-      "RMSE": 100450.81,
-      "R2": 0.8162
+      "MAE": 41422.66,
+      "MAPE": 36.46,
+      "RMSE": 64577.44,
+      "R2": 0.8291
     },
     "Ridge(alpha=10)_val": {
-      "MAE": 61726.32,
-      "MAPE": 42.01,
-      "RMSE": 87702.59,
-      "R2": 0.8524
+      "MAE": 41683.54,
+      "MAPE": 37.55,
+      "RMSE": 63025.65,
+      "R2": 0.8193
     },
     "Ridge(alpha=10)_test": {
-      "MAE": 71228.84,
-      "MAPE": 40.32,
-      "RMSE": 100362.25,
-      "R2": 0.8165
+      "MAE": 41513.62,
+      "MAPE": 36.39,
+      "RMSE": 64730.18,
+      "R2": 0.8283
     }
   },
-  "ci_coverage_80pct_test": 68.7,
+  "ci_coverage_80pct_test": 73.8,
   "shap_top10_features": {
-    "surface_sqm": 135241.14,
-    "property_type_villa": 21708.07,
-    "neighborhood_encoded": 17737.64,
-    "building_age": 12410.23,
-    "total_floors": 6187.06,
-    "lng": 4153.57,
-    "rooms": 4096.62,
-    "lat": 4085.37,
-    "amenity_parking": 3781.14,
-    "dist_to_center_km": 3265.8
+    "surface_sqm": 44640.32,
+    "city_chișinău": 23717.24,
+    "neighborhood_encoded": 19964.23,
+    "building_age": 9314.73,
+    "dist_to_center_km": 5805.9,
+    "property_type_apartment": 3888.51,
+    "total_floors": 2972.44,
+    "transaction_year": 2549.97,
+    "amenities_count": 1718.68,
+    "zone_cluster": 1520.07
   }
 }

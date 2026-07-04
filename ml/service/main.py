@@ -119,9 +119,13 @@ class PropertyInput(BaseModel):
     @field_validator("city")
     @classmethod
     def validate_city(cls, v: str) -> str:
-        if v not in CITIES:
-            raise ValueError(f"city trebuie sa fie unul din: {CITIES}")
-        return v
+        # Acceptam orice oras nevid: modelul e antrenat pe numele reale (cu
+        # diacritice), iar pipeline-ul trateaza orasele necunoscute prin
+        # one-hot=0 + zone_cluster + codificarea cartierului. O lista rigida
+        # ar respinge inutil orase reale precum „Chișinău".
+        if not v or not v.strip():
+            raise ValueError("city nu poate fi gol")
+        return v.strip()
 
 
 class SHAPFeature(BaseModel):
@@ -196,7 +200,10 @@ def _compute_confidence(
     if price_rec <= 0:
         return 0.0
     interval_width_pct = (price_max - price_min) / price_rec
-    interval_score = max(0.0, 1.0 - interval_width_pct / 0.5)
+    # Referinta 0.8: un interval 80% (q10-q90) tipic la imobiliare are o latime
+    # de ~30-45% din pret; il mapam la o incredere rezonabila (~0.5-0.7), iar
+    # intervalele foarte largi (proprietati atipice) coboara sub prag -> fallback CMA.
+    interval_score = max(0.0, 1.0 - interval_width_pct / 0.8)
     return round(min(1.0, interval_score), 2)
 
 

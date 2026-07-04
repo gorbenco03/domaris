@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+models/_synthetic_backup/
+data/*.csv
+ai-benchmark/
+notebooks/
+*.ipynb
