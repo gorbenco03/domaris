@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Button, Input, PasswordStrength, ScreenHeader } from '@/shared/components';
+import { changePassword } from '@/features/auth/api/authApi';
 
 const ChangePasswordScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -45,6 +46,12 @@ const ChangePasswordScreen: React.FC = () => {
       newErrors.newPassword = 'Parola nouă este obligatorie';
     } else if (newPassword.length < 8) {
       newErrors.newPassword = 'Parola trebuie să aibă cel puțin 8 caractere';
+    } else if (!/[A-Z]/.test(newPassword)) {
+      newErrors.newPassword = 'Trebuie să conțină o literă mare';
+    } else if (!/[a-z]/.test(newPassword)) {
+      newErrors.newPassword = 'Trebuie să conțină o literă mică';
+    } else if (!/[0-9]/.test(newPassword)) {
+      newErrors.newPassword = 'Trebuie să conțină o cifră';
     }
 
     if (!confirmPassword) {
@@ -62,16 +69,37 @@ const ChangePasswordScreen: React.FC = () => {
 
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      await changePassword({ currentPassword, newPassword });
 
-    setIsLoading(false);
+      Alert.alert(
+        'Succes',
+        'Parola a fost schimbată cu succes!',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const apiMessage = error?.response?.data?.message;
 
-    Alert.alert(
-      'Succes',
-      'Parola a fost schimbată cu succes!',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
+      if (status === 400 || status === 401) {
+        setErrors((prev) => ({
+          ...prev,
+          currentPassword:
+            typeof apiMessage === 'string'
+              ? apiMessage
+              : 'Parola curentă este incorectă.',
+        }));
+      } else {
+        Alert.alert(
+          'Eroare',
+          typeof apiMessage === 'string'
+            ? apiMessage
+            : 'Nu s-a putut schimba parola. Încearcă din nou.'
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const isFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword;

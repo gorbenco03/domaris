@@ -83,28 +83,47 @@ const NotificationsCenterScreen: React.FC = () => {
   };
 
   const handleNotificationPress = async (notification: Notification) => {
-    // Mark as read
+    // Marchează ca citit
     if (!notification.read) {
       try {
         await markAsReadMutation.mutateAsync(Number(notification.id));
       } catch (error) {
-        console.error('Mark as read failed:', error);
+        console.error('Marcare citit eșuată:', error);
       }
     }
 
-    // Navigate based on notification type
-    const { actionData } = notification;
-    const notificationType = notification.type;
+    const metadata = notification.actionData;
+    // Normalizează tipul la lowercase pentru comparații robuste
+    const notificationType = (notification.type as string).toLowerCase();
 
-    // NotificationsCenterScreen is a modal in RootNavigator
-    // We need to first close modal then navigate through Main -> ProfileTab -> Screen
+    // NotificationsCenterScreen este modal în RootNavigator → mai întâi goBack, apoi navigate
 
-    // Helper to navigate to viewing detail
-    const navigateToViewingDetail = (viewingId: string) => {
-      // Close modal first
+    const navigateAfterClose = (action: () => void) => {
       navigation.goBack();
-      // Then navigate through nested navigators
-      setTimeout(() => {
+      setTimeout(action, 100);
+    };
+
+    // Helper: Chat (mesaje)
+    const navigateToChat = (conversationId: string) => {
+      navigateAfterClose(() =>
+        navigation.dispatch(
+          CommonActions.navigate({
+            name: 'Main',
+            params: {
+              screen: 'MessagesTab',
+              params: {
+                screen: 'Chat',
+                params: { conversationId },
+              },
+            },
+          })
+        )
+      );
+    };
+
+    // Helper: detaliu vizionare
+    const navigateToViewingDetail = (viewingId: string) => {
+      navigateAfterClose(() =>
         navigation.dispatch(
           CommonActions.navigate({
             name: 'Main',
@@ -116,14 +135,46 @@ const NotificationsCenterScreen: React.FC = () => {
               },
             },
           })
-        );
-      }, 100);
+        )
+      );
     };
 
-    // Helper to navigate to reviews screen
+    // Helper: detaliu contract
+    const navigateToContractDetail = (contractId: number) => {
+      navigateAfterClose(() =>
+        navigation.dispatch(
+          CommonActions.navigate({
+            name: 'Main',
+            params: {
+              screen: 'ProfileTab',
+              params: {
+                screen: 'ContractDetail',
+                params: { contractId },
+              },
+            },
+          })
+        )
+      );
+    };
+
+    // Helper: lista contractelor (fallback fără contractId)
+    const navigateToMyContracts = () => {
+      navigateAfterClose(() =>
+        navigation.dispatch(
+          CommonActions.navigate({
+            name: 'Main',
+            params: {
+              screen: 'ProfileTab',
+              params: { screen: 'MyContracts' },
+            },
+          })
+        )
+      );
+    };
+
+    // Helper: recenzii proprii
     const navigateToReviews = () => {
-      navigation.goBack();
-      setTimeout(() => {
+      navigateAfterClose(() =>
         navigation.dispatch(
           CommonActions.navigate({
             name: 'Main',
@@ -135,14 +186,13 @@ const NotificationsCenterScreen: React.FC = () => {
               },
             },
           })
-        );
-      }, 100);
+        )
+      );
     };
 
-    // Helper to navigate to property detail
+    // Helper: detaliu proprietate
     const navigateToProperty = (propertyId: string) => {
-      navigation.goBack();
-      setTimeout(() => {
+      navigateAfterClose(() =>
         navigation.dispatch(
           CommonActions.navigate({
             name: 'Main',
@@ -154,29 +204,68 @@ const NotificationsCenterScreen: React.FC = () => {
               },
             },
           })
-        );
-      }, 100);
+        )
+      );
     };
 
-    // Get viewingId from various possible fields in metadata
-    const viewingId = actionData?.viewingId || actionData?.viewing_id || actionData?.id;
-    
-    // Check if this is a viewing-related notification
-    const isViewingNotification = 
-      notificationType === 'viewing_request' ||
-      notificationType === 'viewing_confirmed' ||
-      notificationType === 'viewing_cancelled' ||
-      notificationType === 'viewing_reminder' ||
-      notificationType === 'feedback_request' ||
-      notificationType.includes('viewing');
+    // ----------------------------------------------------------------
+    // Routing pe tip de notificare
+    // ----------------------------------------------------------------
 
-    if (isViewingNotification && viewingId) {
-      navigateToViewingDetail(String(viewingId));
-    } else if (notificationType === 'new_review' || notificationType === 'review_response') {
-      navigateToReviews();
-    } else if (actionData?.propertyId || actionData?.property_id) {
-      navigateToProperty(String(actionData.propertyId || actionData.property_id));
+    // 1. Mesaj nou → Chat
+    if (notificationType === 'new_message') {
+      const conversationId =
+        metadata?.conversationId || metadata?.conversation_id;
+      if (conversationId) {
+        navigateToChat(String(conversationId));
+        return;
+      }
     }
+
+    // 2. Vizionare (orice tip care conține 'viewing' sau feedback_request)
+    const isViewingType =
+      notificationType.startsWith('viewing_') ||
+      notificationType === 'viewing_requested' ||
+      notificationType === 'feedback_request';
+
+    if (isViewingType) {
+      const viewingId =
+        metadata?.viewingId || metadata?.viewing_id;
+      if (viewingId) {
+        navigateToViewingDetail(String(viewingId));
+        return;
+      }
+    }
+
+    // 3. Contract → ContractDetail cu contractId din metadata; fallback lista contractelor
+    if (notificationType.startsWith('contract_')) {
+      const contractId = metadata?.contractId || metadata?.contract_id;
+      if (contractId) {
+        navigateToContractDetail(Number(contractId));
+      } else {
+        navigateToMyContracts();
+      }
+      return;
+    }
+
+    // 4. Recenzie
+    if (
+      notificationType === 'new_review' ||
+      notificationType === 'review_response'
+    ) {
+      navigateToReviews();
+      return;
+    }
+
+    // 5. Proprietate / match / schimbare preț → PropertyDetail
+    const propertyId =
+      metadata?.propertyId || metadata?.property_id || metadata?.listingId;
+    if (propertyId) {
+      navigateToProperty(String(propertyId));
+      return;
+    }
+
+    // Fără destinație cunoscută — nu navigăm, notificarea rămâne marcată ca citită
   };
 
   const groupByDate = (items: Notification[]) => {

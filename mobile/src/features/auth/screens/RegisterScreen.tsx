@@ -77,10 +77,10 @@ const RegisterScreen: React.FC = () => {
       newErrors.password = 'Minim 8 caractere';
     } else if (!/[A-Z]/.test(password)) {
       newErrors.password = 'Trebuie să conțină o literă mare';
+    } else if (!/[a-z]/.test(password)) {
+      newErrors.password = 'Trebuie să conțină o literă mică';
     } else if (!/[0-9]/.test(password)) {
       newErrors.password = 'Trebuie să conțină o cifră';
-    } else if (!/[!@#$%^&*]/.test(password)) {
-      newErrors.password = 'Trebuie să conțină un caracter special';
     }
 
     if (password !== confirmPassword) {

@@ -311,7 +311,7 @@ const ChatScreen: React.FC = () => {
   useEffect(() => {
     if (!socketService.getIsConnected()) return;
 
-    const handleReadReceipt = (data: { conversationId: number; messageIds: number[] }) => {
+    const handleReadReceipt = (data: { conversationId: number; readBy: number; readAt: string }) => {
       if (String(data.conversationId) !== String(activeConversationId)) return;
       setMessages((prev) =>
         prev.map((msg) =>

@@ -207,7 +207,11 @@ class SocketService {
    * Listen for message read
    */
   onMessageRead(
-    callback: (data: { conversationId: number; messageIds: number[] }) => void
+    callback: (data: {
+      conversationId: number;
+      readBy: number;
+      readAt: string;
+    }) => void
   ) {
     if (!this.socket) return;
     this.socket.on('message:read_receipt', callback);

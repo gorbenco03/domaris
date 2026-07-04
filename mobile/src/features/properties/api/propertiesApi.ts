@@ -75,7 +75,14 @@ export interface IUploadPhotosResponse {
   message: string;
 }
 
-export type PropertyStatus = 'DRAFT' | 'ACTIVE' | 'RENTED' | 'SOLD' | 'HIDDEN';
+// Backend PATCH /properties/:id/status accepts these lowercase values (source of truth).
+export type PropertyStatus =
+  | 'new'
+  | 'early_access'
+  | 'public'
+  | 'rented'
+  | 'hidden'
+  | 'expired';
 
 // ============================================================================
 // PUBLIC ENDPOINTS
@@ -145,12 +152,53 @@ export const getMyProperties = async (): Promise<IPropertyListItem[]> => {
 /**
  * Create new property (requires Level 2+)
  */
+/**
+ * Normalizează payload-ul la contractul backend (CreateListingDto).
+ * ValidationPipe are forbidNonWhitelisted => orice câmp străin => 400.
+ * - neighborhood            -> area
+ * - street/streetNumber     -> addressText (compus) dacă nu e deja setat
+ * - hasParking/hasBalcony   -> intrări în amenities[]
+ * - partitioning, utilities, building, locationSetManually, address -> eliminate (nu-s în DTO)
+ */
+function toListingPayload(data: any): Record<string, any> {
+  const {
+    neighborhood,
+    street,
+    streetNumber,
+    building,
+    partitioning,
+    utilities,
+    locationSetManually,
+    address,
+    addressText,
+    hasParking,
+    hasBalcony,
+    amenities,
+    ...rest
+  } = data ?? {};
+
+  const payload: Record<string, any> = { ...rest };
+
+  if (neighborhood !== undefined) payload.area = neighborhood;
+
+  const composed = [street, streetNumber].filter(Boolean).join(' ').trim();
+  const addr = addressText ?? address ?? (composed || undefined);
+  if (addr) payload.addressText = addr;
+
+  const list = [...(amenities ?? [])];
+  if (hasParking) list.push('parking');
+  if (hasBalcony) list.push('balcony');
+  if (list.length) payload.amenities = list;
+
+  return payload;
+}
+
 export const createProperty = async (
   data: ICreatePropertyRequest
 ): Promise<IPropertyListItem> => {
   const response = await apiClient.post<IPropertyListItem>(
     API_ENDPOINTS.PROPERTIES.CREATE,
-    data
+    toListingPayload(data)
   );
   return response.data;
 };
@@ -164,7 +212,7 @@ export const updateProperty = async (
 ): Promise<IPropertyListItem> => {
   const response = await apiClient.patch<IPropertyListItem>(
     API_ENDPOINTS.PROPERTIES.UPDATE(String(id)),
-    data
+    toListingPayload(data)
   );
   return response.data;
 };

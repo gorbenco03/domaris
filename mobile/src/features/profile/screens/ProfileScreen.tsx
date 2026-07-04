@@ -414,6 +414,12 @@ const ProfileScreen: React.FC = () => {
             description="Programări și istoric"
             onPress={() => navigation.navigate('Viewings')}
           />
+          <ProfileMenuItem
+            icon={<FileText />}
+            label="Contractele mele"
+            description="Contracte de închiriere active și istorice"
+            onPress={() => navigation.navigate('MyContracts')}
+          />
         </ProfileSection>
 
         {/* Settings entry (single) */}

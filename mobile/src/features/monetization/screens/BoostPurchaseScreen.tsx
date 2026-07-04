@@ -149,45 +149,46 @@ const BoostPurchaseScreen: React.FC = () => {
 
     const isFree = useFreeBoost && canUseFreeBoost(selectedPlan);
     const priceText = isFree ? 'GRATUIT' : formatPrice(selectedPlan.price, selectedPlan.currency);
+    const providerName = paymentService.getProviderInfo(platformConfig.preferredProvider).name;
 
     Alert.alert(
-      `Promovează Anunțul`,
+      'Promovează Anunțul',
       `Dorești să activezi "${selectedPlan.name}" pentru ${priceText}?\n\n` +
         `Durata: ${selectedPlan.durationDays} zile\n` +
         (isFree
           ? `(Folosești 1 din ${freeBoostsRemaining} boost-uri gratuite)`
-          : `Plata se va face prin ${paymentService.getProviderInfo(platformConfig.preferredProvider).name}.`),
+          : `Plata se va face prin ${providerName}.`),
       [
         { text: 'Anulează', style: 'cancel' },
         {
           text: isFree ? 'Activează Gratuit' : 'Continuă',
           onPress: async () => {
-            const success = await purchasePromotion(selectedPlan, listingId, isFree);
+            const outcome = await purchasePromotion(selectedPlan, listingId, isFree);
 
-            if (success) {
-              if (!paymentState.requiresPolling || isFree) {
-                Alert.alert(
-                  'Succes! 🚀',
-                  `Promoția "${selectedPlan.name}" a fost activată pentru anunțul tău!`,
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => {
-                        refetchStatus();
-                        resetState();
-                        navigation.goBack();
-                      },
+            if (outcome.success && (outcome.activatedInstantly || isFree)) {
+              // Activare instantă (simulated sau boost gratuit) — afișăm confirmare direct
+              Alert.alert(
+                'Promoție Activată',
+                `"${selectedPlan.name}" este acum activ pentru anunțul tău!`,
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      refetchStatus();
+                      resetState();
+                      navigation.goBack();
                     },
-                  ],
-                );
-              } else {
-                Alert.alert(
-                  'Redirecționare',
-                  'Vei fi redirecționat către pagina de plată. După finalizare, revino în aplicație.',
-                );
-              }
-            } else if (paymentState.error) {
-              Alert.alert('Eroare', paymentState.error);
+                  },
+                ],
+              );
+            } else if (outcome.success && !outcome.activatedInstantly) {
+              // Gateway extern (PAYNET/MAIB/MPAY) — utilizatorul a fost redirecționat
+              Alert.alert(
+                'Redirecționare',
+                'Vei fi redirecționat către pagina de plată. După finalizare, revino în aplicație.',
+              );
+            } else {
+              Alert.alert('Eroare', outcome.error || 'Activarea promoției a eșuat. Încearcă din nou.');
             }
           },
         },

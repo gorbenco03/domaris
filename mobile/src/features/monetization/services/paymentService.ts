@@ -58,6 +58,8 @@ export function detectPlatform(): Platform {
 
 /**
  * Obține configurația de plată pentru platformă
+ * Pe iOS și Android folosim plata simulată (MONETIZATION_ENABLED=true, paymentMethod:'simulated').
+ * Aceasta activează instant promoția/abonamentul fără redirect la gateway.
  */
 export function getPlatformPaymentConfig(): PlatformPaymentConfig {
   const platform = detectPlatform();
@@ -66,27 +68,27 @@ export function getPlatformPaymentConfig(): PlatformPaymentConfig {
     case 'ios':
       return {
         platform: 'ios',
-        availableProviders: ['apple'], // iOS obligatoriu folosește Apple IAP
-        preferredProvider: 'apple',
-        supportsIAP: true,
-        supportsMoldovaPayments: false, // Apple nu permite alte metode în app
+        availableProviders: ['simulated'],
+        preferredProvider: 'simulated',
+        supportsIAP: false,
+        supportsMoldovaPayments: false,
       };
 
     case 'android':
       return {
         platform: 'android',
-        availableProviders: ['google'], // Android obligatoriu folosește Google Play
-        preferredProvider: 'google',
-        supportsIAP: true,
-        supportsMoldovaPayments: false, // Google nu permite alte metode în app
+        availableProviders: ['simulated'],
+        preferredProvider: 'simulated',
+        supportsIAP: false,
+        supportsMoldovaPayments: false,
       };
 
     case 'web':
     default:
       return {
         platform: 'web',
-        availableProviders: ['paynet', 'maib', 'mpay'], // Web folosește providerii moldoveni
-        preferredProvider: 'paynet', // PAYNET e cel mai popular
+        availableProviders: ['paynet', 'maib', 'mpay'],
+        preferredProvider: 'paynet',
         supportsIAP: false,
         supportsMoldovaPayments: true,
       };
@@ -142,6 +144,9 @@ export async function purchaseSubscription(
 
   try {
     switch (provider) {
+      case 'simulated':
+        return await purchaseWithSimulatedSubscription({ plan, billingCycle });
+
       case 'apple':
         return await purchaseWithApple({
           type: 'subscription',
@@ -238,6 +243,9 @@ export async function purchasePromotion(
 
   try {
     switch (provider) {
+      case 'simulated':
+        return await purchaseWithSimulatedPromotion({ plan, listingId });
+
       case 'apple':
         return await purchaseWithApple({
           type: 'promotion',
@@ -290,6 +298,61 @@ export async function purchasePromotion(
       error: error.message || 'Purchase failed',
     };
   }
+}
+
+// ============================================================================
+// SIMULATED PAYMENT (MONETIZATION_ENABLED=true, fără gateway real)
+// ============================================================================
+
+/**
+ * Activează instant un abonament prin paymentMethod:'simulated'.
+ * Backend-ul nu redirecționează — răspunde direct cu status active.
+ */
+async function purchaseWithSimulatedSubscription(params: {
+  plan: SubscriptionPlan;
+  billingCycle: BillingCycle;
+}): Promise<PurchaseResult> {
+  const { plan, billingCycle } = params;
+  console.log(`[PaymentService] Simulated subscription: ${plan.code}, ${billingCycle}`);
+
+  const result = await monetizationApi.createSubscription({
+    planCode: plan.code,
+    billingCycle,
+    paymentMethod: 'simulated',
+  });
+
+  return {
+    success: result.success,
+    provider: 'simulated',
+    transactionId: (result.subscription as any)?.id,
+    requiresPolling: false,
+    requiresRedirect: false,
+  };
+}
+
+/**
+ * Activează instant o promoție prin paymentMethod:'simulated'.
+ * Backend-ul nu redirecționează — răspunde direct cu status active.
+ */
+async function purchaseWithSimulatedPromotion(params: {
+  plan: PromotionPlan;
+  listingId: number;
+}): Promise<PurchaseResult> {
+  const { plan, listingId } = params;
+  console.log(`[PaymentService] Simulated promotion: ${plan.code}, listing: ${listingId}`);
+
+  const result = await monetizationApi.createPromotion(listingId, {
+    promotionCode: plan.code,
+    paymentMethod: 'simulated',
+  });
+
+  return {
+    success: result.success,
+    provider: 'simulated',
+    transactionId: (result.promotion as any)?.id,
+    requiresPolling: false,
+    requiresRedirect: false,
+  };
 }
 
 // ============================================================================
@@ -683,6 +746,11 @@ export function getProviderInfo(provider: PaymentProvider): {
   description: string;
 } {
   const providers: Record<PaymentProvider, { name: string; icon: string; description: string }> = {
+    simulated: {
+      name: 'Plată',
+      icon: 'zap',
+      description: 'Activare instantă',
+    },
     apple: {
       name: 'Apple Pay',
       icon: 'apple',
@@ -723,6 +791,8 @@ export function getProviderInfo(provider: PaymentProvider): {
  */
 export function getPayButtonText(provider: PaymentProvider): string {
   switch (provider) {
+    case 'simulated':
+      return 'Activează Acum';
     case 'apple':
       return 'Plătește cu Apple Pay';
     case 'google':

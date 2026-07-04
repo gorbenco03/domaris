@@ -8,6 +8,7 @@ import {
   View,
   Text,
   StyleSheet,
+  FlatList,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
@@ -101,20 +102,19 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
   const [showActions, setShowActions] = useState(false);
 
   const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
+    // Backend returns lowercase statuses: new | early_access | public | rented | hidden | expired
+    switch ((status || '').toLowerCase()) {
+      case 'public':
         return { label: 'Activ', color: theme.colors.accent.main, icon: CheckCircle };
-      case 'DRAFT':
-        return { label: 'Ciornă', color: theme.colors.textTertiary, icon: FileText };
-      case 'PENDING':
+      case 'new':
+      case 'early_access':
         return { label: 'În verificare', color: theme.colors.secondary.warning, icon: Clock };
-      case 'EXPIRED':
+      case 'expired':
         return { label: 'Expirat', color: theme.colors.secondary.error, icon: AlertCircle };
-      case 'REJECTED':
-        return { label: 'Respins', color: theme.colors.secondary.error, icon: AlertCircle };
-      case 'SOLD':
-      case 'RENTED':
-        return { label: status === 'SOLD' ? 'Vândut' : 'Închiriat', color: theme.colors.primary.main, icon: CheckCircle };
+      case 'rented':
+        return { label: 'Închiriat', color: theme.colors.primary.main, icon: CheckCircle };
+      case 'hidden':
+        return { label: 'Ascuns', color: theme.colors.textTertiary, icon: FileText };
       default:
         return { label: 'Necunoscut', color: theme.colors.textTertiary, icon: FileText };
     }
@@ -270,7 +270,7 @@ const PropertyListItem: React.FC<PropertyListItemProps> = ({
             <BarChart2 size={16} color={theme.colors.secondary.info} />
           </TouchableOpacity>
 
-          {MONETIZATION_ENABLED && property.status === 'ACTIVE' && (
+          {MONETIZATION_ENABLED && (property.status || '').toLowerCase() === 'public' && (
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: theme.colors.secondary.warning + '15' }]}
               onPress={onBoost}
@@ -308,10 +308,6 @@ const MyPropertiesScreen: React.FC = () => {
   const deleteMutation = useDeleteProperty();
   const { status: monetizationStatus, canCreateListing } = useMonetizationStatus();
 
-  console.log('[MyPropertiesScreen] Properties fetched:', JSON.stringify(properties, null, 2));
-  console.log('[MyPropertiesScreen] Is loading:', isLoading);
-  if (error) console.error('[MyPropertiesScreen] Fetch error:', error);
-
   if (!isAuthenticated) {
     return (
       <AuthRequiredScreen message="Autentifică-te pentru a vedea anunțurile tale." />
@@ -320,17 +316,14 @@ const MyPropertiesScreen: React.FC = () => {
 
   const filteredProperties = properties.filter((p) => {
     if (!p.status) return true; // Safety
-    const status = p.status.toUpperCase();
-    console.log(`[MyPropertiesScreen] Filtering property ${p.id}, status: ${status}, activeFilter: ${activeFilter}`);
+    // Backend statuses are lowercase: new | early_access | public | rented | hidden | expired
+    const status = p.status.toLowerCase();
     if (activeFilter === 'all') return true;
-    if (activeFilter === 'active') return status === 'ACTIVE' || status === 'PENDING' || status === 'NEW'; // Added NEW
-    if (activeFilter === 'draft') return status === 'DRAFT';
-    if (activeFilter === 'expired') return status === 'EXPIRED' || status === 'REJECTED';
+    if (activeFilter === 'active') return status === 'public' || status === 'new' || status === 'early_access';
+    if (activeFilter === 'draft') return status === 'new' || status === 'early_access';
+    if (activeFilter === 'expired') return status === 'expired';
     return true;
   });
-
-  console.log('[MyPropertiesScreen] Filtered properties count:', filteredProperties.length);
-
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -392,12 +385,140 @@ const MyPropertiesScreen: React.FC = () => {
     navigation.navigate('CreateProperty');
   };
 
+  const statusOf = (p: (typeof properties)[number]) => (p.status || '').toLowerCase();
   const stats = {
     total: properties.length,
-    active: properties.filter((p) => p.status === 'ACTIVE').length,
-    drafts: properties.filter((p) => p.status === 'DRAFT').length,
-    expired: properties.filter((p) => p.status === 'EXPIRED').length,
+    active: properties.filter((p) => statusOf(p) === 'public').length,
+    drafts: properties.filter((p) => ['new', 'early_access'].includes(statusOf(p))).length,
+    expired: properties.filter((p) => statusOf(p) === 'expired').length,
   };
+
+  const listHeader = (
+    <>
+      {/* Stats Summary */}
+      <View style={styles.summaryContainer}>
+        <LinearGradient
+          colors={theme.gradients.primary as unknown as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.summaryCard, { borderRadius: theme.borderRadius.xl }]}
+        >
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{stats.total}</Text>
+              <Text style={styles.summaryLabel}>Total</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{stats.active}</Text>
+              <Text style={styles.summaryLabel}>Active</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{stats.drafts}</Text>
+              <Text style={styles.summaryLabel}>Ciorne</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{stats.expired}</Text>
+              <Text style={styles.summaryLabel}>Expirate</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+
+      {/* Quota Banner — only shown when monetization is enabled */}
+      {MONETIZATION_ENABLED && monetizationStatus && (
+        <View style={styles.quotaBannerContainer}>
+          <View
+            style={[
+              styles.quotaBanner,
+              {
+                backgroundColor: canCreateListing
+                  ? theme.colors.primary.main + '10'
+                  : theme.colors.secondary.warning + '15',
+                borderColor: canCreateListing
+                  ? theme.colors.primary.main + '30'
+                  : theme.colors.secondary.warning + '40',
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.quotaText,
+                {
+                  color: canCreateListing
+                    ? theme.colors.textSecondary
+                    : theme.colors.secondary.warning,
+                },
+              ]}
+            >
+              {properties.length}/{monetizationStatus.capabilities?.maxActiveListings === 999 ? '∞' : monetizationStatus.capabilities?.maxActiveListings || 1} anunțuri active
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Filter Tabs */}
+      <View style={styles.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScrollContent}
+        >
+          {FILTER_TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab.id}
+              style={[
+                styles.filterTab,
+                {
+                  backgroundColor:
+                    activeFilter === tab.id
+                      ? theme.colors.primary.main
+                      : theme.colors.surface,
+                  borderColor:
+                    activeFilter === tab.id ? theme.colors.primary.main : theme.colors.border,
+                },
+              ]}
+              onPress={() => setActiveFilter(tab.id)}
+            >
+              <Text
+                style={[
+                  styles.filterTabText,
+                  {
+                    color:
+                      activeFilter === tab.id ? '#fff' : theme.colors.textSecondary,
+                  },
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    </>
+  );
+
+  const listEmpty = isLoading ? (
+    <View style={{ paddingVertical: 40 }}>
+      <ActivityIndicator size="large" color={theme.colors.primary.main} />
+    </View>
+  ) : (
+    <View style={styles.emptyContainer}>
+      <EmptyState
+        icon={<Home size={64} color={theme.colors.textTertiary} />}
+        title="Nu ai proprietăți"
+        message={
+          activeFilter === 'all'
+            ? 'Adaugă primul tău anunț pentru a începe să primești vizualizări și contacte.'
+            : `Nu ai proprietăți ${activeFilter === 'active' ? 'active' : activeFilter === 'draft' ? 'în ciornă' : 'expirate'}.`
+        }
+        actionLabel={activeFilter === 'all' ? 'Adaugă proprietate' : undefined}
+        onAction={activeFilter === 'all' ? handleAddProperty : undefined}
+      />
+    </View>
+  );
 
   return (
     <SafeAreaView
@@ -406,11 +527,26 @@ const MyPropertiesScreen: React.FC = () => {
     >
       <ScreenHeader title="Proprietățile mele" />
 
-      <ScrollView
+      <FlatList
         style={styles.scrollView}
-        horizontal={false}
-        contentContainerStyle={[styles.scrollContent, { width: '100%' }]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        data={filteredProperties}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item: property }) => (
+          <View style={styles.propertiesListItem}>
+            <PropertyListItem
+              property={property}
+              onPress={() => handlePropertyPress(String(property.id), property)}
+              onEdit={() => handleEdit(String(property.id), property)}
+              onDelete={() => handleDelete(String(property.id))}
+              onStats={() => handleStats(String(property.id))}
+              onBoost={() => handleBoost(String(property.id))}
+            />
+          </View>
+        )}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -418,145 +554,7 @@ const MyPropertiesScreen: React.FC = () => {
             tintColor={theme.colors.primary.main}
           />
         }
-      >
-        {/* Stats Summary */}
-        <View style={styles.summaryContainer}>
-          <LinearGradient
-            colors={theme.gradients.primary as unknown as [string, string, ...string[]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.summaryCard, { borderRadius: theme.borderRadius.xl }]}
-          >
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{stats.total}</Text>
-                <Text style={styles.summaryLabel}>Total</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{stats.active}</Text>
-                <Text style={styles.summaryLabel}>Active</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{stats.drafts}</Text>
-                <Text style={styles.summaryLabel}>Ciorne</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{stats.expired}</Text>
-                <Text style={styles.summaryLabel}>Expirate</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Quota Banner — only shown when monetization is enabled */}
-        {MONETIZATION_ENABLED && monetizationStatus && (
-          <View style={styles.quotaBannerContainer}>
-            <View
-              style={[
-                styles.quotaBanner,
-                {
-                  backgroundColor: canCreateListing
-                    ? theme.colors.primary.main + '10'
-                    : theme.colors.secondary.warning + '15',
-                  borderColor: canCreateListing
-                    ? theme.colors.primary.main + '30'
-                    : theme.colors.secondary.warning + '40',
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.quotaText,
-                  {
-                    color: canCreateListing
-                      ? theme.colors.textSecondary
-                      : theme.colors.secondary.warning,
-                  },
-                ]}
-              >
-                {properties.length}/{monetizationStatus.capabilities?.maxActiveListings === 999 ? '∞' : monetizationStatus.capabilities?.maxActiveListings || 1} anunțuri active
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Filter Tabs */}
-        <View style={styles.filterContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterScrollContent}
-          >
-            {FILTER_TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab.id}
-                style={[
-                  styles.filterTab,
-                  {
-                    backgroundColor:
-                      activeFilter === tab.id
-                        ? theme.colors.primary.main
-                        : theme.colors.surface,
-                    borderColor:
-                      activeFilter === tab.id ? theme.colors.primary.main : theme.colors.border,
-                  },
-                ]}
-                onPress={() => setActiveFilter(tab.id)}
-              >
-                <Text
-                  style={[
-                    styles.filterTabText,
-                    {
-                      color:
-                        activeFilter === tab.id ? '#fff' : theme.colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Properties List */}
-        {isLoading ? (
-          <View style={{ paddingVertical: 40 }}>
-            <ActivityIndicator size="large" color={theme.colors.primary.main} />
-          </View>
-        ) : filteredProperties.length > 0 ? (
-          <View style={styles.propertiesList}>
-            {filteredProperties.map((property) => (
-              <PropertyListItem
-                key={property.id}
-                property={property}
-                onPress={() => handlePropertyPress(String(property.id), property)}
-                onEdit={() => handleEdit(String(property.id), property)}
-                onDelete={() => handleDelete(String(property.id))}
-                onStats={() => handleStats(String(property.id))}
-                onBoost={() => handleBoost(String(property.id))}
-              />
-            ))}
-          </View>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <EmptyState
-              icon={<Home size={64} color={theme.colors.textTertiary} />}
-              title="Nu ai proprietăți"
-              message={
-                activeFilter === 'all'
-                  ? 'Adaugă primul tău anunț pentru a începe să primești vizualizări și contacte.'
-                  : `Nu ai proprietăți ${activeFilter === 'active' ? 'active' : activeFilter === 'draft' ? 'în ciornă' : 'expirate'}.`
-              }
-              actionLabel={activeFilter === 'all' ? 'Adaugă proprietate' : undefined}
-              onAction={activeFilter === 'all' ? handleAddProperty : undefined}
-            />
-          </View>
-        )}
-      </ScrollView>
+      />
 
       {/* FAB - Add Property Button */}
       <TouchableOpacity
@@ -645,6 +643,10 @@ const styles = StyleSheet.create({
   propertiesList: {
     paddingHorizontal: 16,
     gap: 16,
+  },
+  propertiesListItem: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   propertyCard: {
     overflow: 'hidden',

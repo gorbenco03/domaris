@@ -92,7 +92,7 @@ export interface ListingPromotion {
 // PAYMENT TYPES
 // ============================================================================
 
-export type PaymentProvider = 'apple' | 'google' | 'paynet' | 'maib' | 'mpay' | 'web';
+export type PaymentProvider = 'apple' | 'google' | 'paynet' | 'maib' | 'mpay' | 'web' | 'simulated';
 export type PaymentMethod = 'card' | 'apple_pay' | 'google_pay' | 'bank_transfer' | 'paynet' | 'mpay' | 'maib';
 export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'refunded' | 'cancelled';
 export type TransactionType = 'subscription' | 'promotion' | 'refund';

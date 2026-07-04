@@ -33,25 +33,18 @@ export interface INotification {
   createdAt: string;
 }
 
+/**
+ * Flat notification preferences shape returned by the backend at
+ * GET/PUT /users/me/notification-preferences (notification.service normalizePreferences).
+ */
 export interface INotificationPreferences {
-  push: {
-    messages: boolean;
-    viewings: boolean;
-    propertyUpdates: boolean;
-    savedSearches: boolean; // NEW!
-    marketing: boolean;
-  };
-  email: {
-    messages: boolean;
-    viewings: boolean;
-    propertyUpdates: boolean;
-    savedSearches: boolean; // NEW!
-    newsletter: boolean;
-  };
-  sms: {
-    viewings: boolean;
-    urgent: boolean;
-  };
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  newMessages: boolean;
+  viewingUpdates: boolean;
+  priceAlerts: boolean;
+  newListings: boolean;
+  marketingEmails: boolean;
 }
 
 export interface IRegisterPushTokenRequest {
@@ -125,8 +118,10 @@ export const registerPushToken = async (
  */
 export const getNotificationPreferences =
   async (): Promise<INotificationPreferences> => {
+    // Backend exposes preferences only at /users/me/notification-preferences
+    // (same route the PUT below uses). There is no GET /notifications/settings.
     const response = await apiClient.get<INotificationPreferences>(
-      API_ENDPOINTS.NOTIFICATIONS.SETTINGS
+      '/users/me/notification-preferences'
     );
     return response.data;
   };

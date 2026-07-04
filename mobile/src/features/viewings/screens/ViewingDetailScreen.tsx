@@ -554,6 +554,21 @@ const ViewingDetailScreen: React.FC = () => {
             </View>
           )}
           
+          {/* Propune contract - owner pe vizionare finalizată */}
+          {viewing.status === 'completed' && viewing.isOwner && (
+            <View style={styles.actions}>
+              <Button
+                title="Propune contract"
+                onPress={() =>
+                  navigation.push('ProposeContract', { viewingId: viewing.id })
+                }
+                variant="primary"
+                fullWidth
+                style={styles.actionButton}
+              />
+            </View>
+          )}
+
           {/* Actions - Owner can confirm/reject pending viewings */}
           {viewing.status === 'pending' && viewing.isOwner && (
             <View style={styles.actions}>

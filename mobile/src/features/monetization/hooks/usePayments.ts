@@ -32,6 +32,13 @@ export interface PaymentState {
   pollingStatus: string | null;
 }
 
+export interface PurchaseOutcome {
+  success: boolean;
+  /** true se promoția/abonamentul a fost activat instant (fără redirect/polling) */
+  activatedInstantly: boolean;
+  error?: string;
+}
+
 export interface UsePaymentsReturn {
   // State
   state: PaymentState;
@@ -41,14 +48,14 @@ export interface UsePaymentsReturn {
   purchaseSubscription: (
     plan: SubscriptionPlan,
     billingCycle: BillingCycle,
-  ) => Promise<boolean>;
+  ) => Promise<PurchaseOutcome>;
 
   // Promotion actions
   purchasePromotion: (
     plan: PromotionPlan,
     listingId: number,
     useFreeBoost?: boolean,
-  ) => Promise<boolean>;
+  ) => Promise<PurchaseOutcome>;
 
   // Status
   pollStatus: () => Promise<void>;
@@ -81,7 +88,7 @@ export function usePayments(): UsePaymentsReturn {
   // ============================================================================
 
   const purchaseSubscription = useCallback(
-    async (plan: SubscriptionPlan, billingCycle: BillingCycle): Promise<boolean> => {
+    async (plan: SubscriptionPlan, billingCycle: BillingCycle): Promise<PurchaseOutcome> => {
       setState((prev) => ({
         ...prev,
         isProcessing: true,
@@ -98,9 +105,11 @@ export function usePayments(): UsePaymentsReturn {
           preferredProvider: platformConfig.preferredProvider,
         });
 
+        const activatedInstantly = result.success && !result.requiresPolling && !result.requiresRedirect;
+
         setState((prev) => ({
           ...prev,
-          isProcessing: !result.requiresPolling,
+          isProcessing: activatedInstantly ? false : !result.requiresPolling,
           currentProvider: result.provider,
           transactionId: result.transactionId || null,
           requiresPolling: result.requiresPolling || false,
@@ -108,18 +117,21 @@ export function usePayments(): UsePaymentsReturn {
         }));
 
         if (result.success && result.requiresPolling && result.transactionId) {
-          // Începe polling-ul automat
           pollPaymentStatus(result.transactionId);
         }
 
-        return result.success;
+        return {
+          success: result.success,
+          activatedInstantly,
+          error: result.error,
+        };
       } catch (error: any) {
         setState((prev) => ({
           ...prev,
           isProcessing: false,
           error: error.message || 'Purchase failed',
         }));
-        return false;
+        return { success: false, activatedInstantly: false, error: error.message || 'Purchase failed' };
       }
     },
     [platformConfig.preferredProvider],
@@ -134,7 +146,7 @@ export function usePayments(): UsePaymentsReturn {
       plan: PromotionPlan,
       listingId: number,
       useFreeBoost: boolean = false,
-    ): Promise<boolean> => {
+    ): Promise<PurchaseOutcome> => {
       setState((prev) => ({
         ...prev,
         isProcessing: true,
@@ -152,9 +164,11 @@ export function usePayments(): UsePaymentsReturn {
           preferredProvider: platformConfig.preferredProvider,
         });
 
+        const activatedInstantly = result.success && !result.requiresPolling && !result.requiresRedirect;
+
         setState((prev) => ({
           ...prev,
-          isProcessing: !result.requiresPolling,
+          isProcessing: activatedInstantly ? false : !result.requiresPolling,
           currentProvider: result.provider,
           transactionId: result.transactionId || null,
           requiresPolling: result.requiresPolling || false,
@@ -165,14 +179,18 @@ export function usePayments(): UsePaymentsReturn {
           pollPaymentStatus(result.transactionId);
         }
 
-        return result.success;
+        return {
+          success: result.success,
+          activatedInstantly,
+          error: result.error,
+        };
       } catch (error: any) {
         setState((prev) => ({
           ...prev,
           isProcessing: false,
           error: error.message || 'Purchase failed',
         }));
-        return false;
+        return { success: false, activatedInstantly: false, error: error.message || 'Purchase failed' };
       }
     },
     [platformConfig.preferredProvider],

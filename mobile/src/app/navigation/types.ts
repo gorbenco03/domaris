@@ -147,6 +147,10 @@ export type ProfileStackParamList = {
   AIChat: { conversationId?: number; propertyId?: string };
   AiConversationsList: undefined;
   ListingAnalysis: { propertyId: string };
+  // Rental Contracts
+  ProposeContract: { viewingId: string };
+  ContractDetail: { contractId: number };
+  MyContracts: undefined;
   // Reviews and Public Profile
   Reviews: { userId?: string; isOwnProfile?: boolean };
   PublicProfile: { userId: string };

@@ -143,9 +143,22 @@ export const getPropertySummary = async (
 export const estimatePrice = async (
   request: IAIPriceEstimateRequest
 ): Promise<IAIPriceEstimateResponse> => {
+  // Backend /ai/estimate-price așteaptă exact { city, propertyType, transactionType, rooms, surface }.
+  // ValidationPipe (forbidNonWhitelisted) respinge orice câmp în plus; `surface`, nu `surfaceSqm`.
+  const r = request as any;
   const response = await apiClient.post<IAIPriceEstimateResponse>(
     API_ENDPOINTS.AI.SUGGEST_PRICE,
-    request
+    {
+      city: r.city,
+      propertyType: r.propertyType,
+      transactionType: r.transactionType,
+      rooms: r.rooms,
+      surface: r.surface ?? r.surfaceSqm,
+      // Optional fields accepted by EstimatePriceBody — forward for better accuracy.
+      neighborhood: r.neighborhood,
+      floor: r.floor,
+      yearBuilt: r.yearBuilt,
+    }
   );
   return response.data;
 };

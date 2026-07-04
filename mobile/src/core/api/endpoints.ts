@@ -114,7 +114,7 @@ export const API_ENDPOINTS = {
   AI: {
     CHAT: '/ai/chat',
     ANALYZE_LISTING: '/ai/analyze-listing',
-    SUGGEST_PRICE: '/ai/suggest-price',
+    SUGGEST_PRICE: '/ai/estimate-price',
     GENERATE_DESCRIPTION: '/ai/generate-description',
     IMPROVE_LISTING: '/ai/improve-listing',
     PROPERTY_SUMMARY: (propertyId: string) => `/ai/property-summary/${propertyId}`,
@@ -156,6 +156,15 @@ export const API_ENDPOINTS = {
     LOCATION_SEARCH: '/locations/search',
     AMENITIES: '/amenities',
     REPORT: '/reports',
+  },
+
+  // Rental Contracts
+  CONTRACTS: {
+    PROPOSE: (viewingId: string) => `/viewings/${viewingId}/propose-contract`,
+    MINE: '/contracts/mine',
+    DETAIL: (id: string) => `/contracts/${id}`,
+    ACCEPT: (id: string) => `/contracts/${id}/accept`,
+    SIGN: (id: string) => `/contracts/${id}/sign`,
   },
 
   // Reviews

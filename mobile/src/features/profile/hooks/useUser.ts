@@ -47,8 +47,8 @@ export const useUpdateProfile = () => {
 
   return useMutation({
     mutationFn: async (data: IUpdateProfileRequest) => {
-      // In a real app we might upload avatar first if it's a blob/file URI
-      const response = await apiClient.patch<IUser>(API_ENDPOINTS.USERS.PROFILE, data);
+      // Backend exposes profile update as PUT /users/me (PATCH /users/me does not exist).
+      const response = await apiClient.put<IUser>(API_ENDPOINTS.USERS.PROFILE, data);
       return response.data;
     },
     onSuccess: (updatedUser) => {
@@ -70,7 +70,7 @@ export const useUploadAvatar = () => {
 
   return useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await apiClient.patch<{ avatarUrl: string }>(
+      const response = await apiClient.patch<{ avatar: string }>(
         API_ENDPOINTS.USERS.UPLOAD_AVATAR,
         formData,
         {

@@ -30,6 +30,7 @@ import { NotificationsCenterScreen, NotificationPreferencesScreen } from '@/feat
 import { PropertyAnalyticsScreen } from '@/features/analytics';
 import { PricingScreen, BoostPurchaseScreen } from '@/features/monetization';
 import { AIChatScreen, ListingAnalysisScreen, AiConversationsListScreen } from '@/features/ai';
+import { ProposeContractScreen, ContractDetailScreen, MyContractsScreen } from '@/features/rental-contract';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
@@ -81,6 +82,10 @@ const ProfileNavigator: React.FC = () => {
       <Stack.Screen name="AIChat" component={AIChatScreen} />
       <Stack.Screen name="AiConversationsList" component={AiConversationsListScreen} />
       <Stack.Screen name="ListingAnalysis" component={ListingAnalysisScreen} />
+      {/* Rental Contracts */}
+      <Stack.Screen name="ProposeContract" component={ProposeContractScreen} />
+      <Stack.Screen name="ContractDetail" component={ContractDetailScreen} />
+      <Stack.Screen name="MyContracts" component={MyContractsScreen} />
       {/* Reviews and Public Profile */}
       <Stack.Screen name="Reviews" component={ReviewsScreen} />
       <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />

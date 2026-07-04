@@ -1,6 +1,6 @@
 /**
  * Enhanced Property Card for AI Chat
- * Shows property info with image, schedule viewing button
+ * Shows property info with image, schedule viewing and contact buttons
  */
 
 import React from 'react';
@@ -11,7 +11,7 @@ import {
   Image,
   StyleSheet,
 } from 'react-native';
-import { MapPin, Maximize, BedDouble, Calendar, Eye } from 'lucide-react-native';
+import { MapPin, Maximize, BedDouble, Calendar, MessageCircle } from 'lucide-react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 
 interface AiPropertyCardProps {
@@ -30,12 +30,14 @@ interface AiPropertyCardProps {
   };
   onView: (propertyId: number) => void;
   onSchedule: (propertyId: number, title: string) => void;
+  onContact: (propertyId: number, title: string) => void;
 }
 
 const AiPropertyCard: React.FC<AiPropertyCardProps> = ({
   property,
   onView,
   onSchedule,
+  onContact,
 }) => {
   const { theme } = useTheme();
 
@@ -57,7 +59,9 @@ const AiPropertyCard: React.FC<AiPropertyCardProps> = ({
     : [];
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={() => onView(property.id)}
       style={[
         styles.card,
         {
@@ -198,56 +202,57 @@ const AiPropertyCard: React.FC<AiPropertyCardProps> = ({
           </View>
         )}
 
-        {/* Price + Actions */}
-        <View style={styles.footer}>
-          <Text
+        {/* Price */}
+        <Text
+          style={[
+            styles.price,
+            {
+              color: theme.colors.accent.main,
+              fontSize: theme.typography.fontSize.base,
+            },
+          ]}
+        >
+          {priceLabel}
+        </Text>
+
+        {/* Actions */}
+        <View style={styles.actions}>
+          <TouchableOpacity
             style={[
-              styles.price,
+              styles.actionBtn,
               {
-                color: theme.colors.accent.main,
-                fontSize: theme.typography.fontSize.base,
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+                flex: 1,
               },
             ]}
+            onPress={(e) => { e.stopPropagation(); onSchedule(property.id, property.title); }}
           >
-            {priceLabel}
-          </Text>
+            <Calendar size={13} color={theme.colors.primary.main} />
+            <Text style={[styles.actionText, { color: theme.colors.primary.main, fontSize: theme.typography.fontSize.xs }]}>
+              Programează vizionare
+            </Text>
+          </TouchableOpacity>
 
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[
-                styles.actionBtn,
-                {
-                  backgroundColor: theme.colors.surface,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              onPress={() => onView(property.id)}
-            >
-              <Eye size={14} color={theme.colors.textPrimary} />
-              <Text style={[styles.actionText, { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.xs }]}>
-                Vezi
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.actionBtn,
-                {
-                  backgroundColor: theme.colors.primary.main,
-                  borderColor: theme.colors.primary.main,
-                },
-              ]}
-              onPress={() => onSchedule(property.id, property.title)}
-            >
-              <Calendar size={14} color="#ffffff" />
-              <Text style={[styles.actionText, { color: '#ffffff', fontSize: theme.typography.fontSize.xs }]}>
-                Vizionare
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[
+              styles.actionBtn,
+              {
+                backgroundColor: theme.colors.primary.main,
+                borderColor: theme.colors.primary.main,
+                flex: 1,
+              },
+            ]}
+            onPress={(e) => { e.stopPropagation(); onContact(property.id, property.title); }}
+          >
+            <MessageCircle size={13} color="#ffffff" />
+            <Text style={[styles.actionText, { color: '#ffffff', fontSize: theme.typography.fontSize.xs }]}>
+              Contactează
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -309,25 +314,22 @@ const styles = StyleSheet.create({
   reasonText: {
     fontWeight: '500',
   },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
   price: {
     fontWeight: '700',
+    marginTop: 4,
   },
   actions: {
     flexDirection: 'row',
     gap: 6,
+    marginTop: 8,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
   },

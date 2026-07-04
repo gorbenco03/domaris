@@ -14,7 +14,6 @@ import {
   Transaction,
   PaymentInitiationResult,
   BillingCycle,
-  PaymentProvider,
 } from '../types';
 
 const BASE_URL = '/monetization';
@@ -44,13 +43,16 @@ export async function getMySubscription(): Promise<{
 
 /**
  * Create a new subscription
+ * Body must match CreateSubscriptionDto (ValidationPipe forbidNonWhitelisted).
  */
 export async function createSubscription(data: {
-  planId: number;
+  planCode: string;
   billingCycle: BillingCycle;
-  paymentProvider: PaymentProvider;
-  receipt?: string;
-  purchaseToken?: string;
+  paymentMethodToken?: string;
+  appleReceipt?: string;
+  googlePurchaseToken?: string;
+  startTrial?: boolean;
+  paymentMethod?: string;
 }): Promise<{
   success: boolean;
   subscription: Partial<UserSubscription>;
@@ -62,10 +64,12 @@ export async function createSubscription(data: {
 
 /**
  * Change subscription plan
+ * Body must match ChangePlanDto (ValidationPipe forbidNonWhitelisted).
  */
 export async function changePlan(data: {
-  newPlanId: number;
-  immediate?: boolean;
+  newPlanCode: string;
+  billingCycle?: BillingCycle;
+  applyImmediately?: boolean;
 }): Promise<{
   success: boolean;
   subscription: Partial<UserSubscription>;
@@ -112,6 +116,7 @@ export async function createPromotion(
     paymentMethodToken?: string;
     appleReceipt?: string;
     googlePurchaseToken?: string;
+    paymentMethod?: string;
   },
 ): Promise<{
   success: boolean;

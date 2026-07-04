@@ -6,24 +6,31 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { Notification, NOTIFICATION_TYPE_INFO } from '../types';
-import { MessageCircle, Calendar, CheckCircle, XCircle, Clock, Home, TrendingDown, TrendingUp, AlertCircle, Shield, Smartphone, Gift, Bell, ArrowRight, ChevronRight } from 'lucide-react-native';
+import { MessageCircle, Calendar, CheckCircle, XCircle, Clock, Home, TrendingDown, TrendingUp, AlertCircle, Shield, Smartphone, Gift, Bell, ArrowRight, ChevronRight, FileText } from 'lucide-react-native';
 
 interface NotificationItemProps {
   notification: Notification;
   onPress?: () => void;
 }
 
-// Map backend types to mobile types
+// Normalizează tipul backend la tipul UI (lowercase)
 const mapNotificationType = (type: string): string => {
+  const normalized = type.toLowerCase();
   const typeMap: Record<string, string> = {
-    'new_message': 'message',
+    'new_message': 'new_message',
     'verification_approved': 'verification_complete',
     'verification_rejected': 'verification_complete',
     'property_favorited': 'property_match',
-    'property_inquiry': 'message',
+    'property_inquiry': 'new_message',
     'system': 'promotion',
+    // Cron types uppercase → lowercase
+    'viewing_reminder': 'viewing_reminder',
+    'new_property_match': 'property_match',
+    'promotion_expired': 'promotion',
+    'subscription_past_due': 'promotion',
+    'subscription_expired': 'promotion',
   };
-  return typeMap[type] || type;
+  return typeMap[normalized] || normalized;
 };
 
 // Default fallback for unknown types
@@ -41,14 +48,24 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onPre
   const getIcon = () => {
     const props = { size: 20, color: typeInfo.color };
     switch (mappedType) {
-      case 'message': return <MessageCircle {...props} />;
+      case 'message':
+      case 'new_message': return <MessageCircle {...props} />;
       case 'viewing_request':
-      case 'viewing_confirmed': return <Calendar {...props} />;
+      case 'viewing_requested':
+      case 'viewing_confirmed':
+      case 'viewing_rescheduled': return <Calendar {...props} />;
       case 'viewing_cancelled': return <XCircle {...props} />;
       case 'viewing_reminder': return <Clock {...props} />;
+      case 'feedback_request': return <CheckCircle {...props} />;
+      case 'contract_proposed':
+      case 'contract_accepted':
+      case 'contract_signed':
+      case 'contract_partially_signed': return <FileText {...props} />;
       case 'property_match': return <Home {...props} />;
       case 'price_change': return <TrendingDown {...props} />;
       case 'property_unavailable': return <AlertCircle {...props} />;
+      case 'new_review':
+      case 'review_response': return <MessageCircle {...props} />;
       case 'verification_complete': return <Shield {...props} />;
       case 'new_device_login': return <Smartphone {...props} />;
       case 'promotion': return <Gift {...props} />;

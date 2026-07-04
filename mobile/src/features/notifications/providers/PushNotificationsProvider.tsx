@@ -54,32 +54,90 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const data = response.notification.request.content.data as any;
-        const notificationType = data?.type?.toLowerCase?.() || '';
+        // Normalizează tipul la lowercase pentru comparații robuste
+        const notificationType = (data?.type ?? '').toLowerCase();
 
         const nav = navigationRef.current;
         if (!nav?.dispatch) return;
 
-        if (
-          (notificationType === 'viewing_request' ||
-            notificationType === 'viewing_confirmed' ||
-            notificationType === 'viewing_cancelled' ||
-            notificationType === 'viewing_reminder' ||
-            notificationType === 'feedback_request') &&
-          data?.viewingId
-        ) {
-          nav.dispatch(
-            CommonActions.navigate({
-              name: 'Main',
-              params: {
-                screen: 'ProfileTab',
+        // 1. Mesaj nou → Chat
+        if (notificationType === 'new_message') {
+          const conversationId = data?.conversationId || data?.conversation_id;
+          if (conversationId) {
+            nav.dispatch(
+              CommonActions.navigate({
+                name: 'Main',
                 params: {
-                  screen: 'ViewingDetail',
-                  params: { viewingId: String(data.viewingId) },
+                  screen: 'MessagesTab',
+                  params: {
+                    screen: 'Chat',
+                    params: { conversationId: String(conversationId) },
+                  },
                 },
-              },
-            })
-          );
-        } else if (data?.propertyId) {
+              })
+            );
+            return;
+          }
+        }
+
+        // 2. Vizionare (orice tip care începe cu viewing_ sau feedback_request)
+        const isViewingType =
+          notificationType.startsWith('viewing_') ||
+          notificationType === 'viewing_requested' ||
+          notificationType === 'feedback_request';
+
+        if (isViewingType) {
+          const viewingId = data?.viewingId || data?.viewing_id;
+          if (viewingId) {
+            nav.dispatch(
+              CommonActions.navigate({
+                name: 'Main',
+                params: {
+                  screen: 'ProfileTab',
+                  params: {
+                    screen: 'ViewingDetail',
+                    params: { viewingId: String(viewingId) },
+                  },
+                },
+              })
+            );
+            return;
+          }
+        }
+
+        // 3. Contract → detaliu vizionare asociată (dacă există) sau lista vizionărilor
+        if (notificationType.startsWith('contract_')) {
+          const viewingId = data?.viewingId || data?.viewing_id;
+          if (viewingId) {
+            nav.dispatch(
+              CommonActions.navigate({
+                name: 'Main',
+                params: {
+                  screen: 'ProfileTab',
+                  params: {
+                    screen: 'ViewingDetail',
+                    params: { viewingId: String(viewingId) },
+                  },
+                },
+              })
+            );
+          } else {
+            nav.dispatch(
+              CommonActions.navigate({
+                name: 'Main',
+                params: {
+                  screen: 'ProfileTab',
+                  params: { screen: 'Viewings' },
+                },
+              })
+            );
+          }
+          return;
+        }
+
+        // 4. Proprietate / match / schimbare preț → PropertyDetail
+        const propertyId = data?.propertyId || data?.property_id || data?.listingId;
+        if (propertyId) {
           nav.dispatch(
             CommonActions.navigate({
               name: 'Main',
@@ -87,12 +145,16 @@ export const PushNotificationsProvider: React.FC<PushNotificationsProviderProps>
                 screen: 'SearchTab',
                 params: {
                   screen: 'PropertyDetail',
-                  params: { propertyId: String(data.propertyId) },
+                  params: { propertyId: String(propertyId) },
                 },
               },
             })
           );
+          return;
         }
+
+        // Fără destinație identificată — deschide centrul de notificări
+        nav.dispatch(CommonActions.navigate({ name: 'Notifications' }));
       }
     );
 

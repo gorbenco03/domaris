@@ -22,6 +22,10 @@ import {
   Sparkles,
   Plus,
   MessageSquare,
+  Search,
+  TrendingUp,
+  GitCompare,
+  CalendarCheck,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -104,17 +108,45 @@ const AIChatScreen: React.FC = () => {
     sendMessage(`Vreau sa vizionez proprietatea "${title}" (ID: ${propertyId}). Ce date si ore sunt disponibile?`);
   }, [sendMessage]);
 
+  const handleContact = useCallback((propertyId: number, title: string) => {
+    // Navigare cross-stack spre MessagesTab → Chat cu propertyId
+    // @ts-ignore
+    navigation.navigate('MessagesTab', {
+      screen: 'Chat',
+      params: {
+        propertyId: String(propertyId),
+        recipientName: title,
+      },
+    });
+  }, [navigation]);
+
   const handleOpenConversationsList = useCallback(() => {
     // @ts-ignore
     navigation.navigate('AiConversationsList');
   }, [navigation]);
 
-  // Quick suggestions for first-time users
-  const quickSuggestions = [
-    'Vreau sa inchiriez',
-    'Vreau sa cumpar',
-    'Apartament in Botanica',
-    '2 camere sub 400\u20AC',
+  // Prompturi ghidate \u2014 ton de asistent personal
+  const guidedPrompts = [
+    {
+      icon: Search,
+      label: 'Caut\u0103 propriet\u0103\u021Bi',
+      message: 'Caut\u0103-mi un apartament cu 2 camere \u00EEn Chi\u0219in\u0103u p\u00E2n\u0103 \u00EEn 400 \u20AC/lun\u0103',
+    },
+    {
+      icon: TrendingUp,
+      label: 'Evalueaz\u0103 pre\u021Bul',
+      message: 'C\u00E2t valoreaz\u0103 un apartament de 3 camere \u00EEn Botanica, 70 mp?',
+    },
+    {
+      icon: GitCompare,
+      label: 'Compar\u0103 oferte',
+      message: 'Compar\u0103 propriet\u0103\u021Bile pe care mi le-ai ar\u0103tat \u0219i spune-mi care e cea mai bun\u0103 alegere',
+    },
+    {
+      icon: CalendarCheck,
+      label: 'Programeaz\u0103 vizionare',
+      message: 'Vreau s\u0103 programez o vizionare pentru o proprietate',
+    },
   ];
 
   const classificationScore = clientProfile?.classificationScore || 0;
@@ -297,6 +329,66 @@ const AIChatScreen: React.FC = () => {
           ]}
           showsVerticalScrollIndicator={false}
         >
+          {/* Empty state — asistent personal */}
+          {messages.length === 0 && !isSending && (
+            <View style={styles.emptyState}>
+              <LinearGradient
+                colors={['#6366f1', '#8b5cf6', '#10b981']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.emptyStateIcon}
+              >
+                <Sparkles size={32} color="#ffffff" />
+              </LinearGradient>
+              <Text
+                style={[
+                  styles.emptyStateTitle,
+                  { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.lg },
+                ]}
+              >
+                Bună ziua! Sunt RIVA.
+              </Text>
+              <Text
+                style={[
+                  styles.emptyStateSubtitle,
+                  { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm },
+                ]}
+              >
+                Asistentul tău personal imobiliar. Pot să caut proprietăți, să evaluez prețuri, să compar oferte sau să programez vizionări. Cu ce te pot ajuta?
+              </Text>
+              <View style={styles.guidedPromptsGrid}>
+                {guidedPrompts.map((prompt, idx) => {
+                  const Icon = prompt.icon;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[
+                        styles.guidedPromptCard,
+                        {
+                          backgroundColor: theme.colors.surface,
+                          borderColor: theme.colors.border,
+                          borderRadius: theme.borderRadius.lg,
+                        },
+                      ]}
+                      onPress={() => handleQuickReply(prompt.message)}
+                      activeOpacity={0.75}
+                    >
+                      <Icon size={18} color={theme.colors.primary.main} />
+                      <Text
+                        style={[
+                          styles.guidedPromptLabel,
+                          { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.xs },
+                        ]}
+                      >
+                        {prompt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {messages.map((message) => (
             <View key={message.id} style={styles.messageWrapper}>
               {message.role === 'assistant' ? (
@@ -365,6 +457,7 @@ const AIChatScreen: React.FC = () => {
                             property={property}
                             onView={handleViewProperty}
                             onSchedule={handleScheduleViewing}
+                            onContact={handleContact}
                           />
                         ))}
                       </View>
@@ -481,8 +574,8 @@ const AIChatScreen: React.FC = () => {
             },
           ]}
         >
-          {/* Quick Suggestions - only on first messages */}
-          {messages.length <= 2 && (
+          {/* Prompturi rapide — afișate în primele 2 mesaje */}
+          {messages.length > 0 && messages.length <= 2 && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -492,44 +585,39 @@ const AIChatScreen: React.FC = () => {
                 { paddingHorizontal: theme.spacing[4] },
               ]}
             >
-              <Text
-                style={[
-                  styles.suggestionLabel,
-                  {
-                    color: theme.colors.textSecondary,
-                    fontSize: theme.typography.fontSize.xs,
-                    marginRight: theme.spacing[2],
-                  },
-                ]}
-              >
-                Sugestii:
-              </Text>
-              {quickSuggestions.map((suggestion, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.suggestionChip,
-                    {
-                      backgroundColor: theme.colors.primary.main + '15',
-                      borderColor: theme.colors.primary.main + '30',
-                      borderRadius: theme.borderRadius.full,
-                    },
-                  ]}
-                  onPress={() => handleQuickReply(suggestion)}
-                >
-                  <Text
+              {guidedPrompts.map((prompt, index) => {
+                const Icon = prompt.icon;
+                return (
+                  <TouchableOpacity
+                    key={index}
                     style={[
-                      styles.suggestionText,
+                      styles.suggestionChip,
                       {
-                        color: theme.colors.primary.main,
-                        fontSize: theme.typography.fontSize.sm,
+                        backgroundColor: theme.colors.primary.main + '15',
+                        borderColor: theme.colors.primary.main + '30',
+                        borderRadius: theme.borderRadius.full,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 5,
                       },
                     ]}
+                    onPress={() => handleQuickReply(prompt.message)}
                   >
-                    {suggestion}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Icon size={12} color={theme.colors.primary.main} />
+                    <Text
+                      style={[
+                        styles.suggestionText,
+                        {
+                          color: theme.colors.primary.main,
+                          fontSize: theme.typography.fontSize.sm,
+                        },
+                      ]}
+                    >
+                      {prompt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           )}
 
@@ -804,6 +892,50 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Empty state — asistent personal
+  emptyState: {
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingBottom: 24,
+    paddingHorizontal: 8,
+  },
+  emptyStateIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  emptyStateSubtitle: {
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  guidedPromptsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  guidedPromptCard: {
+    width: '47%',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+  },
+  guidedPromptLabel: {
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
