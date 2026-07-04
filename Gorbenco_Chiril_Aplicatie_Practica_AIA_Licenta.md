@@ -20,9 +20,9 @@ Depozitul conține **întregul cod sursă**, fără fișiere binare compilate (d
 excluse prin `.gitignore`).
 
 > Aplicația rulează **live** pe Railway:
+> - **Aplicație web:** https://frontend-production-439b.up.railway.app
 > - API (backend): `https://robust-purpose-production-47e9.up.railway.app/api`
 > - Serviciu ML (AVM): `https://avm-production-c6e7.up.railway.app`
-> - Aplicație web: deployată pe Railway (același proiect)
 
 ---
 

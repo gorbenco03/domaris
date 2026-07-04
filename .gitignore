@@ -94,3 +94,9 @@ mobile/android/app/debug/
 mobile/android/app/release/
 /mobile/ios/
 /mobile/android/
+
+# Documente interne de lucru (nu fac parte din livrabil)
+/docs/
+/BUGS.md
+/MOBILE_GDPR_REGISTRATION.md
+/SECURITY_CHECKLIST.md
