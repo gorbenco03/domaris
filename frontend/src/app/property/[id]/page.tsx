@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -330,11 +331,16 @@ export default function PropertyDetailPage() {
         {/* Image Gallery */}
         <div className="relative">
           <div className="relative h-[50vh] overflow-hidden bg-muted lg:h-[60vh]">
-            <img
-              src={propertyImages[currentImage]}
-              alt="Property"
-              className="h-full w-full object-cover"
-            />
+            {propertyImages[currentImage] && (
+              <Image
+                src={propertyImages[currentImage]}
+                alt={property.title}
+                fill
+                sizes="100vw"
+                className="object-cover"
+                priority
+              />
+            )}
 
             {propertyImages.length > 1 && (
               <>
@@ -402,13 +408,13 @@ export default function PropertyDetailPage() {
                   key={idx}
                   onClick={() => setCurrentImage(idx)}
                   className={cn(
-                    "h-20 w-28 shrink-0 overflow-hidden rounded-lg transition-all",
+                    "relative h-20 w-28 shrink-0 overflow-hidden rounded-lg transition-all",
                     currentImage === idx
                       ? "ring-2 ring-accent ring-offset-2"
                       : "opacity-70 hover:opacity-100"
                   )}
                 >
-                  <img src={img} alt="" className="h-full w-full object-cover" />
+                  <Image src={img} alt="" fill sizes="112px" className="object-cover" />
                 </button>
               ))}
             </div>
@@ -808,9 +814,9 @@ export default function PropertyDetailPage() {
                       <h3 className="mb-6 text-lg font-semibold text-foreground">Programează vizionare</h3>
 
                       <div className="mb-6 flex gap-4 rounded-xl bg-muted p-4">
-                        <div className="h-16 w-20 overflow-hidden rounded-lg bg-secondary">
+                        <div className="relative h-16 w-20 overflow-hidden rounded-lg bg-secondary">
                           {propertyImages[0] && (
-                            <img src={propertyImages[0]} alt="" className="h-full w-full object-cover" />
+                            <Image src={propertyImages[0]} alt="" fill sizes="80px" className="object-cover" />
                           )}
                         </div>
                         <div>
@@ -955,7 +961,7 @@ export default function PropertyDetailPage() {
                       <div className="flex items-center gap-4">
                         <div className="relative h-14 w-14 overflow-hidden rounded-full bg-muted">
                           {getPropertyOwnerAvatar(property) && (
-                            <img src={getPropertyOwnerAvatar(property)!} alt={getPropertyOwnerName(property)} className="h-full w-full object-cover" />
+                            <Image src={getPropertyOwnerAvatar(property)!} alt={getPropertyOwnerName(property)} fill sizes="56px" className="object-cover" />
                           )}
                         </div>
                         <div>
@@ -1015,6 +1021,7 @@ export default function PropertyDetailPage() {
                     rooms={rp.rooms}
                     baths={rp.bathrooms || 1}
                     area={getPropertySurface(rp)}
+                    isPromoted={rp.isPromoted}
                     tags={[]}
                   />
                 ))}

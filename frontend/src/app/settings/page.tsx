@@ -16,6 +16,7 @@ import {
   Lock,
   Shield,
   Trash2,
+  ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +33,7 @@ import {
 import { changePassword } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import kycApi, { KycStatus } from "@/lib/kycApi";
 
 type Tab = "profile" | "notifications" | "security";
 
@@ -61,6 +63,9 @@ export default function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
+  // KYC state
+  const [kycStatus, setKycStatus] = useState<KycStatus | null>(null);
+
   // UI state
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,9 +76,10 @@ export default function SettingsPage() {
       if (!isAuthenticated) return;
       setIsLoading(true);
       try {
-        const [profileData, notifData] = await Promise.all([
+        const [profileData, notifData, kycData] = await Promise.all([
           getCurrentProfile(),
           getNotificationPreferences().catch(() => null),
+          kycApi.getStatus().catch(() => null),
         ]);
 
         setProfile(profileData);
@@ -83,6 +89,7 @@ export default function SettingsPage() {
         setBio(profileData.bio || "");
 
         if (notifData) setNotifications(notifData);
+        if (kycData) setKycStatus(kycData);
       } catch (err) {
         console.error("Failed to fetch profile:", err);
         if (user) {
@@ -323,6 +330,11 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* KYC CTA */}
+            <KycCtaSection
+              level={kycStatus?.verificationLevel ?? profile?.verificationLevel ?? 0}
+            />
 
             {/* Form */}
             <div className="space-y-4">
@@ -587,6 +599,142 @@ export default function SettingsPage() {
         )}
       </main>
       <Footer />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KYC CTA section
+// ─────────────────────────────────────────────────────────────────────────────
+
+function KycCtaSection({ level }: { level: number }) {
+  const levelColors: Record<number, string> = {
+    0: "bg-muted text-muted-foreground",
+    1: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    2: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+    3: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  };
+  const levelLabel: Record<number, string> = {
+    0: "Neverificat",
+    1: "Email verificat",
+    2: "Identitate verificată",
+    3: "Proprietar verificat",
+  };
+
+  const badge = (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        levelColors[level] ?? levelColors[0]
+      )}
+    >
+      Nivel {level} — {levelLabel[level] ?? "Necunoscut"}
+    </span>
+  );
+
+  if (level >= 3) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-3">
+          <Shield className="h-5 w-5 text-amber-500" />
+          <div>
+            <p className="text-sm font-medium">Verificare completă</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Contul tău este complet verificat.
+            </p>
+          </div>
+        </div>
+        <div className="mt-3">{badge}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Shield className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium">Stare verificare</p>
+            <div className="mt-0.5">{badge}</div>
+          </div>
+        </div>
+      </div>
+
+      {level < 2 && (
+        <Link
+          href="/verify-identity"
+          className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-950/70"
+        >
+          <div className="flex items-center gap-3">
+            <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div>
+              <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                Verifică identitatea
+              </p>
+              <p className="text-xs text-blue-600/80 dark:text-blue-400/80">
+                Nivel 2 — necesare pentru mesaje și vizionări
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        </Link>
+      )}
+
+      {level < 3 && (
+        <Link
+          href="/verify-ownership"
+          className={cn(
+            "flex items-center justify-between rounded-xl border px-4 py-3 transition-colors",
+            level >= 2
+              ? "border-amber-200 bg-amber-50 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-950/70"
+              : "border-border bg-muted/30 opacity-60 hover:opacity-80"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <Shield
+              className={cn(
+                "h-5 w-5",
+                level >= 2
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-muted-foreground"
+              )}
+            />
+            <div>
+              <p
+                className={cn(
+                  "text-sm font-semibold",
+                  level >= 2
+                    ? "text-amber-700 dark:text-amber-300"
+                    : "text-foreground"
+                )}
+              >
+                Verifică proprietatea
+              </p>
+              <p
+                className={cn(
+                  "text-xs",
+                  level >= 2
+                    ? "text-amber-600/80 dark:text-amber-400/80"
+                    : "text-muted-foreground"
+                )}
+              >
+                {level >= 2
+                  ? "Nivel 3 — necesare pentru publicarea anunțurilor"
+                  : "Necesită mai întâi verificarea identității (Nivel 2)"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight
+            className={cn(
+              "h-4 w-4",
+              level >= 2
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-muted-foreground"
+            )}
+          />
+        </Link>
+      )}
     </div>
   );
 }

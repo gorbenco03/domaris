@@ -28,10 +28,11 @@ export interface AIMessage {
 interface AIChatMessageProps {
   message: AIMessage;
   onQuickAction?: (action: string) => void;
+  onScheduleViewing?: (propertyId: number, propertyTitle: string) => void;
   isLatest?: boolean;
 }
 
-export const AIChatMessage = ({ message, onQuickAction, isLatest }: AIChatMessageProps) => {
+export const AIChatMessage = ({ message, onQuickAction, onScheduleViewing, isLatest }: AIChatMessageProps) => {
   const isUser = message.role === "user";
 
   // Simple markdown renderer for bold text
@@ -98,7 +99,11 @@ export const AIChatMessage = ({ message, onQuickAction, isLatest }: AIChatMessag
         {message.properties && message.properties.length > 0 && (
           <div className="flex w-full gap-3 overflow-x-auto pb-2">
             {message.properties.map((property) => (
-              <AIChatPropertyCard key={property.id} property={property} />
+              <AIChatPropertyCard
+                key={property.id}
+                property={property}
+                onScheduleViewing={onScheduleViewing}
+              />
             ))}
           </div>
         )}

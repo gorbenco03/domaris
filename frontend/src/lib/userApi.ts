@@ -121,15 +121,6 @@ export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
 }
 
 /**
- * Delete avatar
- */
-export async function deleteAvatar(): Promise<{ success: boolean }> {
-  return api.fetch<{ success: boolean }>('/users/me/avatar', {
-    method: 'DELETE',
-  });
-}
-
-/**
  * Get notification preferences
  */
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {
@@ -187,7 +178,6 @@ export const userApi = {
   getCurrentProfile,
   updateProfile,
   uploadAvatar,
-  deleteAvatar,
   deleteAccount,
   getNotificationPreferences,
   updateNotificationPreferences,

@@ -124,7 +124,35 @@ export async function getMapData(
   });
   
   const query = queryParams.toString();
-  return api.fetch<MapProperty[]>(`/search/map${query ? `?${query}` : ''}`);
+  // Backend returns a GeoJSON FeatureCollection (search.service.ts): coordinates live
+  // in geometry.coordinates ([lng, lat]) and the price key is `price`, not `priceEur`.
+  // Flatten each Feature into the MapProperty shape the UI consumes.
+  const geo = await api.fetch<{
+    features?: Array<{
+      geometry?: { coordinates?: [number, number] };
+      properties?: {
+        id: number;
+        price?: number;
+        rooms?: number;
+        transactionType?: 'RENT' | 'SALE';
+        propertyType?: string;
+      };
+    }>;
+  }>(`/search/map${query ? `?${query}` : ''}`);
+
+  return (geo.features ?? []).map((f) => {
+    const [lng, lat] = f.geometry?.coordinates ?? [0, 0];
+    const props = f.properties ?? { id: 0 };
+    return {
+      id: props.id,
+      lat,
+      lng,
+      priceEur: props.price ?? 0,
+      transactionType: props.transactionType ?? 'SALE',
+      propertyType: props.propertyType ?? '',
+      rooms: props.rooms ?? 0,
+    };
+  });
 }
 
 /**

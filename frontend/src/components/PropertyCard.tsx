@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Heart, MapPin, BedDouble, Bath, Maximize2 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ interface PropertyCardProps {
   area: number;
   floor?: string;
   isFavorite?: boolean;
+  isPromoted?: boolean;
   tags?: string[];
 }
 
@@ -34,6 +36,7 @@ export const PropertyCard = ({
   area,
   floor,
   isFavorite = false,
+  isPromoted = false,
   tags = [],
 }: PropertyCardProps) => {
   const router = useRouter();
@@ -64,10 +67,12 @@ export const PropertyCard = ({
     <article className="group overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:shadow-lg">
       {/* Image */}
       <Link href={`/property/${id}`} className="relative block aspect-[16/10] overflow-hidden">
-        <img
+        <Image
           src={image}
           alt={title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <button
           onClick={handleToggleFavorite}
@@ -80,7 +85,14 @@ export const PropertyCard = ({
         >
           <Heart className={cn("h-5 w-5", favorite && "fill-current")} />
         </button>
-        
+
+        {/* Promoted badge */}
+        {isPromoted && (
+          <span className="absolute left-3 bottom-3 rounded-md bg-amber-500/90 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
+            Promovat
+          </span>
+        )}
+
         {/* Tags */}
         {tags.length > 0 && (
           <div className="absolute left-3 top-3 flex gap-2">

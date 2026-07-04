@@ -108,7 +108,9 @@ export function getPropertyLocation(p: PropertyListing): string {
   return parts.join(', ');
 }
 
-export type PropertyStatus = 'DRAFT' | 'ACTIVE' | 'RENTED' | 'SOLD' | 'HIDDEN';
+// Backend listing.service.ts validStatuses = ['new','early_access','public','rented','hidden','expired'].
+// Live listings (monetization OFF) are emitted with status='public'.
+export type PropertyStatus = 'new' | 'early_access' | 'public' | 'rented' | 'hidden' | 'expired';
 
 export interface PropertySearchParams {
   limit?: number;
@@ -116,7 +118,8 @@ export interface PropertySearchParams {
   page?: number;
   city?: string;
   neighborhood?: string;
-  transactionType?: 'sale' | 'rent';
+  // Backend matches this against stored listings verbatim ('SALE'/'RENT' uppercase).
+  transactionType?: 'SALE' | 'RENT';
   propertyType?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -159,10 +162,12 @@ export interface CreatePropertyRequest {
   floor?: number;
   totalFloors?: number;
   yearBuilt?: number;
+  /** Câmpuri booleene păstrate în DTO-ul backend (CreateListingDto). */
   isFurnished?: boolean;
   hasCentralHeating?: boolean;
-  hasParking?: boolean;
-  hasBalcony?: boolean;
+  petFriendly?: boolean;
+  /** ID-urile facilităților selectate (din AMENITIES @domaris/types). */
+  amenities?: string[];
   lat?: number | null;
   lng?: number | null;
 }
@@ -180,10 +185,16 @@ export interface UpdatePropertyRequest {
   floor?: number;
   totalFloors?: number;
   yearBuilt?: number;
+  /** Câmpuri booleene păstrate în DTO-ul backend (UpdateListingDto). */
   isFurnished?: boolean;
   hasCentralHeating?: boolean;
-  hasParking?: boolean;
+  petFriendly?: boolean;
+  /** @deprecated Folosește `amenities` cu ID-ul 'BALCONY'. Menținut pentru compatibilitate. */
   hasBalcony?: boolean;
+  /** @deprecated Folosește `amenities` cu ID-ul corespunzător. Menținut pentru compatibilitate. */
+  hasParking?: boolean;
+  /** ID-urile facilităților selectate (din AMENITIES @domaris/types). */
+  amenities?: string[];
 }
 
 export interface PropertyListResponse {
@@ -268,8 +279,18 @@ export async function getMyProperties(): Promise<PropertyListing[]> {
  * Create new property (requires Level 2+)
  */
 export async function createProperty(data: CreatePropertyRequest): Promise<PropertyListing> {
-  // Map frontend field names to backend DTO field names
-  const { priceEur, surfaceSqm, neighborhood, lat, lng, currency, ...rest } = data;
+  // Map frontend field names to backend DTO field names:
+  //   - address     -> addressText
+  //   - priceEur    -> price
+  //   - surfaceSqm  -> surface
+  //   - neighborhood-> area
+  //   - amenities   -> amenities (string[] cu ID-uri din AMENITIES @domaris/types)
+  const {
+    priceEur, surfaceSqm, neighborhood, lat, lng, currency,
+    address, amenities,
+    ...rest
+  } = data as CreatePropertyRequest & { address?: string };
+
   const payload: Record<string, unknown> = {
     ...rest,
     price: priceEur,
@@ -278,6 +299,8 @@ export async function createProperty(data: CreatePropertyRequest): Promise<Prope
     // Default currency to EUR for Moldova market
     currency: currency ?? 'EUR',
   };
+  if (address) payload.addressText = address;
+  if (amenities && amenities.length > 0) payload.amenities = amenities;
   // Include coordinates if provided by the wizard's map picker
   if (lat != null) payload.lat = lat;
   if (lng != null) payload.lng = lng;
@@ -294,12 +317,24 @@ export async function updateProperty(
   id: string | number,
   data: UpdatePropertyRequest
 ): Promise<PropertyListing> {
-  // Map frontend field names to backend DTO field names
-  const { priceEur, surfaceSqm, neighborhood, ...rest } = data as any;
-  const payload: Record<string, any> = { ...rest };
+  // Map frontend field names to backend DTO field names (la fel ca la create)
+  const {
+    priceEur, surfaceSqm, neighborhood,
+    address, amenities,
+    // @deprecated — ignorăm câmpurile vechi la nivel de payload (nu sunt în DTO backend)
+    hasParking, hasBalcony, // eslint-disable-line @typescript-eslint/no-unused-vars
+    ...rest
+  } = data as UpdatePropertyRequest & { address?: string };
+  const payload: Record<string, unknown> = { ...rest };
   if (priceEur !== undefined) payload.price = priceEur;
   if (surfaceSqm !== undefined) payload.surface = surfaceSqm;
   if (neighborhood !== undefined) payload.area = neighborhood;
+  if (address !== undefined) payload.addressText = address;
+  // Combinăm amenities cu câmpurile @deprecated (bridge pentru edit-property)
+  const amenitiesList = [...(amenities ?? [])];
+  if (hasParking && !amenitiesList.includes('UNDERGROUND_PARKING')) amenitiesList.push('UNDERGROUND_PARKING');
+  if (hasBalcony && !amenitiesList.includes('BALCONY')) amenitiesList.push('BALCONY');
+  if (amenitiesList.length > 0) payload.amenities = amenitiesList;
   return api.fetch<PropertyListing>(`/properties/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),

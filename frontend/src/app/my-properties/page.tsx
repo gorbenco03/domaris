@@ -65,11 +65,12 @@ interface PropertyWithStats extends PropertyListing {
 }
 
 const statusConfig: Record<PropertyStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  ACTIVE: { label: "Activ", variant: "default" },
-  HIDDEN: { label: "Ascuns", variant: "secondary" },
-  DRAFT: { label: "Ciornă", variant: "outline" },
-  RENTED: { label: "Închiriat", variant: "secondary" },
-  SOLD: { label: "Vândut", variant: "secondary" },
+  public: { label: "Activ", variant: "default" },
+  hidden: { label: "Ascuns", variant: "secondary" },
+  early_access: { label: "Acces anticipat", variant: "outline" },
+  new: { label: "Nou", variant: "outline" },
+  rented: { label: "Închiriat", variant: "secondary" },
+  expired: { label: "Expirat", variant: "secondary" },
 };
 
 export default function MyPropertiesPage() {
@@ -128,11 +129,11 @@ export default function MyPropertiesPage() {
   }, [isAuthenticated, isAuthLoading]);
 
   const handleToggleStatus = async (propertyId: number, currentStatus: PropertyStatus) => {
-    const newStatus: PropertyStatus = currentStatus === "ACTIVE" ? "HIDDEN" : "ACTIVE";
+    const newStatus: PropertyStatus = currentStatus === "public" ? "hidden" : "public";
     try {
       const updated = await updatePropertyStatus(propertyId, newStatus);
       setProperties(prev => prev.map(p => p.id === propertyId ? { ...p, status: updated.status } : p));
-      toast.success(newStatus === "ACTIVE" ? "Anunțul este acum activ" : "Anunțul a fost ascuns");
+      toast.success(newStatus === "public" ? "Anunțul este acum activ" : "Anunțul a fost ascuns");
     } catch {
       toast.error("Nu am putut actualiza statusul.");
     }
@@ -220,7 +221,7 @@ export default function MyPropertiesPage() {
         ) : properties.length > 0 ? (
           <div className="space-y-4">
             {properties.map((property) => {
-              const sc = statusConfig[property.status] || statusConfig.DRAFT;
+              const sc = statusConfig[property.status] || statusConfig.public;
               return (
                 <div key={property.id} className="rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-md">
                   <div className="flex flex-col gap-4 sm:flex-row">
@@ -268,7 +269,7 @@ export default function MyPropertiesPage() {
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleToggleStatus(property.id, property.status)}>
-                                {property.status === "ACTIVE" ? (
+                                {property.status === "public" ? (
                                   <><EyeOff className="mr-2 h-4 w-4" /> Ascunde</>
                                 ) : (
                                   <><Eye className="mr-2 h-4 w-4" /> Activează</>
@@ -296,7 +297,7 @@ export default function MyPropertiesPage() {
                       </div>
 
                       {/* Quick Stats */}
-                      <div className="mt-3 flex items-center gap-4 border-t border-border pt-3">
+                      <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-border pt-3">
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground" title="Vizualizări (30 zile)">
                           <Eye className="h-4 w-4" /><span>{property.stats?.views ?? property.viewsCount ?? 0}</span>
                         </div>
@@ -309,11 +310,27 @@ export default function MyPropertiesPage() {
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground" title="Vizionări">
                           <Calendar className="h-4 w-4" /><span>{property.stats?.viewings ?? 0}</span>
                         </div>
-                        {property.isPromoted && (
-                          <div className="ml-auto flex items-center gap-1 text-sm text-amber-500">
-                            <Megaphone className="h-4 w-4" /><span>Promovat</span>
-                          </div>
-                        )}
+                        <div className="ml-auto flex items-center gap-2">
+                          {property.isPromoted ? (
+                            <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-600">
+                              <Megaphone className="h-3.5 w-3.5" /><span>Promovat</span>
+                            </div>
+                          ) : (
+                            process.env.NEXT_PUBLIC_MONETIZATION_ENABLED === "true" && (
+                              <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1 text-xs"
+                              >
+                                <Link href={`/promote/${property.id}`}>
+                                  <Megaphone className="h-3.5 w-3.5" />
+                                  Boost
+                                </Link>
+                              </Button>
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

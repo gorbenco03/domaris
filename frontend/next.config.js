@@ -26,6 +26,12 @@ const nextConfig = {
         hostname: '*.up.railway.app',
         pathname: '/**',
       },
+      // Unsplash — placeholder/demo property images
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
       // Local development
       {
         protocol: 'http',

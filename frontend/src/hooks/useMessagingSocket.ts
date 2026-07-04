@@ -83,18 +83,26 @@ export function useMessagingSocket({
     };
   }, [onNewMessage]);
 
-  // Listen for typing indicators
+  // Listen for typing indicators.
+  // Backend emits two separate events (no boolean flag): user:typing to start and
+  // user:stopped:typing to stop. Map each onto the { userId, isTyping } shape the
+  // consumer expects, deriving isTyping from which event fired.
   useEffect(() => {
     const socket = socketRef.current;
     if (!socket) return;
 
-    const handleTyping = (data: { userId: number; isTyping: boolean }) => {
-      onTyping?.(data);
+    const handleTypingStart = (data: { userId: number }) => {
+      onTyping?.({ userId: data.userId, isTyping: true });
+    };
+    const handleTypingStop = (data: { userId: number }) => {
+      onTyping?.({ userId: data.userId, isTyping: false });
     };
 
-    socket.on(WEBSOCKET_EVENTS.USER_TYPING, handleTyping);
+    socket.on(WEBSOCKET_EVENTS.USER_TYPING, handleTypingStart);
+    socket.on(WEBSOCKET_EVENTS.USER_STOPPED_TYPING, handleTypingStop);
     return () => {
-      socket.off(WEBSOCKET_EVENTS.USER_TYPING, handleTyping);
+      socket.off(WEBSOCKET_EVENTS.USER_TYPING, handleTypingStart);
+      socket.off(WEBSOCKET_EVENTS.USER_STOPPED_TYPING, handleTypingStop);
     };
   }, [onTyping]);
 

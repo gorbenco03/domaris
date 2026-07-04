@@ -35,6 +35,8 @@ import {
   CalendarClock,
   Star,
   MessageCircle,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -48,6 +50,7 @@ import {
   Viewing,
   ViewingStatus,
 } from "@/lib/viewingsApi";
+import { proposeContract, ProposeContractData } from "@/lib/contractsApi";
 import { formatDistanceToNow, format } from "date-fns";
 import { ro } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -104,6 +107,17 @@ export default function ViewingsPage() {
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackInterested, setFeedbackInterested] = useState<boolean | null>(null);
+
+  // Propose contract dialog
+  const [proposeContractTarget, setProposeContractTarget] = useState<Viewing | null>(null);
+  const [contractForm, setContractForm] = useState<ProposeContractData>({
+    monthlyRent: 0,
+    deposit: 0,
+    currency: "EUR",
+    startDate: "",
+    endDate: "",
+    terms: "",
+  });
 
   useEffect(() => {
     const fetchViewings = async () => {
@@ -199,6 +213,43 @@ export default function ViewingsPage() {
       setFeedbackInterested(null);
     } catch {
       toast.error("Eroare la trimiterea feedback-ului.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleProposeContract = async () => {
+    if (!proposeContractTarget) return;
+    if (!contractForm.monthlyRent || !contractForm.startDate || !contractForm.endDate) return;
+    setActionLoading(proposeContractTarget.id);
+    try {
+      const contract = await proposeContract(proposeContractTarget.id, {
+        monthlyRent: Number(contractForm.monthlyRent),
+        deposit: Number(contractForm.deposit),
+        currency: contractForm.currency || "EUR",
+        startDate: contractForm.startDate,
+        endDate: contractForm.endDate,
+        terms: contractForm.terms || undefined,
+      });
+      toast.success("Contractul a fost propus. Chiriașul va fi notificat.", {
+        action: {
+          label: "Vezi contractul",
+          onClick: () => {
+            window.location.href = `/contracts/${contract.id}`;
+          },
+        },
+      });
+      setProposeContractTarget(null);
+      setContractForm({
+        monthlyRent: 0,
+        deposit: 0,
+        currency: "EUR",
+        startDate: "",
+        endDate: "",
+        terms: "",
+      });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Eroare la propunerea contractului.");
     } finally {
       setActionLoading(null);
     }
@@ -468,13 +519,22 @@ export default function ViewingsPage() {
                         {otherPerson?.phone && (
                           <span className="text-xs">· {otherPerson.phone}</span>
                         )}
-                        <Link
-                          href={`/messages?chat=${otherPerson?.id || ""}`}
-                          className="ml-auto flex items-center gap-1 text-primary hover:underline"
-                        >
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          Mesaj
-                        </Link>
+                        <div className="ml-auto flex items-center gap-3">
+                          <Link
+                            href={`/messages?chat=${otherPerson?.id || ""}`}
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            Mesaj
+                          </Link>
+                          <Link
+                            href={`/viewings/${viewing.id}`}
+                            className="flex items-center gap-0.5 text-primary hover:underline"
+                          >
+                            Detalii
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
                       </div>
 
                       {/* Prominent confirm/reject buttons for owner when PENDING */}
@@ -542,6 +602,34 @@ export default function ViewingsPage() {
                         >
                           <Star className="mr-2 h-4 w-4" />
                           Lasă un feedback
+                        </Button>
+                      )}
+
+                      {/* Propose contract button — owner only, COMPLETED viewing */}
+                      {isCompleted && owner && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 border-primary/40 text-primary hover:bg-primary/10"
+                          onClick={() => {
+                            setProposeContractTarget(viewing);
+                            setContractForm({
+                              monthlyRent: 0,
+                              deposit: 0,
+                              currency: "EUR",
+                              startDate: "",
+                              endDate: "",
+                              terms: "",
+                            });
+                          }}
+                          disabled={actionLoading === viewing.id}
+                        >
+                          {actionLoading === viewing.id ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileText className="mr-2 h-4 w-4" />
+                          )}
+                          Propune contract
                         </Button>
                       )}
                     </div>
@@ -717,6 +805,147 @@ export default function ViewingsPage() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               Trimite feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Propose Contract Dialog */}
+      <Dialog
+        open={proposeContractTarget !== null}
+        onOpenChange={(open) => !open && setProposeContractTarget(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Propune contract de închiriere</DialogTitle>
+            <DialogDescription>
+              Completează termenii contractului. Chiriașul va fi notificat și va putea accepta sau semna.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Chirie lunară *</Label>
+                <div className="mt-1 flex">
+                  <Input
+                    type="number"
+                    min={0}
+                    step={10}
+                    className="rounded-r-none"
+                    placeholder="ex: 350"
+                    value={contractForm.monthlyRent || ""}
+                    onChange={(e) =>
+                      setContractForm((f) => ({
+                        ...f,
+                        monthlyRent: Number(e.target.value),
+                      }))
+                    }
+                  />
+                  <span className="flex items-center rounded-r-md border border-l-0 border-input bg-muted px-3 text-sm text-muted-foreground">
+                    {contractForm.currency}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <Label>Garanție (depozit) *</Label>
+                <div className="mt-1 flex">
+                  <Input
+                    type="number"
+                    min={0}
+                    step={10}
+                    className="rounded-r-none"
+                    placeholder="ex: 700"
+                    value={contractForm.deposit || ""}
+                    onChange={(e) =>
+                      setContractForm((f) => ({
+                        ...f,
+                        deposit: Number(e.target.value),
+                      }))
+                    }
+                  />
+                  <span className="flex items-center rounded-r-md border border-l-0 border-input bg-muted px-3 text-sm text-muted-foreground">
+                    {contractForm.currency}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label>Monedă</Label>
+              <div className="mt-1 flex gap-2">
+                {["EUR", "USD", "MDL"].map((cur) => (
+                  <Button
+                    key={cur}
+                    type="button"
+                    size="sm"
+                    variant={contractForm.currency === cur ? "default" : "outline"}
+                    onClick={() =>
+                      setContractForm((f) => ({ ...f, currency: cur }))
+                    }
+                  >
+                    {cur}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Data de început *</Label>
+                <Input
+                  type="date"
+                  className="mt-1"
+                  value={contractForm.startDate}
+                  onChange={(e) =>
+                    setContractForm((f) => ({ ...f, startDate: e.target.value }))
+                  }
+                  min={new Date().toISOString().split("T")[0]}
+                />
+              </div>
+              <div>
+                <Label>Data de încheiere *</Label>
+                <Input
+                  type="date"
+                  className="mt-1"
+                  value={contractForm.endDate}
+                  onChange={(e) =>
+                    setContractForm((f) => ({ ...f, endDate: e.target.value }))
+                  }
+                  min={contractForm.startDate || new Date().toISOString().split("T")[0]}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Clauze suplimentare (opțional)</Label>
+              <Textarea
+                className="mt-1"
+                rows={3}
+                placeholder="Reguli casă, condiții speciale, responsabilități..."
+                value={contractForm.terms || ""}
+                onChange={(e) =>
+                  setContractForm((f) => ({ ...f, terms: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProposeContractTarget(null)}>
+              Anulează
+            </Button>
+            <Button
+              onClick={handleProposeContract}
+              disabled={
+                !contractForm.monthlyRent ||
+                !contractForm.startDate ||
+                !contractForm.endDate ||
+                actionLoading === proposeContractTarget?.id
+              }
+            >
+              {actionLoading === proposeContractTarget?.id && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Trimite propunerea
             </Button>
           </DialogFooter>
         </DialogContent>

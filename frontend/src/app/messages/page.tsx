@@ -71,6 +71,9 @@ function MessagesContent() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // For smart auto-scroll: track previous message count and previous conversation
+  const prevMessagesLenRef = useRef<number>(0);
+  const prevConversationRef = useRef<string | null>(null);
 
   // WebSocket
   const handleNewMessage = useCallback(
@@ -119,7 +122,7 @@ function MessagesContent() {
     [selectedConversation, conversations, user?.id]
   );
 
-  const { emitTyping } = useMessagingSocket({
+  const { emitTyping, isConnected: isSocketConnected } = useMessagingSocket({
     conversationId: selectedConversation,
     onNewMessage: handleNewMessage,
     onTyping: handleTyping,
@@ -179,8 +182,10 @@ function MessagesContent() {
   // Poll the open conversation as a reliable real-time fallback. The web client
   // sends messages over REST (not the socket), so the gateway never broadcasts
   // message:new for them — without this the recipient wouldn't see new messages live.
+  // When the WebSocket is connected we back off to 25s; otherwise keep a 4s heartbeat.
   useEffect(() => {
     if (!selectedConversation) return;
+    const POLL_INTERVAL = isSocketConnected ? 25000 : 4000;
     const interval = setInterval(async () => {
       try {
         const fresh = await getMessages(selectedConversation);
@@ -195,14 +200,24 @@ function MessagesContent() {
       } catch {
         // ignore transient polling errors
       }
-    }, 4000);
+    }, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [selectedConversation]);
+  }, [selectedConversation, isSocketConnected]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom only when the number of messages grows or the conversation changes.
+  // Prevents the poll (which replaces the array reference without adding messages)
+  // from constantly throwing the user to the bottom.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const conversationChanged = prevConversationRef.current !== selectedConversation;
+    const messagesGrew = messages.length > prevMessagesLenRef.current;
+
+    if (conversationChanged || messagesGrew) {
+      messagesEndRef.current?.scrollIntoView({ behavior: conversationChanged ? "auto" : "smooth" });
+    }
+
+    prevMessagesLenRef.current = messages.length;
+    prevConversationRef.current = selectedConversation;
+  }, [messages, selectedConversation]);
 
   const handleSendMessage = async (content?: string, type: "TEXT" | "IMAGE" = "TEXT") => {
     const text = content || newMessage.trim();
@@ -415,9 +430,24 @@ function MessagesContent() {
                             })()}
                           </span>
                         </div>
-                        {conversation.property?.title && (
-                          <p className="truncate text-sm text-muted-foreground">
-                            {conversation.property.title}
+                        {conversation.property?.title ? (
+                          <div className="mt-0.5 flex items-center gap-1.5">
+                            {conversation.property.image ? (
+                              <img
+                                src={conversation.property.image}
+                                alt=""
+                                className="h-5 w-7 shrink-0 rounded object-cover"
+                              />
+                            ) : (
+                              <Home className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                            )}
+                            <p className="truncate text-xs font-medium text-primary/80">
+                              {conversation.property.title}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground/70 italic">
+                            Conversație directă
                           </p>
                         )}
                         <p
@@ -462,35 +492,43 @@ function MessagesContent() {
             >
               {activeConversation ? (
                 <>
-                  {/* Property Context Header */}
-                  {activeConversation.property && (
+                  {/* Property Subject Header — always visible */}
+                  {activeConversation.property ? (
                     <Link
                       href={`/property/${activeConversation.property.id}`}
-                      className="flex items-center gap-3 border-b border-border bg-muted/50 px-4 py-2 transition-colors hover:bg-muted"
+                      className="flex items-center gap-3 border-b border-border bg-primary/5 px-4 py-3 transition-colors hover:bg-primary/10"
                     >
-                      {(activeConversation.property.image || (activeConversation.property as any).mainImage) ? (
+                      {activeConversation.property.image ? (
                         <img
-                          src={activeConversation.property.image || (activeConversation.property as any).mainImage}
+                          src={activeConversation.property.image}
                           alt=""
-                          className="h-10 w-14 shrink-0 rounded-md object-cover"
+                          className="h-12 w-16 shrink-0 rounded-lg object-cover shadow-sm"
                         />
                       ) : (
-                        <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-md bg-muted">
-                          <Home className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-lg bg-muted border border-border">
+                          <Home className="h-5 w-5 text-muted-foreground" />
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">
+                          Discuție despre:
+                        </p>
+                        <p className="truncate text-sm font-semibold text-foreground leading-tight">
                           {activeConversation.property.title}
                         </p>
                         {activeConversation.property.price != null && (
-                          <p className="text-xs font-semibold text-primary">
-                            {(activeConversation.property.price ?? 0).toLocaleString()}{" "}
-                            €
+                          <p className="mt-0.5 text-sm font-bold text-primary">
+                            {(activeConversation.property.price ?? 0).toLocaleString()} €
                           </p>
                         )}
                       </div>
+                      <Home className="h-4 w-4 shrink-0 text-primary/50" />
                     </Link>
+                  ) : (
+                    <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-4 py-2">
+                      <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground italic">Conversație directă</p>
+                    </div>
                   )}
 
                   {/* Chat Header */}

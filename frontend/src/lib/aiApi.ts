@@ -431,21 +431,31 @@ export async function estimatePrice(request: {
   transactionType: 'RENT' | 'SALE';
   rooms: number;
   surfaceSqm: number;
+  neighborhood?: string;
+  floor?: number;
+  yearBuilt?: number;
 }): Promise<{
   estimatedPrice: number;
   priceRange: { min: number; max: number };
   confidence: number;
 }> {
-  // Backend route is /ai/estimate-price and expects { city, propertyType, rooms, surface }
-  // (note: `surface`, not `surfaceSqm`; no `transactionType`).
+  // Backend route is /ai/estimate-price and expects { city, propertyType, transactionType, rooms, surface }
+  // (note: `surface`, not `surfaceSqm`). neighborhood/floor/yearBuilt are optional
+  // and whitelisted by EstimatePriceBody — forward them when present to improve
+  // estimate precision.
+  const payload: Record<string, unknown> = {
+    city: request.city,
+    propertyType: request.propertyType,
+    transactionType: request.transactionType,
+    rooms: request.rooms,
+    surface: request.surfaceSqm,
+  };
+  if (request.neighborhood) payload.neighborhood = request.neighborhood;
+  if (request.floor != null) payload.floor = request.floor;
+  if (request.yearBuilt != null) payload.yearBuilt = request.yearBuilt;
   return api.fetch('/ai/estimate-price', {
     method: 'POST',
-    body: JSON.stringify({
-      city: request.city,
-      propertyType: request.propertyType,
-      rooms: request.rooms,
-      surface: request.surfaceSqm,
-    }),
+    body: JSON.stringify(payload),
   });
 }
 

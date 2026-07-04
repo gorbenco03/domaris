@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { 
-  Bell, 
-  ArrowLeft, 
-  Loader2, 
+import {
+  Bell,
+  ArrowLeft,
+  Loader2,
   Clock,
   MessageSquare,
   Calendar,
@@ -20,16 +21,16 @@ import {
   CheckCircle2,
   FileCheck,
   Trash2,
-  Check
+  Check,
+  FileText
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  getNotifications, 
+import {
+  getNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification,
   Notification,
-  NotificationType 
 } from "@/lib/notificationsApi";
 import { formatDistanceToNow } from "date-fns";
 import { ro } from "date-fns/locale";
@@ -37,37 +38,152 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Icon mapping matching pixel-perfect-pixels style
-const notificationIcons: Record<NotificationType, typeof Bell> = {
-  MESSAGE: MessageSquare,
-  VIEWING_CONFIRMED: CheckCircle2,
-  VIEWING_REMINDER: Calendar,
-  VIEWING_CANCELLED: Calendar,
-  NEW_PROPERTY_MATCH: Home,
-  PROPERTY_STATUS_CHANGE: FileCheck,
-  FAVORITE_PRICE_DROP: Heart,
-  VERIFICATION_STATUS_CHANGE: Shield,
-  SUBSCRIPTION_EXPIRING: CreditCard,
-  SYSTEM_ANNOUNCEMENT: Megaphone,
+// ---------------------------------------------------------------------------
+// Helpers – normalizare tip (tratăm atât UPPERCASE cât și lowercase)
+// ---------------------------------------------------------------------------
+
+function normalizeType(type: string): string {
+  return type.toLowerCase();
+}
+
+// ---------------------------------------------------------------------------
+// Icon mapping – după tip normalizat (lowercase)
+// ---------------------------------------------------------------------------
+
+const iconMap: Record<string, typeof Bell> = {
+  // mesaje
+  message: MessageSquare,
+  new_message: MessageSquare,
+  // vizionări
+  viewing_requested: Calendar,
+  viewing_confirmed: CheckCircle2,
+  viewing_rejected: Calendar,
+  viewing_cancelled: Calendar,
+  viewing_rescheduled: Calendar,
+  viewing_reminder: Calendar,
+  // contracte
+  contract_proposed: FileText,
+  contract_accepted: FileText,
+  contract_signed: FileText,
+  contract_partially_signed: FileText,
+  // proprietăți
+  new_property_match: Home,
+  property_status_change: FileCheck,
+  favorite_price_drop: Heart,
+  // conturi
+  verification_status_change: Shield,
+  subscription_expiring: CreditCard,
+  subscription_past_due: CreditCard,
+  subscription_expired: CreditCard,
+  promotion_expired: CreditCard,
+  // feedback
+  feedback_request: CheckCircle2,
+  // sistem
+  system: Megaphone,
+  system_announcement: Megaphone,
 };
 
-// Color mapping matching pixel-perfect-pixels style
-const notificationColors: Record<NotificationType, string> = {
-  MESSAGE: "text-blue-500",
-  VIEWING_CONFIRMED: "text-emerald-500",
-  VIEWING_REMINDER: "text-orange-500",
-  VIEWING_CANCELLED: "text-red-500",
-  NEW_PROPERTY_MATCH: "text-purple-500",
-  PROPERTY_STATUS_CHANGE: "text-violet-500",
-  FAVORITE_PRICE_DROP: "text-pink-500",
-  VERIFICATION_STATUS_CHANGE: "text-teal-500",
-  SUBSCRIPTION_EXPIRING: "text-yellow-500",
-  SYSTEM_ANNOUNCEMENT: "text-gray-500",
+// ---------------------------------------------------------------------------
+// Color mapping – după tip normalizat (lowercase)
+// ---------------------------------------------------------------------------
+
+const colorMap: Record<string, string> = {
+  // mesaje
+  message: "text-blue-500",
+  new_message: "text-blue-500",
+  // vizionări
+  viewing_requested: "text-orange-500",
+  viewing_confirmed: "text-emerald-500",
+  viewing_rejected: "text-red-500",
+  viewing_cancelled: "text-red-500",
+  viewing_rescheduled: "text-orange-500",
+  viewing_reminder: "text-orange-500",
+  // contracte
+  contract_proposed: "text-violet-500",
+  contract_accepted: "text-violet-500",
+  contract_signed: "text-emerald-500",
+  contract_partially_signed: "text-violet-500",
+  // proprietăți
+  new_property_match: "text-purple-500",
+  property_status_change: "text-violet-500",
+  favorite_price_drop: "text-pink-500",
+  // conturi
+  verification_status_change: "text-teal-500",
+  subscription_expiring: "text-yellow-500",
+  subscription_past_due: "text-yellow-500",
+  subscription_expired: "text-red-500",
+  promotion_expired: "text-yellow-500",
+  // feedback
+  feedback_request: "text-blue-500",
+  // sistem
+  system: "text-gray-500",
+  system_announcement: "text-gray-500",
 };
+
+function getIcon(type: string): typeof Bell {
+  return iconMap[normalizeType(type)] ?? Bell;
+}
+
+function getColor(type: string): string {
+  return colorMap[normalizeType(type)] ?? "text-gray-500";
+}
+
+// ---------------------------------------------------------------------------
+// Route mapper – construiește ruta de navigare din tipul și metadata notificării
+// ---------------------------------------------------------------------------
+
+function getNotificationRoute(notif: Notification): string | null {
+  const t = normalizeType(notif.type);
+  const meta = notif.metadata ?? {};
+
+  // Mesaje
+  if (t === "message" || t === "new_message") {
+    const convId = meta.conversationId;
+    if (convId) return `/messages?chat=${convId}`;
+    return "/messages";
+  }
+
+  // Vizionări
+  if (t.startsWith("viewing_")) {
+    const viewingId = meta.viewingId;
+    if (viewingId) return `/viewings/${viewingId}`;
+    return "/viewings";
+  }
+
+  // Contracte
+  if (t.startsWith("contract_")) {
+    const contractId = meta.contractId;
+    if (contractId) return `/contracts/${contractId}`;
+    return "/contracts/mine";
+  }
+
+  // Proprietăți / match
+  if (t === "new_property_match" || t === "property_status_change") {
+    const propertyId = meta.propertyId;
+    if (propertyId) return `/property/${propertyId}`;
+    return "/search";
+  }
+
+  if (t === "favorite_price_drop") {
+    const propertyId = meta.propertyId;
+    if (propertyId) return `/property/${propertyId}`;
+    return "/search";
+  }
+
+  // Feedback
+  if (t === "feedback_request") {
+    const viewingId = meta.viewingId;
+    if (viewingId) return `/viewings/${viewingId}`;
+    return "/viewings";
+  }
+
+  return null;
+}
 
 export default function NotificationsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  
+  const router = useRouter();
+
   // API state
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,10 +193,10 @@ export default function NotificationsPage() {
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!isAuthenticated) return;
-      
+
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const data = await getNotifications();
         setNotifications(data);
@@ -91,22 +207,22 @@ export default function NotificationsPage() {
         setIsLoading(false);
       }
     };
-    
+
     if (!isAuthLoading) {
       fetchNotifications();
     }
   }, [isAuthenticated, isAuthLoading]);
 
-  const handleMarkAsRead = async (id: number) => {
+  const handleMarkAsRead = useCallback(async (id: number) => {
     try {
       await markNotificationAsRead(id);
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, isRead: true } : n)
       );
     } catch (err) {
       console.error("Failed to mark as read:", err);
     }
-  };
+  }, []);
 
   const handleMarkAllAsRead = async () => {
     try {
@@ -119,7 +235,8 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       await deleteNotification(id);
       setNotifications(prev => prev.filter(n => n.id !== id));
@@ -129,6 +246,17 @@ export default function NotificationsPage() {
       toast.error("Nu am putut șterge notificarea");
     }
   };
+
+  /** Click pe notificare: marchează ca citit și navighează la ruta aferentă. */
+  const handleNotificationClick = useCallback(async (notif: Notification) => {
+    if (!notif.isRead) {
+      await handleMarkAsRead(notif.id);
+    }
+    const route = getNotificationRoute(notif);
+    if (route) {
+      router.push(route);
+    }
+  }, [handleMarkAsRead, router]);
 
   const filteredNotifications = filter === 'unread' 
     ? notifications.filter(n => !n.isRead)
@@ -241,16 +369,28 @@ export default function NotificationsPage() {
             <ScrollArea className="max-h-[600px]">
               <div className="divide-y divide-border">
                 {filteredNotifications.map((notif) => {
-                  const IconComponent = notificationIcons[notif.type] || Bell;
-                  const iconColor = notificationColors[notif.type] || "text-gray-500";
-                  
+                  const IconComponent = getIcon(notif.type);
+                  const iconColor = getColor(notif.type);
+                  const route = getNotificationRoute(notif);
+                  const isClickable = route !== null;
+
                   return (
                     <div
                       key={notif.id}
+                      onClick={() => handleNotificationClick(notif)}
                       className={cn(
                         "flex items-start gap-3 p-4 transition-all hover:bg-muted/50",
-                        !notif.isRead && "bg-primary/5"
+                        !notif.isRead && "bg-primary/5",
+                        isClickable && "cursor-pointer"
                       )}
+                      role={isClickable ? "button" : undefined}
+                      tabIndex={isClickable ? 0 : undefined}
+                      onKeyDown={isClickable ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleNotificationClick(notif);
+                        }
+                      } : undefined}
                     >
                       {/* Icon with colored background - matching pixel-perfect-pixels */}
                       <div className={cn(
@@ -259,7 +399,7 @@ export default function NotificationsPage() {
                       )}>
                         <IconComponent className="h-5 w-5" />
                       </div>
-                      
+
                       {/* Content */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
@@ -286,7 +426,7 @@ export default function NotificationsPage() {
                       <div className="flex items-center gap-1">
                         {!notif.isRead && (
                           <button
-                            onClick={() => handleMarkAsRead(notif.id)}
+                            onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             title="Marchează ca citit"
                           >
@@ -294,7 +434,7 @@ export default function NotificationsPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => handleDelete(notif.id)}
+                          onClick={(e) => handleDelete(notif.id, e)}
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                           title="Șterge"
                         >

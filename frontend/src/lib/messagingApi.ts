@@ -268,7 +268,11 @@ export const WEBSOCKET_EVENTS = {
   // Incoming (listen)
   MESSAGE_NEW: 'message:new',
   MESSAGE_READ: 'message:read',
+  // Backend emits two distinct events (no boolean flag):
+  //   user:typing         { conversationId, userId, userName, avatar }
+  //   user:stopped:typing { conversationId, userId }
   USER_TYPING: 'user:typing',
+  USER_STOPPED_TYPING: 'user:stopped:typing',
 
   // Outgoing (emit)
   MESSAGE_SEND: 'message:send',

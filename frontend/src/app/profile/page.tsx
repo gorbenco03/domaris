@@ -23,6 +23,9 @@ import {
   LogOut,
   Plus,
   Sparkles,
+  FileText,
+  CreditCard,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -88,6 +91,29 @@ export default function ProfilePage() {
     { icon: Calendar, label: "Vizionări programate", sublabel: "Vezi calendar", href: "/viewings" },
     { icon: Settings, label: "Setări cont", sublabel: "Profil și preferințe", href: "/settings" },
     { icon: HelpCircle, label: "Ajutor & Suport", sublabel: "Centre de ajutor", href: "/contact" },
+  ];
+
+  const documentItems = [
+    {
+      icon: FileText,
+      label: "Documentele mele",
+      sublabel: "Contractele tale de închiriere semnate și în curs",
+      href: "/contracts/mine",
+    },
+    {
+      icon: CreditCard,
+      label: "Abonamentul meu",
+      sublabel: "Plan activ și beneficii Premium",
+      href: "/subscription",
+    },
+    {
+      icon: ShieldCheck,
+      label: "Verificare identitate (KYC)",
+      sublabel: (user as any)?.kycStatus
+        ? `Nivel curent: ${(user as any).kycStatus}`
+        : "Verifică-ți identitatea pentru mai multă încredere",
+      href: "/settings",
+    },
   ];
 
   const handleLogout = async () => {
@@ -239,6 +265,35 @@ export default function ProfilePage() {
                 href={item.href}
                 className={`flex items-center justify-between p-4 transition-colors hover:bg-muted ${
                   idx !== menuItems.length - 1 ? "border-b border-border" : ""
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                    <item.icon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">{item.label}</p>
+                    <p className="text-sm text-muted-foreground">{item.sublabel}</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Documents & Account Section */}
+        <div className="mb-8">
+          <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Documente &amp; Cont
+          </h2>
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            {documentItems.map((item, idx) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex items-center justify-between p-4 transition-colors hover:bg-muted ${
+                  idx !== documentItems.length - 1 ? "border-b border-border" : ""
                 }`}
               >
                 <div className="flex items-center gap-4">

@@ -11,37 +11,53 @@ import { api } from './api';
 
 export interface SubscriptionPlan {
   id: string;
-  code: 'FREE' | 'STANDARD' | 'PREMIUM';
+  code: string;
   name: string;
   description?: string;
-  price: number;
+  priceMonthly?: number;
+  priceYearly?: number;
+  price?: number;
   annualPrice?: number;
   currency: string;
-  billingCycle: 'MONTHLY' | 'ANNUAL';
+  billingCycle?: 'MONTHLY' | 'ANNUAL' | 'monthly' | 'yearly';
   features: string[];
   isPopular?: boolean;
   listingLimit?: number;
+  maxActiveListings?: number;
+  trialDays?: number;
 }
 
 export interface UserSubscription {
-  id: string;
-  planId: string;
+  id: string | number;
+  planId?: string | number;
   plan?: SubscriptionPlan;
-  status: 'ACTIVE' | 'CANCELLED' | 'EXPIRED' | 'TRIAL';
-  startDate: string;
+  status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED' | 'TRIAL';
+  startedAt?: string;
+  currentPeriodEnd?: string;
+  /** @deprecated use currentPeriodEnd */
   endDate?: string;
-  autoRenewal: boolean;
-  billingCycle: 'MONTHLY' | 'ANNUAL';
+  autoRenew: boolean;
+  /** @deprecated use autoRenew */
+  autoRenewal?: boolean;
+  billingCycle: 'monthly' | 'yearly' | 'MONTHLY' | 'ANNUAL';
+  remainingListings?: number;
+  remainingBoosts?: number;
+  trialEndsAt?: string;
 }
 
 export interface PromotionPlan {
   id: string;
+  code: string;
   name: string;
   description?: string;
   duration: number; // days
+  durationDays?: number;
   price: number;
   currency: string;
   boostAmount?: number;
+  isPopular?: boolean;
+  impactText?: string;
+  benefits?: string[];
 }
 
 export interface ListingPromotion {
@@ -95,20 +111,30 @@ export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
 
 export async function getUserSubscription(): Promise<UserSubscription | null> {
   try {
-    return await api.fetch<UserSubscription>('/monetization/subscription');
+    const res = await api.fetch<UserSubscription | { subscription: UserSubscription | null; message?: string }>(
+      '/monetization/subscription'
+    );
+    // Backend wraps response: { subscription: {...} | null, message: '...' }
+    if (res && typeof res === 'object' && 'subscription' in res) {
+      return (res as { subscription: UserSubscription | null }).subscription;
+    }
+    return res as UserSubscription;
   } catch {
     return null;
   }
 }
 
 export async function createSubscription(payload: {
-  planId: string;
-  billingCycle: 'MONTHLY' | 'ANNUAL';
-  paymentProvider?: string;
-}): Promise<UserSubscription> {
-  return api.fetch<UserSubscription>('/monetization/subscription', {
+  planCode: string;
+  billingCycle: 'monthly' | 'yearly';
+  paymentMethod?: string;
+}): Promise<{ success: boolean; subscription: { id: number; status: string; currentPeriodEnd?: string; trialEndsAt?: string } }> {
+  return api.fetch('/monetization/subscription', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      ...payload,
+      paymentMethod: payload.paymentMethod ?? 'simulated',
+    }),
   });
 }
 
@@ -146,11 +172,12 @@ export async function getPromotionPlans(): Promise<PromotionPlan[]> {
 
 export async function promoteProperty(
   listingId: number,
-  planId: string
-): Promise<ListingPromotion> {
-  return api.fetch<ListingPromotion>(`/monetization/listings/${listingId}/promote`, {
+  promotionCode: string,
+  paymentMethod: string = 'simulated',
+): Promise<{ success: boolean; promotion: { id: number; listingId: number; status: string; startDate?: string; endDate?: string; isFreeBoost?: boolean } }> {
+  return api.fetch(`/monetization/listings/${listingId}/promote`, {
     method: 'POST',
-    body: JSON.stringify({ planId }),
+    body: JSON.stringify({ promotionCode, paymentMethod }),
   });
 }
 
@@ -172,10 +199,13 @@ export async function cancelPromotion(promotionId: string): Promise<{ success: b
 // ============================================================================
 
 export async function getTransactionHistory(): Promise<Transaction[]> {
-  const res = await api.fetch<Transaction[] | { transactions: Transaction[] }>(
+  const res = await api.fetch<Transaction[] | { items: Transaction[] } | { transactions: Transaction[] }>(
     '/monetization/transactions'
   );
-  return Array.isArray(res) ? res : res.transactions ?? [];
+  if (Array.isArray(res)) return res;
+  if ('items' in res && Array.isArray((res as any).items)) return (res as { items: Transaction[] }).items;
+  if ('transactions' in res && Array.isArray((res as any).transactions)) return (res as { transactions: Transaction[] }).transactions;
+  return [];
 }
 
 // ============================================================================

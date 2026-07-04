@@ -88,7 +88,11 @@ const urlTypeMap: Record<string, PropertyType> = {
 // Convert SearchFilters to PropertySearchParams
 function filtersToParams(filters: SearchFilters): Partial<PropertySearchParams> {
   const params: Partial<PropertySearchParams> = {};
-  if (filters.transactionType) params.transactionType = filters.transactionType as 'sale' | 'rent';
+  // Listings are stored UPPERCASE ('SALE'/'RENT') and the backend matches exactly
+  // (listing.service.ts). The filter UI emits lowercase 'sale'/'rent' — normalize here.
+  if (filters.transactionType) {
+    params.transactionType = String(filters.transactionType).toUpperCase() as 'SALE' | 'RENT';
+  }
   if (filters.minPrice) params.minPrice = Number(filters.minPrice);
   if (filters.maxPrice) params.maxPrice = Number(filters.maxPrice);
   if (filters.minRooms) params.minRooms = Number(filters.minRooms);
@@ -365,7 +369,12 @@ function SearchContent() {
       newFilters.city = suggestion.value;
       delete newFilters.neighborhood;
     } else if (suggestion.type === "neighborhood") {
-      newFilters.neighborhood = suggestion.value;
+      // Backend suggestion value is "Cartier, Oraș" but the neighborhood filter
+      // matches the bare neighborhood name exactly. Split so we send 'Botanica'
+      // (match) plus the correct city.
+      const [nb, cityPart] = suggestion.value.split(", ");
+      newFilters.neighborhood = nb;
+      if (cityPart) newFilters.city = cityPart;
     }
     setFilters(newFilters);
     setAppliedFilters(newFilters);
@@ -691,6 +700,7 @@ function SearchContent() {
                         rooms={property.rooms}
                         baths={property.bathrooms || 1}
                         area={getPropertySurface(property)}
+                        isPromoted={property.isPromoted}
                         tags={property.transactionType === "RENT" ? ["De închiriat"] : ["De vânzare"]}
                       />
                     ))}

@@ -104,13 +104,21 @@ export const API_ENDPOINTS = {
   },
 
   // Notifications
+  // Note: there is no /notifications/unread-count route — the unread count is
+  // derived client-side from GET /notifications (see notificationsApi.getUnreadCount).
   NOTIFICATIONS: {
     LIST: '/notifications',
     READ: (id: number) => `/notifications/${id}/read`,
     READ_ALL: '/notifications/read-all',
     DELETE: (id: number) => `/notifications/${id}`,
-    UNREAD_COUNT: '/notifications/unread-count',
     SETTINGS: '/notifications/settings',
+  },
+
+  // KYC / Identity verification
+  KYC: {
+    VERIFY_ID: '/kyc/verify-id',
+    STATUS: '/kyc/status',
+    PROPERTY_DOC: '/kyc/property-doc',
   },
 
   // Devices (push tokens)
@@ -176,6 +184,15 @@ export const API_ENDPOINTS = {
     RESPOND: (id: string) => `/reviews/${id}/respond`,
     HELPFUL: (id: string) => `/reviews/${id}/helpful`,
     REPORT: (id: string) => `/reviews/${id}/report`,
+  },
+
+  // Rental Contracts
+  CONTRACTS: {
+    PROPOSE: (viewingId: string | number) => `/viewings/${viewingId}/propose-contract`,
+    MINE: '/contracts/mine',
+    DETAIL: (id: string | number) => `/contracts/${id}`,
+    ACCEPT: (id: string | number) => `/contracts/${id}/accept`,
+    SIGN: (id: string | number) => `/contracts/${id}/sign`,
   },
 
   // Monetization

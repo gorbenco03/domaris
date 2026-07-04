@@ -9,6 +9,11 @@ import { api } from '@/lib/api';
 // TYPES
 // ============================================================================
 
+/**
+ * Enum-ul legacy UPPERCASE — folosit de Navbar și alte componente vechi.
+ * Tipurile reale emise de backend sunt lowercase (new_message, viewing_*, contract_*).
+ * Câmpul Notification.type este `string` pentru a accepta ambele formate.
+ */
 export type NotificationType =
   | 'MESSAGE'
   | 'VIEWING_CONFIRMED'
@@ -24,6 +29,12 @@ export type NotificationType =
 export interface Notification {
   id: number;
   userId: number;
+  /**
+   * Tipul notificării.
+   * Valorile UPPERCASE sunt enum-ul legacy de frontend (MESSAGE, VIEWING_CONFIRMED, etc.).
+   * La runtime, backend-ul poate trimite și tipuri lowercase (new_message, viewing_*, contract_*).
+   * Folosiți normalizeNotificationType() pentru a normaliza înainte de a compara.
+   */
   type: NotificationType;
   title: string;
   // Canonical body field (backend emits `body`, not `message`).
@@ -31,6 +42,14 @@ export interface Notification {
   metadata?: Record<string, unknown>;
   isRead: boolean;
   createdAt: string;
+}
+
+/**
+ * Normalizează tipul de notificare la un tip canonic lowercase pentru mapper.
+ * Tratează atât tipurile UPPERCASE (enum vechi) cât și lowercase (backend real).
+ */
+export function normalizeNotificationType(type: string): string {
+  return type.toLowerCase();
 }
 
 /** Notification display text (backend emits `body`). */
@@ -107,17 +126,13 @@ export async function deleteNotification(id: number): Promise<{ success: boolean
 }
 
 /**
- * Get unread notifications count
+ * Get unread notifications count.
+ * There is no /notifications/unread-count route on the backend — the count is
+ * derived client-side from GET /notifications (max 50).
  */
 export async function getUnreadCount(): Promise<number> {
-  try {
-    const response = await api.fetch<{ count: number }>('/notifications/unread-count');
-    return response?.count ?? 0;
-  } catch {
-    // Fallback: fetch all and count unread
-    const notifications = await getNotifications();
-    return notifications.filter(n => !n.isRead).length;
-  }
+  const notifications = await getNotifications();
+  return notifications.filter(n => !n.isRead).length;
 }
 
 // ============================================================================
@@ -171,11 +186,12 @@ export async function updateNotificationPreferences(
 // ============================================================================
 
 /**
- * Get notifications by type
+ * Get notifications by type (compară case-insensitiv)
  */
-export async function getNotificationsByType(type: NotificationType): Promise<Notification[]> {
+export async function getNotificationsByType(type: string): Promise<Notification[]> {
   const notifications = await getNotifications();
-  return notifications.filter(n => n.type === type);
+  const normalized = type.toLowerCase();
+  return notifications.filter(n => n.type.toLowerCase() === normalized);
 }
 
 /**

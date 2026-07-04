@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -43,8 +42,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { createProperty, uploadPropertyPhotos, CreatePropertyRequest } from "@/lib/propertiesApi";
+import { estimatePrice } from "@/lib/aiApi";
 import { MAP_CONFIG } from "@/lib/constants";
 import { toast } from "sonner";
+import { AMENITIES, AMENITY_CATEGORY_LABELS } from "@/lib/amenities";
 
 // ============================================
 // TYPES
@@ -68,11 +69,8 @@ interface PropertyFormData {
   floor: string;
   totalFloors: string;
   yearBuilt: string;
-  isFurnished: boolean;
-  hasCentralHeating: boolean;
-  hasParking: boolean;
-  hasBalcony: boolean;
-  hasElevator: boolean;
+  /** ID-urile facilităților selectate (din AMENITIES @domaris/types). */
+  amenities: string[];
   // Step 4
   photos: File[];
   photoPreviewUrls: string[];
@@ -101,11 +99,7 @@ const INITIAL_FORM: PropertyFormData = {
   floor: "",
   totalFloors: "",
   yearBuilt: "",
-  isFurnished: false,
-  hasCentralHeating: false,
-  hasParking: false,
-  hasBalcony: false,
-  hasElevator: false,
+  amenities: [],
   photos: [],
   photoPreviewUrls: [],
   title: "",
@@ -414,21 +408,50 @@ function Step3Characteristics({
       </div>
 
       <div>
-        <Label className="mb-3 block">Facilități</Label>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {[
-            { key: "isFurnished" as const, label: "Mobilat" },
-            { key: "hasCentralHeating" as const, label: "Centrală termică" },
-            { key: "hasParking" as const, label: "Parcare" },
-            { key: "hasBalcony" as const, label: "Balcon" },
-            { key: "hasElevator" as const, label: "Ascensor" },
-          ].map(({ key, label }) => (
-            <label key={key} className="flex items-center gap-2 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-              <Checkbox checked={form[key]} onCheckedChange={(c) => update({ [key]: !!c })} />
-              <span className="text-sm">{label}</span>
-            </label>
-          ))}
-        </div>
+        <Label className="mb-3 block">
+          Facilități
+          {form.amenities.length > 0 && (
+            <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              {form.amenities.length} selectate
+            </span>
+          )}
+        </Label>
+        {(Object.keys(AMENITY_CATEGORY_LABELS) as Array<keyof typeof AMENITY_CATEGORY_LABELS>).map((category) => {
+          const categoryAmenities = AMENITIES.filter((a) => a.category === category);
+          return (
+            <div key={category} className="mb-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {AMENITY_CATEGORY_LABELS[category]}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {categoryAmenities.map(({ id, label }) => {
+                  const isSelected = form.amenities.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        const next = isSelected
+                          ? form.amenities.filter((a) => a !== id)
+                          : [...form.amenities, id];
+                        update({ amenities: next });
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary/10 text-primary font-medium"
+                          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      )}
+                    >
+                      {isSelected && <Check className="mr-1 inline h-3 w-3" />}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -504,6 +527,119 @@ function Step4Photos({
   );
 }
 
+/**
+ * Panou „Preț sugerat de AI" — apelează /ai/estimate-price cu datele din pașii
+ * anteriori (oraș, tip, camere, suprafață) și propune un preț pe baza
+ * proprietăților comparabile. Cazul „prea puține comparabile" e tratat onest.
+ */
+function AiPriceSuggestion({
+  form,
+  update,
+}: {
+  form: PropertyFormData;
+  update: (u: Partial<PropertyFormData>) => void;
+}) {
+  const [status, setStatus] = useState<"loading" | "ok" | "unavailable">("loading");
+  const [est, setEst] = useState<{
+    price: number;
+    min: number;
+    max: number;
+    confidence: number;
+    count: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const rooms = parseInt(form.rooms);
+    const surface = parseFloat(form.surfaceSqm);
+    if (!form.city || !form.propertyType || !rooms || !surface) {
+      setStatus("unavailable");
+      return;
+    }
+    let cancelled = false;
+    setStatus("loading");
+    estimatePrice({
+      city: form.city,
+      propertyType: form.propertyType,
+      transactionType: (form.transactionType || "SALE") as "RENT" | "SALE",
+      rooms,
+      surfaceSqm: surface,
+      neighborhood: form.neighborhood || undefined,
+      floor: form.floor ? parseInt(form.floor) : undefined,
+      yearBuilt: form.yearBuilt ? parseInt(form.yearBuilt) : undefined,
+    })
+      .then((r) => {
+        if (cancelled) return;
+        const count =
+          (r as { comparables?: { count?: number } }).comparables?.count ?? 0;
+        if (r.estimatedPrice > 0 && r.confidence > 0) {
+          setEst({
+            price: Math.round(r.estimatedPrice),
+            min: Math.round(r.priceRange.min),
+            max: Math.round(r.priceRange.max),
+            confidence: r.confidence,
+            count,
+          });
+          setStatus("ok");
+        } else {
+          setStatus("unavailable");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("unavailable");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.city, form.propertyType, form.rooms, form.surfaceSqm, form.transactionType]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Calculăm prețul sugerat pe baza pieței...
+      </div>
+    );
+  }
+
+  if (status === "unavailable" || !est) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        <Sparkles className="h-4 w-4" />
+        Estimarea AI nu e disponibilă — prea puține proprietăți comparabile în zonă.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border bg-primary/5 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-medium text-primary">
+            <Sparkles className="h-4 w-4" />
+            Preț sugerat de AI
+          </div>
+          <div className="mt-1 text-2xl font-bold">
+            {est.price.toLocaleString()} €
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              interval {est.min.toLocaleString()}–{est.max.toLocaleString()} €
+              {est.count > 0 && <> · {est.count} comparabile</>}
+              {" · încredere "}{Math.round(est.confidence * 100)}%
+            </span>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => update({ priceEur: String(est.price) })}
+        >
+          Folosește prețul
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function Step5PricingDescription({
   form,
   update,
@@ -517,6 +653,8 @@ function Step5PricingDescription({
         <h2 className="text-xl font-semibold mb-2">Preț și descriere</h2>
         <p className="text-sm text-muted-foreground mb-4">Setează prețul și adaugă o descriere detaliată</p>
       </div>
+
+      <AiPriceSuggestion form={form} update={update} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -790,10 +928,12 @@ export default function AddPropertyPage() {
         floor: form.floor ? parseInt(form.floor) : undefined,
         totalFloors: form.totalFloors ? parseInt(form.totalFloors) : undefined,
         yearBuilt: form.yearBuilt ? parseInt(form.yearBuilt) : undefined,
-        isFurnished: form.isFurnished,
-        hasCentralHeating: form.hasCentralHeating,
-        hasParking: form.hasParking,
-        hasBalcony: form.hasBalcony,
+        // Câmpuri booleene derivate din selecția facilităților (whitelisted în DTO)
+        isFurnished: form.amenities.includes('FURNISHED') || form.amenities.includes('SEMI_FURNISHED'),
+        hasCentralHeating: form.amenities.includes('CENTRAL_HEATING'),
+        petFriendly: form.amenities.includes('PET_FRIENDLY'),
+        // Trimitem direct array-ul de ID-uri
+        amenities: form.amenities.length > 0 ? form.amenities : undefined,
         lat: form.lat ?? undefined,
         lng: form.lng ?? undefined,
       };

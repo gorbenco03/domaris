@@ -20,6 +20,7 @@ import {
   promoteProperty,
   PromotionPlan,
 } from "@/lib/monetizationApi";
+import { PaymentModal } from "@/components/PaymentModal";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +33,7 @@ export default function PromotePropertyPage() {
   const [plans, setPlans] = useState<PromotionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPromoting, setIsPromoting] = useState(false);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,7 +47,7 @@ export default function PromotePropertyPage() {
         setProperty(p);
         setPlans(promotionPlans);
         if (promotionPlans.length > 0) {
-          setSelectedPlan(promotionPlans[0].id);
+          setSelectedPlan(promotionPlans[0].code ?? String(promotionPlans[0].id));
         }
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -58,18 +59,23 @@ export default function PromotePropertyPage() {
     if (!isAuthLoading) fetchData();
   }, [id, isAuthenticated, isAuthLoading]);
 
-  const handlePromote = async () => {
-    if (!selectedPlan || !id) return;
-    setIsPromoting(true);
-    try {
-      await promoteProperty(Number(id), selectedPlan);
-      toast.success("Anunțul a fost promovat cu succes!");
-      router.push("/my-properties");
-    } catch {
-      toast.error("Nu am putut promova anunțul.");
-    } finally {
-      setIsPromoting(false);
-    }
+  const selected = plans.find(
+    (p) => (p.code ?? String(p.id)) === selectedPlan,
+  );
+
+  const handleOpenPayment = () => {
+    if (!selected || !id) return;
+    setIsPaymentOpen(true);
+  };
+
+  const handlePay = async () => {
+    if (!selected || !id) throw new Error("Plan sau anunț lipsă");
+    const code = selected.code ?? String(selected.id);
+    await promoteProperty(Number(id), code, "simulated");
+  };
+
+  const handleSuccess = () => {
+    router.push("/my-properties");
   };
 
   if (isAuthLoading || isLoading) {
@@ -99,7 +105,7 @@ export default function PromotePropertyPage() {
     );
   }
 
-  // Monetization disabled at v1
+  // Monetization gate
   if (process.env.NEXT_PUBLIC_MONETIZATION_ENABLED !== "true") {
     return (
       <div className="min-h-screen bg-background">
@@ -118,8 +124,6 @@ export default function PromotePropertyPage() {
       </div>
     );
   }
-
-  const selected = plans.find((p) => p.id === selectedPlan);
 
   return (
     <div className="min-h-screen bg-background">
@@ -184,38 +188,52 @@ export default function PromotePropertyPage() {
         {/* Plans */}
         {plans.length > 0 ? (
           <div className="mb-8 space-y-3">
-            {plans.map((plan) => (
-              <button
-                key={plan.id}
-                onClick={() => setSelectedPlan(plan.id)}
-                className={cn(
-                  "flex w-full items-center justify-between rounded-2xl border-2 bg-card p-5 text-left transition-all",
-                  selectedPlan === plan.id
-                    ? "border-primary shadow-md"
-                    : "border-border hover:border-muted-foreground/30"
-                )}
-              >
-                <div>
-                  <p className="font-semibold">{plan.name}</p>
-                  {plan.description && (
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      {plan.description}
-                    </p>
+            {plans.map((plan) => {
+              const planCode = plan.code ?? String(plan.id);
+              const days = plan.durationDays ?? plan.duration;
+              return (
+                <button
+                  key={planCode}
+                  onClick={() => setSelectedPlan(planCode)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-2xl border-2 bg-card p-5 text-left transition-all",
+                    selectedPlan === planCode
+                      ? "border-primary shadow-md"
+                      : "border-border hover:border-muted-foreground/30",
                   )}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {plan.duration} zile
-                    {plan.boostAmount
-                      ? ` · ${plan.boostAmount}x vizibilitate`
-                      : ""}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold text-primary">
-                    {plan.price} {plan.currency}
-                  </p>
-                </div>
-              </button>
-            ))}
+                >
+                  <div>
+                    <p className="font-semibold">{plan.name}</p>
+                    {plan.description && (
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {plan.description}
+                      </p>
+                    )}
+                    {plan.impactText && (
+                      <p className="mt-0.5 text-xs font-medium text-orange-500">
+                        {plan.impactText}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {days} zile
+                      {plan.boostAmount
+                        ? ` · ${plan.boostAmount}x vizibilitate`
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <p className="text-xl font-bold text-primary">
+                      {plan.price} {plan.currency}
+                    </p>
+                    {plan.isPopular && (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-600">
+                        Popular
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         ) : (
           <div className="mb-8 rounded-2xl border border-border bg-card py-12 text-center">
@@ -228,21 +246,35 @@ export default function PromotePropertyPage() {
         {/* CTA */}
         {selected && (
           <Button
-            onClick={handlePromote}
-            disabled={isPromoting}
+            onClick={handleOpenPayment}
             className="w-full"
             size="lg"
           >
-            {isPromoting ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <Zap className="mr-2 h-5 w-5" />
-            )}
+            <Zap className="mr-2 h-5 w-5" />
             Promovează pentru {selected.price} {selected.currency}
           </Button>
         )}
       </main>
       <Footer />
+
+      {/* Payment Modal */}
+      <PaymentModal
+        open={isPaymentOpen}
+        onOpenChange={setIsPaymentOpen}
+        plan={
+          selected
+            ? {
+                name: selected.name,
+                price: selected.price,
+                currency: selected.currency,
+                description: selected.description,
+                durationLabel: `${selected.durationDays ?? selected.duration} zile de promovare`,
+              }
+            : null
+        }
+        onPay={handlePay}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }

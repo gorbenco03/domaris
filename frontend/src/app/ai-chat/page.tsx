@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Bot, PanelLeftClose, PanelLeft, Sparkles, Search, TrendingUp, Home, GitCompareArrows } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
   AIConversation,
   PropertyResult,
   QuickAction,
+  ValuationResult,
 } from "@/components/ai-chat";
 import {
   getAIConversations,
@@ -46,6 +47,52 @@ const getOrCreateAnonymousId = () => {
   window.localStorage.setItem(AI_ANONYMOUS_ID_KEY, next);
   return next;
 };
+
+/**
+ * Try to extract valuation data from a backend response metadata object.
+ * The backend stores the AVM result in assistantMessage.metadata or can surface
+ * it through the valuation tools response embedded in the message.
+ */
+function extractValuation(
+  metadata?: Record<string, unknown>
+): ValuationResult | undefined {
+  if (!metadata) return undefined;
+
+  // Check if backend stored an AVM result directly in metadata
+  const avm = metadata.avm as Record<string, unknown> | undefined;
+  const valuation = (metadata.valuation ?? avm) as Record<string, unknown> | undefined;
+
+  if (!valuation) return undefined;
+
+  const recommendedPrice =
+    typeof valuation.recommendedPrice === "number" ? valuation.recommendedPrice : undefined;
+  const priceRange = valuation.priceRange as { min: number; max: number } | undefined;
+
+  if (!recommendedPrice || !priceRange) return undefined;
+  if (recommendedPrice <= 0) return undefined; // insufficient data marker
+
+  const result: ValuationResult = {
+    estimatedPrice: recommendedPrice,
+    priceRange,
+    confidence:
+      typeof valuation.confidence === "number" ? valuation.confidence : 0.5,
+    comparables: (valuation.comparables as ValuationResult["comparables"]) ?? [],
+    currency: typeof valuation.currency === "string" ? valuation.currency : "EUR",
+    liquidityScore:
+      typeof valuation.liquidityScore === "number" ? valuation.liquidityScore : undefined,
+    dealAttractivenessScore:
+      typeof valuation.dealAttractivenessScore === "number"
+        ? valuation.dealAttractivenessScore
+        : undefined,
+    insufficientData: valuation.insufficientData === true,
+  };
+
+  // Attach explanation if present at top level of metadata
+  const explanation = metadata.explanation as ValuationResult["explanation"] | undefined;
+  if (explanation) result.explanation = explanation;
+
+  return result;
+}
 
 export default function AIChatPage() {
   const [conversations, setConversations] = useState<AIConversation[]>([]);
@@ -101,6 +148,7 @@ export default function AIChatPage() {
       conversationPhase: message.metadata?.conversationPhase,
       properties: mapProperties(message.metadata?.propertyCards),
       quickActions: mapQuickActions(message.metadata?.suggestedActions),
+      valuation: extractValuation(message.metadata as Record<string, unknown> | undefined),
     }),
     [mapProperties, mapQuickActions]
   );
@@ -189,6 +237,14 @@ export default function AIChatPage() {
 
         const response = await sendAIConversationMessage(conversationId, content);
 
+        // Extract valuation from response metadata if present
+        const valuation =
+          extractValuation(
+            response.assistantMessage.metadata as Record<string, unknown> | undefined
+          ) ??
+          // Also check top-level response (some endpoints wrap it differently)
+          undefined;
+
         const assistantMessage: AIMessage = {
           id: String(response.assistantMessage.id),
           role: "assistant",
@@ -203,6 +259,7 @@ export default function AIChatPage() {
           quickActions: mapQuickActions(
             response.suggestedActions || response.assistantMessage.metadata?.suggestedActions
           ),
+          valuation,
         };
 
         setMessages((prev) => {
@@ -253,6 +310,18 @@ export default function AIChatPage() {
   const handleQuickAction = useCallback((action: string) => {
     void handleSend(action);
   }, [handleSend]);
+
+  /**
+   * Called from AIChatPropertyCard when the user clicks "Programează vizionare".
+   * Pre-fills a chat message that triggers the schedule_viewing tool.
+   */
+  const handleScheduleViewing = useCallback(
+    (propertyId: number, propertyTitle: string) => {
+      const message = `Vreau să programez o vizionare pentru proprietatea "${propertyTitle}" (ID: ${propertyId})`;
+      void handleSend(message);
+    },
+    [handleSend]
+  );
 
   const handleNewChat = useCallback(() => {
     setIsLoading(true);
@@ -333,7 +402,7 @@ export default function AIChatPage() {
               <div>
                 <h1 className="text-sm font-semibold text-foreground">RIVA AI</h1>
                 <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                  <p className="text-[10px] text-muted-foreground">Asistent imobiliar inteligent</p>
+                  <p className="text-[10px] text-muted-foreground">Asistent imobiliar personal</p>
                   {activeConversationPhase && (
                     <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                       {PHASE_LABELS[activeConversationPhase] || activeConversationPhase}
@@ -355,6 +424,7 @@ export default function AIChatPage() {
                       key={message.id}
                       message={message}
                       onQuickAction={handleQuickAction}
+                      onScheduleViewing={handleScheduleViewing}
                       isLatest={index === messages.length - 1 && message.role === "assistant"}
                     />
                   ))}
@@ -371,60 +441,79 @@ export default function AIChatPage() {
   );
 }
 
-// Empty state with welcome message and starter prompts
-const EmptyState = ({ onQuickAction }: { onQuickAction: (action: string) => void }) => {
-  const starters = [
-    {
-      emoji: "🔍",
-      title: "Caută proprietăți",
-      description: "Descrie ce cauți și găsesc opțiuni pentru tine",
-      action: "Caut un apartament cu 2 camere în Chișinău sub 500€",
-    },
-    {
-      emoji: "💰",
-      title: "Evaluare proprietate",
-      description: "Află valoarea de piață a proprietății tale",
-      action: "Cât valorează un apartament de 3 camere, 75m² în Botanica?",
-    },
-    {
-      emoji: "✍️",
-      title: "Generează descriere",
-      description: "Creez texte profesionale pentru anunțul tău",
-      action: "Generează o descriere pentru un apartament de 2 camere în Centru",
-    },
-    {
-      emoji: "📊",
-      title: "Analizează anunț",
-      description: "Primește un scor și sfaturi de îmbunătățire",
-      action: "Analizează anunțul meu și dă-mi un scor cu sugestii",
-    },
-  ];
+// ---------------------------------------------------------------------------
+// Empty state with personal-assistant tone and guided prompts
+// ---------------------------------------------------------------------------
 
+const STARTER_PROMPTS = [
+  {
+    icon: Search,
+    title: "Caută proprietăți",
+    description: "Spune-mi ce cauți și îți găsesc cele mai bune opțiuni",
+    action: "Caut un apartament cu 2 camere în Botanica, sub 400€/lună",
+  },
+  {
+    icon: TrendingUp,
+    title: "Evaluează o proprietate",
+    description: "Află cât valorează garsoniera sau apartamentul tău pe piață",
+    action: "Cât valorează garsoniera mea de 40m² în Centru, Chișinău?",
+  },
+  {
+    icon: GitCompareArrows,
+    title: "Compară rezultate",
+    description: "Analizez primele rezultate și îți spun care e mai avantajos",
+    action: "Compară primele 2 rezultate și spune-mi care e mai bun raport calitate-preț",
+  },
+  {
+    icon: Home,
+    title: "Programează vizionare",
+    description: "Organizez o vizionare la proprietatea care te interesează",
+    action: "Vreau să programez o vizionare pentru un apartament în Botanica",
+  },
+];
+
+const EmptyState = ({ onQuickAction }: { onQuickAction: (action: string) => void }) => {
   return (
     <div className="flex flex-col items-center pt-8 pb-4">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-        <Bot className="h-8 w-8 text-primary" />
+      {/* Icon */}
+      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 ring-4 ring-primary/5">
+        <Sparkles className="h-8 w-8 text-primary" />
       </div>
-      <h2 className="mb-1 text-xl font-bold text-foreground">Bun venit la RIVA AI</h2>
+
+      {/* Headline */}
+      <h2 className="mb-2 text-xl font-bold text-foreground">
+        Bună ziua! Sunt RIVA, asistentul tău imobiliar personal.
+      </h2>
       <p className="mb-8 max-w-md text-center text-sm text-muted-foreground">
-        Sunt asistentul tău imobiliar inteligent. Te ajut să cauți proprietăți, estimezi prețuri și
-        optimizezi anunțuri.
+        Te ajut să găsești locuința perfectă, să afli prețul corect de piață sau să programezi
+        vizionări — totul printr-o conversație naturală.
       </p>
 
+      {/* Prompt cards */}
       <div className="grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
-        {starters.map((s) => (
-          <button
-            key={s.title}
-            onClick={() => onQuickAction(s.action)}
-            className="group flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-accent hover:shadow-md"
-          >
-            <span className="text-2xl">{s.emoji}</span>
-            <span className="text-sm font-semibold text-foreground group-hover:text-accent">
-              {s.title}
-            </span>
-            <span className="text-xs text-muted-foreground">{s.description}</span>
-          </button>
-        ))}
+        {STARTER_PROMPTS.map((s) => {
+          const Icon = s.icon;
+          return (
+            <button
+              key={s.title}
+              onClick={() => onQuickAction(s.action)}
+              className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-sm active:scale-[0.98]"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
+                <Icon className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <span className="block text-sm font-semibold text-foreground group-hover:text-primary">
+                  {s.title}
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">{s.description}</span>
+              </div>
+              <p className="rounded-lg bg-muted px-3 py-2 text-xs italic text-muted-foreground line-clamp-2">
+                &ldquo;{s.action}&rdquo;
+              </p>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

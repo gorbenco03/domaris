@@ -49,6 +49,7 @@ export const FeaturedProperties = () => {
       const response = await searchProperties(params as any);
       return response.data || [];
     },
+    staleTime: 60_000,
   });
 
   return (
@@ -120,6 +121,7 @@ export const FeaturedProperties = () => {
               rooms={property.rooms}
               baths={property.bathrooms || 1}
               area={getPropertySurface(property)}
+              isPromoted={property.isPromoted}
               tags={[property.transactionType === "RENT" ? "De închiriat" : "De vânzare"]}
             />
           ))}
