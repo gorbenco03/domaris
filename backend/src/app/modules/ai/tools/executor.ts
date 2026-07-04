@@ -6,10 +6,11 @@
 import { Injectable, Logger, ForbiddenException, Inject, Optional } from '@nestjs/common';
 import { SearchService, SearchFilters } from '../../search/search.service.js';
 import { ViewingService } from '../../viewing/viewing.service.js';
-import { ToolCall, ToolResult, UserPreferences } from '../types/index.js';
+import { ToolCall, ToolResult, UserPreferences, AVMInput } from '../types/index.js';
 import { TOOL_MAP } from './definitions.js';
 import { Listing } from '../../../db/entities/listing.entity.js';
 import { ListingImage } from '../../../db/entities/listingImage.entity.js';
+import { ValuationEngine } from '../avm/valuation-engine.js';
 
 interface ExecutionContext {
   userId?: number;
@@ -31,6 +32,7 @@ export class ToolExecutor {
   constructor(
     private readonly searchService: SearchService,
     @Optional() @Inject(ViewingService) private readonly viewingService?: ViewingService,
+    @Optional() @Inject(ValuationEngine) private readonly valuationEngine?: ValuationEngine,
   ) {}
 
   async execute(
@@ -632,10 +634,13 @@ export class ToolExecutor {
           rooms: listing.rooms,
           surfaceSqm: listing.surfaceSqm,
           floor: listing.floor,
+          totalFloors: listing.totalFloors,
           yearBuilt: listing.yearBuilt,
           isFurnished: listing.isFurnished,
           amenities: listing.amenities,
           currentPrice: listing.priceEur,
+          lat: listing.lat,
+          lng: listing.lng,
         };
       }
     }
@@ -644,6 +649,53 @@ export class ToolExecutor {
       return { error: 'Date insuficiente pentru estimare' };
     }
 
+    // ── Cale principală: motorul AVM hibrid (model ML → CMA fallback) ─────────
+    // Foloseste modelul de machine learning cand serviciul e disponibil si
+    // increderea e suficienta; altfel motorul insusi cade pe comparabile.
+    if (this.valuationEngine) {
+      try {
+        const avmInput: AVMInput = {
+          city: property.city,
+          neighborhood: property.neighborhood,
+          propertyType: property.propertyType,
+          transactionType: (property.transactionType === 'RENT' ? 'RENT' : 'SALE'),
+          rooms: property.rooms ?? 0,
+          surfaceSqm: property.surfaceSqm,
+          floor: property.floor,
+          totalFloors: property.totalFloors,
+          yearBuilt: property.yearBuilt,
+          amenities: property.amenities,
+          isFurnished: property.isFurnished,
+          lat: property.lat,
+          lng: property.lng,
+        };
+        const avm = await this.valuationEngine.valuate(avmInput);
+        if (avm.recommendedPrice > 0) {
+          const result: any = {
+            recommendedPrice: avm.recommendedPrice,
+            priceRange: avm.priceRange,
+            currency: avm.currency,
+            confidence: avm.confidence,
+            source: avm.source, // 'ml' sau 'cma'
+            comparables: avm.comparables,
+            priceUnit: property.transactionType === 'RENT' ? '/lună' : '',
+          };
+          if (property.currentPrice) {
+            const diff = ((property.currentPrice - avm.recommendedPrice) / avm.recommendedPrice) * 100;
+            result.currentPriceAnalysis = {
+              currentPrice: property.currentPrice,
+              vsEstimate: Math.round(diff),
+              assessment: diff > 10 ? 'peste_piață' : diff < -10 ? 'sub_piață' : 'corect',
+            };
+          }
+          return result;
+        }
+      } catch (err: any) {
+        this.logger.warn(`ValuationEngine indisponibil, revin la comparabile: ${err.message}`);
+      }
+    }
+
+    // ── Fallback: estimare directă din comparabile ───────────────────────────
     // Get comparables
     const comparables = await this.searchService.search({
       city: property.city,

@@ -276,6 +276,8 @@ export class ListingService {
       offset,
       order: [[orderColumn, orderDirection]],
       include: [{ model: ListingImage, as: 'images' }],
+      // Fără distinct, count numără rândurile JOIN-ului cu images (total umflat).
+      distinct: true,
     });
 
     const earlyAccessCount = rows.filter((item) => item.status === 'early_access').length;

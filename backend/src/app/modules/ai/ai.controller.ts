@@ -118,6 +118,9 @@ class EstimatePriceBody {
   @IsOptional()
   @IsString()
   neighborhood?: string;
+  @IsOptional()
+  @IsIn(['SALE', 'RENT'])
+  transactionType?: string;
   @IsString()
   propertyType!: string;
   @IsNumber()

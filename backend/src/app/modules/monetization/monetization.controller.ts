@@ -260,10 +260,12 @@ export class MonetizationController {
         currentPeriodEnd: subscription.currentPeriodEnd,
         trialEndsAt: subscription.trialEndsAt,
       },
-      // TODO: Return payment intent if not trial
+      // TODO: Return payment intent if not trial and not simulated
       message: subscription.status === 'trialing'
         ? 'Trial started successfully'
-        : 'Please complete payment to activate subscription',
+        : subscription.status === 'active'
+          ? 'Subscription activated successfully'
+          : 'Please complete payment to activate subscription',
     };
   }
 

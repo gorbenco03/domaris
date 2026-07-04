@@ -55,7 +55,8 @@ export type PaymentMethod =
   | 'mpay'        // MPAY Moldova
   | 'maib'        // MAIB E-Commerce
   | 'runpay'      // RunPay Moldova
-  | 'free';
+  | 'free'
+  | 'simulated';  // Plată simulată (fără gateway real)
 
 /**
  * Provideri de plată suportați

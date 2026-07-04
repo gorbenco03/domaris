@@ -11,10 +11,12 @@
  * Provider: OpenAI (GPT-4o) cu fallback la GPT-3.5-turbo
  */
 
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Optional, Inject } from '@nestjs/common';
 import { SearchService, SearchFilters } from '../search/search.service.js';
 import { Listing } from '../../db/entities/listing.entity.js';
 import { ListingImage } from '../../db/entities/listingImage.entity.js';
+import { ValuationEngine } from './avm/valuation-engine.js';
+import { AVMInput } from './types/index.js';
 import OpenAI from 'openai';
 
 // ============================================================================
@@ -128,7 +130,10 @@ export class AIService {
   private openai: OpenAI | null = null;
   private readonly model = 'gpt-4o-mini'; // Cost-effective, good for real estate
 
-  constructor(private readonly searchService: SearchService) {
+  constructor(
+    private readonly searchService: SearchService,
+    @Optional() @Inject(ValuationEngine) private readonly valuationEngine?: ValuationEngine,
+  ) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (apiKey) {
       this.openai = new OpenAI({ apiKey });
@@ -848,6 +853,7 @@ Reguli:
   async estimatePrice(params: {
     city: string;
     neighborhood?: string;
+    transactionType?: string;
     propertyType: string;
     rooms: number;
     surface: number;
@@ -859,15 +865,71 @@ Reguli:
     confidence: number;
     comparables: { avgPrice: number; avgPricePerSqm: number; count: number };
   }> {
-    // Get comparable properties
-    const comparables = await this.searchService.search({
+    // ── Cale principală: motorul AVM hibrid (model ML → CMA fallback) ─────────
+    if (this.valuationEngine) {
+      try {
+        const avmInput: AVMInput = {
+          city: params.city,
+          neighborhood: params.neighborhood,
+          propertyType: params.propertyType,
+          transactionType: (params.transactionType === 'RENT' ? 'RENT' : 'SALE'),
+          rooms: params.rooms ?? 0,
+          surfaceSqm: params.surface,
+          floor: params.floor,
+          yearBuilt: params.yearBuilt,
+        };
+        const avm = await this.valuationEngine.valuate(avmInput);
+        if (avm.recommendedPrice > 0) {
+          return {
+            estimatedPrice: avm.recommendedPrice,
+            priceRange: avm.priceRange,
+            confidence: avm.confidence,
+            comparables: {
+              avgPrice: avm.comparables?.avgPrice ?? 0,
+              avgPricePerSqm: avm.comparables?.avgPricePerSqm ?? 0,
+              count: avm.comparables?.count ?? 0,
+            },
+          };
+        }
+      } catch (err: any) {
+        this.logger.warn(`ValuationEngine indisponibil, revin la comparabile: ${err.message}`);
+      }
+    }
+
+    // Comparabile: același oraș + tip proprietate + tip tranzacție (altfel amestecăm
+    // apartamente cu case/comercial și chirii cu vânzări → estimare fără sens).
+    const baseFilters = {
       city: params.city,
       neighborhood: params.neighborhood,
+      transactionType: params.transactionType,
+      propertyType: params.propertyType,
       rooms: params.rooms,
       surfaceMin: params.surface * 0.8,
       surfaceMax: params.surface * 1.2,
       limit: 20,
-    });
+    };
+    let comparables = await this.searchService.search(baseFilters);
+    // Relaxare progresivă dacă zona e subțire: renunță întâi la cartier, apoi la nr. camere.
+    if (comparables.data.length < 3 && params.neighborhood) {
+      comparables = await this.searchService.search({ ...baseFilters, neighborhood: undefined });
+    }
+    if (comparables.data.length < 3) {
+      comparables = await this.searchService.search({
+        ...baseFilters,
+        neighborhood: undefined,
+        rooms: undefined,
+      });
+    }
+    if (comparables.data.length < 3) {
+      // Ultima relaxare: oraș + tip proprietate + tip tranzacție, orice mărime.
+      // Estimarea e per m² × suprafața țintă, deci rămâne validă cu comparabile de altă mărime.
+      comparables = await this.searchService.search({
+        city: params.city,
+        transactionType: params.transactionType,
+        propertyType: params.propertyType,
+        limit: 30,
+      });
+    }
 
     if (comparables.data.length === 0) {
       return {

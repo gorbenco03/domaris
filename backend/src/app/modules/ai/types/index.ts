@@ -209,6 +209,8 @@ export interface AVMInput {
   condition?: 'new' | 'renovated' | 'good' | 'needs_work';
   isFurnished?: boolean;
   photoUrls?: string[];
+  lat?: number;
+  lng?: number;
 }
 
 export interface AVMResult {

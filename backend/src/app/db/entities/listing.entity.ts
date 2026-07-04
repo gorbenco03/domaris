@@ -47,10 +47,12 @@ export class Listing extends ExtModel {
   description!: string;
 
   @ApiProperty({ example: 'SALE' })
+  @Index
   @Column(DataType.STRING)
   transactionType!: string;
 
   @ApiProperty({ example: 'APARTMENT' })
+  @Index
   @Column(DataType.STRING)
   propertyType!: string;
 
@@ -105,6 +107,7 @@ export class Listing extends ExtModel {
   amenities?: string[];
 
   @ApiProperty({ example: 500 })
+  @Index
   @Column({
     type: DataType.INTEGER,
     field: 'price_eur',
@@ -200,6 +203,7 @@ export class Listing extends ExtModel {
   availableFrom?: Date;
 
   @ApiProperty({ enum: ['new', 'early_access', 'public', 'rented', 'hidden', 'expired'] })
+  @Index
   @Column({
     type: DataType.ENUM(
       'new',

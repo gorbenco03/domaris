@@ -50,7 +50,8 @@ export type PaymentProvider =
   | 'paynet'
   | 'maib'
   | 'mpay'
-  | 'manual';
+  | 'manual'
+  | 'simulated';
 
 @Table({
   tableName: 'user_subscriptions',

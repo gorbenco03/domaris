@@ -5,11 +5,13 @@
  * - console: Pentru development (log în terminal)
  * - sendgrid: Pentru producție cu SendGrid
  * - ses: Pentru producție cu AWS SES
- * 
+ * - resend: Pentru producție cu Resend
+ *
  * Configurare prin variabile de mediu:
- * - EMAIL_PROVIDER: console | sendgrid | ses
+ * - EMAIL_PROVIDER: console | sendgrid | ses | resend
  * - SENDGRID_API_KEY: API key pentru SendGrid
  * - AWS_SES_REGION: Regiune AWS pentru SES
+ * - RESEND_API_KEY: API key pentru Resend
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -57,6 +59,8 @@ export class EmailService {
           return await this.sendWithSendGrid(emailData);
         case 'ses':
           return await this.sendWithSES(emailData);
+        case 'resend':
+          return await this.sendWithResend(emailData);
         case 'console':
         default:
           return await this.sendWithConsole(emailData);
@@ -180,6 +184,40 @@ export class EmailService {
     });
 
     this.logger.log(`✅ Email sent to ${options.to} via SendGrid`);
+    return true;
+  }
+
+  private async sendWithResend(options: EmailOptions): Promise<boolean> {
+    const apiKey = this.configService.get<string>('RESEND_API_KEY') || process.env['RESEND_API_KEY'];
+    if (!apiKey) {
+      this.logger.error('RESEND_API_KEY not configured');
+      return false;
+    }
+
+    const body = JSON.stringify({
+      from: options.from || `${this.fromName} <${this.fromEmail}>`,
+      to: [options.to],
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    });
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => String(response.status));
+      this.logger.error(`Resend API error (${response.status}): ${errorText}`);
+      return false;
+    }
+
+    this.logger.log(`Email sent to ${options.to} via Resend`);
     return true;
   }
 

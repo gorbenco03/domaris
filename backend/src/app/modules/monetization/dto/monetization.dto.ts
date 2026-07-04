@@ -51,6 +51,11 @@ export class CreateSubscriptionDto {
   @IsBoolean()
   @IsOptional()
   startTrial?: boolean;
+
+  @ApiPropertyOptional({ example: 'simulated', description: 'Payment method — use "simulated" to activate instantly without a real gateway' })
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
 }
 
 export class ChangePlanDto {
@@ -116,6 +121,11 @@ export class CreatePromotionDto {
   @IsBoolean()
   @IsOptional()
   useFreeBoost?: boolean;
+
+  @ApiPropertyOptional({ example: 'simulated', description: 'Payment method — use "simulated" to activate instantly without a real gateway' })
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
 }
 
 // ============================================================================

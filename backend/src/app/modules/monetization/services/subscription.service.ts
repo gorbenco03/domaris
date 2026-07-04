@@ -225,6 +225,9 @@ export class SubscriptionService {
 
     // Check for trial
     const startTrial = dto.startTrial && plan.trialDays > 0;
+    // Plată simulată: fără gateway real, activare instantă
+    const isSimulated = !startTrial && dto.paymentMethod === 'simulated';
+
     let trialEndsAt: Date | undefined;
     let status: SubscriptionStatus = 'pending'; // pending until payment
 
@@ -232,7 +235,11 @@ export class SubscriptionService {
       trialEndsAt = new Date(now.getTime() + plan.trialDays * 24 * 60 * 60 * 1000);
       status = 'trialing';
       periodEnd = trialEndsAt;
+    } else if (isSimulated) {
+      status = 'active';
     }
+
+    const activateImmediately = startTrial || isSimulated;
 
     // Creează subscription
     const subscription = await UserSubscription.create({
@@ -247,7 +254,7 @@ export class SubscriptionService {
       autoRenew: true,
       boostsUsedThisMonth: 0,
       boostsResetAt: now,
-      paymentProvider: dto.appleReceipt ? 'apple' : dto.googlePurchaseToken ? 'google' : 'stripe',
+      paymentProvider: dto.appleReceipt ? 'apple' : dto.googlePurchaseToken ? 'google' : (isSimulated ? 'simulated' : 'stripe'),
     });
 
     // Creează tranzacția
@@ -258,21 +265,26 @@ export class SubscriptionService {
     await Transaction.create({
       userId,
       type: 'subscription',
-      status: startTrial ? 'completed' : 'pending',
+      status: activateImmediately ? 'completed' : 'pending',
       amount: startTrial ? 0 : Number(price),
       currency: plan.currency,
+      paymentMethod: isSimulated ? 'simulated' : undefined,
       referenceId: subscription.id,
       referenceType: 'user_subscription',
       description: `${plan.name} - ${billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}`,
-      completedAt: startTrial ? now : undefined,
+      completedAt: activateImmediately ? now : undefined,
     });
 
     // Update user hasActiveSubscription
-    if (startTrial) {
+    if (activateImmediately) {
       await User.update(
         { hasActiveSubscription: true, subscriptionExpiresAt: periodEnd },
         { where: { id: userId } },
       );
+    }
+
+    if (isSimulated) {
+      this.logger.log(`Simulated payment: subscription ${subscription.id} activated instantly for user ${userId}, plan: ${plan.code}`);
     }
 
     this.logger.log(

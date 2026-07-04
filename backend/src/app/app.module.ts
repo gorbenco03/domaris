@@ -41,6 +41,7 @@ import { AIModule } from './modules/ai/ai.module.js';
 import { CronModule } from './modules/cron/cron.module.js';
 import { MonetizationModule } from './modules/monetization/monetization.module.js';
 import { ReviewModule } from './modules/review/review.module.js';
+import { RentalContractModule } from './modules/rental-contract/rental-contract.module.js';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { ReviewModule } from './modules/review/review.module.js';
     CronModule,
     MonetizationModule,
     ReviewModule,
+    RentalContractModule,
   ],
   controllers: [AppController],
   providers: [

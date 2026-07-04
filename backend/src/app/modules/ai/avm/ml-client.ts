@@ -43,6 +43,10 @@ function toRequestBody(input: AVMInput): Record<string, unknown> {
     year_built: input.yearBuilt ?? null,
     is_furnished: input.isFurnished ?? false,
     amenities: input.amenities ?? [],
+    // Coordonatele îmbunătățesc semnificativ precizia (distanța față de centru,
+    // micro-zona geospațială); dacă lipsesc, serviciul cade pe centroidul zonei.
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
   };
 }
 

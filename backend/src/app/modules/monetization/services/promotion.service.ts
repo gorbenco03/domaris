@@ -121,25 +121,30 @@ export class PromotionService {
       }
     }
 
+    // 4b. Plată simulată: fără gateway real, activare instantă
+    const isSimulated = !isFreeBoost && dto.paymentMethod === 'simulated';
+
     // 5. Creează promovarea
     const now = new Date();
     const endDate = new Date(now.getTime() + promotionPlan.durationDays * 24 * 60 * 60 * 1000);
+
+    const activateImmediately = isFreeBoost || isSimulated;
 
     const promotion = await ListingPromotion.create({
       userId,
       listingId,
       promotionPlanId: promotionPlan.id,
-      status: isFreeBoost ? 'active' : 'pending',
-      startDate: isFreeBoost ? now : undefined,
-      endDate: isFreeBoost ? endDate : undefined,
-      activatedAt: isFreeBoost ? now : undefined,
+      status: activateImmediately ? 'active' : 'pending',
+      startDate: activateImmediately ? now : undefined,
+      endDate: activateImmediately ? endDate : undefined,
+      activatedAt: activateImmediately ? now : undefined,
       searchBoostMultiplier: promotionPlan.searchBoostMultiplier,
       showBadge: promotionPlan.showBadge,
       showOnHomepage: promotionPlan.showOnHomepage,
       isHighlighted: promotionPlan.isHighlighted,
       amountPaid: amountToPay,
       currency: promotionPlan.currency,
-      paymentStatus: isFreeBoost ? 'completed' : 'pending',
+      paymentStatus: activateImmediately ? 'completed' : 'pending',
       isFreeBoost,
     });
 
@@ -149,18 +154,22 @@ export class PromotionService {
       this.logger.log(`Free boost activated for listing ${listingId} by user ${userId}`);
     }
 
+    if (isSimulated) {
+      this.logger.log(`Simulated payment: promotion ${promotion.id} activated instantly for listing ${listingId} by user ${userId}`);
+    }
+
     // 7. Creează tranzacția
     await Transaction.create({
       userId,
       type: 'promotion',
-      status: isFreeBoost ? 'completed' : 'pending',
+      status: activateImmediately ? 'completed' : 'pending',
       amount: amountToPay,
       currency: promotionPlan.currency,
-      paymentMethod: isFreeBoost ? 'free' : undefined,
+      paymentMethod: isFreeBoost ? 'free' : (isSimulated ? 'simulated' : undefined),
       referenceId: promotion.id,
       referenceType: 'listing_promotion',
       description: `${promotionPlan.name} - ${listing.title}`,
-      completedAt: isFreeBoost ? now : undefined,
+      completedAt: activateImmediately ? now : undefined,
     });
 
     this.logger.log(

@@ -49,6 +49,43 @@ export class KycService {
     return this.s3Service.uploadPrivateBuffer(file.buffer, key, contentType);
   }
 
+  /**
+   * Returns true when KYC_AUTO_APPROVE env variable is set to the string 'true'.
+   * Centralised so tests can stub process.env once.
+   */
+  private isAutoApproveEnabled(): boolean {
+    return process.env['KYC_AUTO_APPROVE'] === 'true';
+  }
+
+  /**
+   * Shared auto-approve transaction: marks verification + docs APPROVED,
+   * upgrades user.verificationLevel to Math.max(current, targetLevel).
+   * Must be called AFTER the verification record and documents already exist.
+   */
+  private async runAutoApprove(
+    user: User,
+    verification: KycVerification,
+    targetLevel: number,
+  ): Promise<void> {
+    await this.sequelize.transaction(async (t) => {
+      const reviewedAt = new Date();
+
+      verification.status = 'APPROVED';
+      verification.reviewedAt = reviewedAt;
+      verification.reviewedBy = null; // system — no admin actor
+      verification.rejectionReason = null;
+      await verification.save({ transaction: t });
+
+      await KycDocument.update(
+        { status: 'APPROVED', reviewedAt },
+        { where: { verificationId: verification.id }, transaction: t },
+      );
+
+      user.verificationLevel = Math.max(user.verificationLevel, targetLevel);
+      await user.save({ transaction: t });
+    });
+  }
+
   private async getVerification(userId: number) {
     return KycVerification.findOne({
       where: { userId },
@@ -182,6 +219,17 @@ export class KycService {
 
     console.log(`[KYC] User ${userId} submitted identity verification with ${docType}`);
 
+    // ── AUTO-APPROVE (KYC_AUTO_APPROVE=true) ─────────────────────────────────
+    if (this.isAutoApproveEnabled()) {
+      await this.runAutoApprove(user, verification, 2);
+      console.log(`[KYC][AUTO] User ${userId} auto-approved to level 2`);
+      return {
+        status: 'APPROVED',
+        verificationLevel: user.verificationLevel,
+        message: 'Identitate auto-aprobată (modul demo)',
+      };
+    }
+
     return this.getStatus(userId);
   }
 
@@ -305,6 +353,17 @@ export class KycService {
     });
 
     console.log(`[KYC] User ${userId} uploaded property document for property ${propertyId}`);
+
+    // ── AUTO-APPROVE (KYC_AUTO_APPROVE=true) ─────────────────────────────────
+    if (this.isAutoApproveEnabled()) {
+      await this.runAutoApprove(user, verification, 3);
+      console.log(`[KYC][AUTO] User ${userId} auto-approved to level 3`);
+      return {
+        status: 'APPROVED',
+        verificationLevel: user.verificationLevel,
+        message: 'Document proprietate auto-aprobat (modul demo)',
+      };
+    }
 
     return this.getStatus(userId);
   }

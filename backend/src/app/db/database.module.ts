@@ -27,6 +27,7 @@ import { AdminAuditLog } from './entities/admin-audit-log.entity.js';
 import { UserConsent } from './entities/user-consent.entity.js';
 import { AiConversation } from './entities/ai-conversation.entity.js';
 import { AiMessage } from './entities/ai-message.entity.js';
+import { RentalContract } from './entities/rental-contract.entity.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Options default
@@ -111,6 +112,8 @@ const parseBoolean = (value: string | boolean | undefined, fallback: boolean): b
             // AI conversations
             AiConversation,
             AiMessage,
+            // Rental contracts
+            RentalContract,
           ],
           synchronize: shouldSynchronize,
           ...(shouldSynchronize && {
