@@ -17,6 +17,13 @@ import { User } from './user.entity';
   underscored: true,
   timestamps: true,
   paranoid: true,
+  // Indexuri pe coloane snake_case: @Index pe proprietate ar genera numele
+  // camelCase al proprietății, care nu există în DB (underscored: true).
+  indexes: [
+    { name: 'listings_transaction_type', fields: ['transaction_type'] },
+    { name: 'listings_property_type', fields: ['property_type'] },
+    { name: 'listings_price_eur', fields: ['price_eur'] },
+  ],
 })
 export class Listing extends ExtModel {
   @ForeignKey(() => User)
@@ -47,12 +54,10 @@ export class Listing extends ExtModel {
   description!: string;
 
   @ApiProperty({ example: 'SALE' })
-  @Index
   @Column(DataType.STRING)
   transactionType!: string;
 
   @ApiProperty({ example: 'APARTMENT' })
-  @Index
   @Column(DataType.STRING)
   propertyType!: string;
 
@@ -107,7 +112,6 @@ export class Listing extends ExtModel {
   amenities?: string[];
 
   @ApiProperty({ example: 500 })
-  @Index
   @Column({
     type: DataType.INTEGER,
     field: 'price_eur',
